@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brew & Focus</title>
+<link rel="stylesheet" href="style.css" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo" onclick="showPage('home')">Brew <span>&</span> Focus</div>
+  <div class="nav-links">
+    <a onclick="showPage('home')" id="nl-home">Home</a>
+    <a onclick="showPage('brew')" id="nl-brew">Brew</a>
+    <a onclick="showPage('cafe')" id="nl-cafe">Study Café</a>
+    <a onclick="showPage('recipes')" id="nl-recipes">Recipe Book</a>
+  </div>
+</nav>
+
+<button class="sound-toggle" id="sound-toggle" onclick="toggleSound()" title="Mute or unmute ambience">♪</button>
+<div class="toast" id="toast"></div>
+
+<!-- ═══════ HOME ═══════════════════════════════════════════════════════════ -->
+<div id="page-home" class="page active">
+  <div class="hero">
+    <div class="hero-copy">
+      <div class="hero-deco">✦ &nbsp; a cozy café desk &nbsp; ✦</div>
+      <h1 class="hero-title">Brew &<br><em>Focus</em></h1>
+      <p class="hero-sub">Settle into a warm coffee-shop corner where notes, cups, rain, and little study rituals become memories worth keeping.</p>
+      <div class="hero-btns">
+        <button class="btn-p" onclick="showPage('brew')">Start Brewing</button>
+        <button class="btn-s" onclick="showPage('cafe')">Join a Study Café</button>
+      </div>
+    </div>
+    <div class="desk-scene" aria-hidden="true">
+      <img class="desk-art" src="assets/Images/cafe-desk-reference.jpeg" alt="">
+      <div class="desk-note">today's ritual:<br>one warm cup,<br>one quiet page</div>
+      <div class="bean-trail"></div>
+      <div class="hero-cup" id="hero-cup"></div>
+      <div class="home-steam">
+        <div class="s-line"></div><div class="s-line"></div><div class="s-line"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ BREW ═══════════════════════════════════════════════════════════ -->
+<div id="page-brew" class="page">
+  <div class="brew-wrap">
+    <div>
+      <h2 class="sec-title">Craft your drink</h2>
+      <p class="sec-sub">— collectible watercolor café recipes —</p>
+
+      <div class="opt-group">
+        <div class="opt-label">Drink recipe</div>
+        <div class="chips drink-presets" id="chips-drink">
+          <div class="chip sel" data-group="drink" data-val="cappuccino">Cappuccino</div>
+          <div class="chip" data-group="drink" data-val="matcha-latte">Matcha Latte</div>
+          <div class="chip" data-group="drink" data-val="mocha">Mocha</div>
+          <div class="chip" data-group="drink" data-val="hot-chocolate">Hot Chocolate</div>
+          <div class="chip" data-group="drink" data-val="black-coffee">Black Coffee</div>
+          <div class="chip" data-group="drink" data-val="milk-tea">Milk Tea</div>
+          <div class="chip" data-group="drink" data-val="caramel-latte">Caramel Latte</div>
+          <div class="chip" data-group="drink" data-val="vanilla-latte">Vanilla Latte</div>
+          <div class="chip" data-group="drink" data-val="honey-tea">Honey Tea</div>
+          <div class="chip" data-group="drink" data-val="iced-americano">Iced Americano</div>
+        </div>
+      </div>
+
+      <div class="opt-group">
+        <div class="opt-label">Cup</div>
+        <div class="chips" id="chips-cup">
+          <div class="chip sel" data-group="cup" data-val="mug">🫖 Vintage Mug</div>
+          <div class="chip" data-group="cup" data-val="teacup">🍵 Teacup</div>
+          <div class="chip" data-group="cup" data-val="glass">🥛 Latte Glass</div>
+          <div class="chip" data-group="cup" data-val="takeaway">☕ Takeaway</div>
+        </div>
+      </div>
+
+      <div class="opt-group">
+        <div class="opt-label">Base</div>
+        <div class="chips" id="chips-base">
+          <div class="chip sel" data-group="base" data-val="coffee">Coffee</div>
+          <div class="chip" data-group="base" data-val="matcha">Matcha</div>
+          <div class="chip" data-group="base" data-val="tea">Tea</div>
+          <div class="chip" data-group="base" data-val="chocolate">Hot Chocolate</div>
+        </div>
+      </div>
+
+      <div class="opt-group">
+        <div class="opt-label">Add-ons (pick any)</div>
+        <div class="chips" id="chips-addons">
+          <div class="chip" data-group="addons" data-val="whipped">Whipped Cream</div>
+          <div class="chip" data-group="addons" data-val="caramel">Caramel</div>
+          <div class="chip" data-group="addons" data-val="honey">Honey</div>
+          <div class="chip" data-group="addons" data-val="cinnamon">Cinnamon</div>
+          <div class="chip" data-group="addons" data-val="marshmallow">Marshmallows</div>
+          <div class="chip" data-group="addons" data-val="boba">Boba</div>
+          <div class="chip" data-group="addons" data-val="vanilla">Vanilla Foam</div>
+        </div>
+      </div>
+
+      <div class="ornament">· · ·</div>
+
+      <div class="session-fields">
+        <div class="f-row">
+          <label class="f-label">Your name</label>
+          <input class="f-in" id="field-username" type="text" placeholder="e.g. Amélie, Yuki…">
+        </div>
+        <div class="f-row">
+          <label class="f-label">Subject</label>
+          <input class="f-in" id="field-subject" type="text" placeholder="e.g. History, Chemistry…">
+        </div>
+        <div class="f-row">
+          <label class="f-label">Today's task</label>
+          <input class="f-in" id="field-task" type="text" placeholder="e.g. Read Chapter 4…">
+        </div>
+        <div class="f-row">
+          <label class="f-label">Duration</label>
+          <select class="f-sel" id="field-duration">
+            <option value="15">15 min — a quick sip</option>
+            <option value="25" selected>25 min — classic pomodoro</option>
+            <option value="40">40 min — deep focus</option>
+            <option value="60">60 min — full brew</option>
+            <option value="90">90 min — the long steep</option>
+          </select>
+        </div>
+        <div class="f-row">
+          <label class="f-label">Ambience</label>
+          <select class="ambient-select" id="field-ambience" onchange="setAmbience(this.value)">
+            <option value="cozy-cafe">Cozy Café</option>
+            <option value="rainy-bookstore">Rainy Bookstore</option>
+            <option value="vintage-library">Vintage Library</option>
+            <option value="fireplace">Fireplace Reading Room</option>
+            <option value="midnight-cafe">Midnight Café</option>
+            <option value="kyoto-tea">Kyoto Tea House</option>
+            <option value="autumn-coffee">Autumn Coffee Shop</option>
+            <option value="forest-cabin">Forest Cabin</option>
+            <option value="ocean-waves">Ocean Waves</option>
+            <option value="white-noise">White Noise</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-panel">
+      <input class="recipe-name-in" id="recipe-name" type="text" placeholder="Name your brew…" maxlength="40">
+      <div id="cup-preview" style="filter:drop-shadow(0 12px 28px rgba(0,0,0,0.45))"></div>
+      <button class="btn-p" style="margin-top:2rem;width:100%;" onclick="startSession()">Begin Session →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ STUDY ═══════════════════════════════════════════════════════════ -->
+<div id="page-study" class="page">
+  <div class="study-layout">
+    <div class="study-sub-lbl" id="study-sub-lbl">—</div>
+    <div class="study-task-lbl" id="study-task-lbl">A quiet brew is ready</div>
+    <div class="timer-cup-wrap" id="timer-cup-area" style="filter:drop-shadow(0 16px 36px rgba(0,0,0,0.5))"></div>
+    <div class="time-disp" id="time-disp">25:00</div>
+    <div class="ambient-lbl" id="ambient-lbl">Your brew is ready. Press play to begin.</div>
+    <div class="sess-ctrl">
+      <button class="btn-ic" onclick="resetSession()" title="Restart">↩</button>
+      <button class="btn-ic play" id="play-btn" onclick="toggleTimer()">▶</button>
+      <button class="btn-ic" onclick="requestEndSession()" title="Stop Session">✓</button>
+    </div>
+    <button class="focus-stop" onclick="requestEndSession()">Stop Session</button>
+  </div>
+</div>
+
+<!-- ═══════ STUDY CAFÉ ════════════════════════════════════════════════════ -->
+<div id="page-cafe" class="page">
+  <div class="cafe-header">
+    <h2>Study Café</h2>
+    <p>brew together, focus together</p>
+  </div>
+  <div class="cafe-wrap">
+
+    <!-- Create room -->
+    <div class="room-create-card">
+      <h3>Open a new table</h3>
+      <div class="room-fields">
+        <div>
+          <label class="room-f-label">Table name</label>
+          <input class="room-f-in" id="room-name" placeholder="e.g. Midnight Study Hall…">
+        </div>
+        <div>
+          <label class="room-f-label">Your name</label>
+          <input class="room-f-in" id="room-username" placeholder="e.g. Yuki…">
+        </div>
+      </div>
+      <button class="btn-p" onclick="createRoom()">Open Table</button>
+    </div>
+
+    <!-- Rooms list -->
+    <div class="rooms-grid" id="rooms-grid"></div>
+
+    <!-- Join & brew together -->
+    <div style="text-align:center;margin-top:1rem;">
+      <p style="font-family:'Caveat',cursive;font-size:1rem;color:var(--warm-brown);opacity:0.6;">
+        Join a table to brew and study alongside friends. Each person's drink sits on the shared table.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ RECIPE BOOK ════════════════════════════════════════════════════ -->
+<div id="page-recipes" class="page">
+  <div class="recipes-hdr">
+    <h2>Recipe Book</h2>
+    <p>every session, a memory preserved</p>
+  </div>
+  <div class="recipe-tabs">
+    <button class="rtab active" onclick="setRecipeTab('mine')" id="rtab-mine">My Recipes</button>
+    <button class="rtab" onclick="setRecipeTab('shared')" id="rtab-shared">Shared Brews</button>
+  </div>
+  <div class="journal-tabs" id="journal-tabs"></div>
+  <div class="recipe-tools">
+    <input id="recipe-search" placeholder="Search handwritten recipes..." oninput="updateRecipeFilters()">
+    <select id="filter-subject" onchange="updateRecipeFilters()"><option value="">All subjects</option></select>
+    <select id="filter-drink" onchange="updateRecipeFilters()"><option value="">All drinks</option></select>
+    <select id="sort-recipes" onchange="updateRecipeFilters()">
+      <option value="newest">Newest first</option>
+      <option value="oldest">Oldest first</option>
+      <option value="favorite">Favorites first</option>
+    </select>
+  </div>
+  <div class="recipe-stage">
+    <div class="flipbook-shell">
+      <div class="bookmark"></div>
+      <div class="book-binding"></div>
+      <div class="recipe-grid" id="recipe-grid"></div>
+    </div>
+    <div class="book-controls">
+      <button class="page-btn" id="page-prev" onclick="changeRecipePage(-1)" title="Previous page">‹</button>
+      <span id="page-count">page 1</span>
+      <button class="page-btn" id="page-next" onclick="changeRecipePage(1)" title="Next page">›</button>
+    </div>
+  </div>
+</div>
+
+<div class="leave-modal-bg" id="leave-modal">
+  <div class="leave-modal">
+    <h3>Your brew is still warm.</h3>
+    <p>Leaving now will end your current focus session.<br>Are you sure?</p>
+    <div class="leave-actions">
+      <button class="btn-p" onclick="continueStudying()">Continue Studying</button>
+      <button class="btn-s" style="color:var(--ink);border-color:rgba(74,52,40,0.35);" onclick="confirmEndSession()">End Session</button>
+    </div>
+  </div>
+</div>
+
+<!-- Join room modal -->
+<div class="modal-bg" id="join-modal" onclick="closeJoinModal(event)">
+  <div class="modal" style="position:relative;">
+    <button class="modal-close" onclick="closeJoinModalDirect()">×</button>
+    <h3 id="modal-room-name">Join Table</h3>
+    <p id="modal-room-sub">Brew a drink together</p>
+    <div class="f-row" style="margin-bottom:0.9rem;">
+      <label class="f-label" style="color:var(--warm-brown);">Your name</label>
+      <input class="room-f-in" id="modal-username" placeholder="e.g. Amélie…" style="width:100%;">
+    </div>
+    <div style="margin-bottom:1.2rem;">
+      <div class="opt-label" style="color:var(--warm-brown);font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:0.6rem;">Your base drink</div>
+      <div class="chips" id="modal-base-chips">
+        <div class="chip sel" data-group="modal-base" data-val="coffee" style="border-color:rgba(107,79,58,0.35);color:var(--ink);">Coffee</div>
+        <div class="chip" data-group="modal-base" data-val="matcha" style="border-color:rgba(107,79,58,0.25);color:var(--ink);">Matcha</div>
+        <div class="chip" data-group="modal-base" data-val="tea" style="border-color:rgba(107,79,58,0.25);color:var(--ink);">Tea</div>
+        <div class="chip" data-group="modal-base" data-val="chocolate" style="border-color:rgba(107,79,58,0.25);color:var(--ink);">Hot Chocolate</div>
+      </div>
+    </div>
+    <button class="btn-p" style="width:100%;" onclick="joinRoom()">Take a seat →</button>
+  </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
