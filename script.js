@@ -1,3 +1,18 @@
+// ── Supabase setup ───────────────────────────────────────────────────────
+// 1. Go to your Supabase project → Settings → API
+// 2. Paste your Project URL and anon/public key below
+// 3. Run the SQL in supabase-setup.sql (included alongside this file) once,
+//    in the Supabase SQL editor, to create the "profiles" table + policies.
+const SUPABASE_URL = 'https://vigjumdpadyslbcvjeel.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_qkYURGAEv7vAgFXwFzgsdQ_VU0g6dZr';
+
+let supabaseClient = null;
+try {
+  if (window.supabase && SUPABASE_URL.startsWith('http')) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch (e) { console.warn('Supabase not configured yet:', e); }
+
 // ── State ─────────────────────────────────────────────────────────────────
 const bgMusic = new Audio('./assets/audio/cafe-music.mp3');
 
@@ -13,10 +28,11 @@ const S = {
   sharedRecipes: JSON.parse(localStorage.getItem('bf_shared')||'[]'),
   rooms: JSON.parse(localStorage.getItem('bf_rooms')||'[]'),
   recipeTab:'mine',
-  recipePage:0, recipeSearch:'', recipeSubject:'', recipeDrink:'', recipeSort:'newest', quickTab:'all',
+  recipePage:0, recipeSearch:'', recipeSubject:'', recipeSort:'newest', quickTab:'all',
   ambience: localStorage.getItem('bf_ambience') || 'cozy-cafe',
   soundOn: localStorage.getItem('bf_sound') !== 'off',
-  joinRoomId:null, modalBase:'coffee'
+  joinRoomId:null, modalBase:'coffee',
+  authTab:'signin', user:null
 };
 
 const DRINKS = {
@@ -418,7 +434,7 @@ function startSession(){
   initAudio();
   setAmbience(document.getElementById('field-ambience').value || S.ambience);
   S.recipeName = document.getElementById('recipe-name').value || 'Unnamed Brew';
-  S.username   = document.getElementById('field-username').value || 'Me';
+  S.username   = document.getElementById('field-username').value || (S.user?.username) || 'Me';
   S.subject    = document.getElementById('field-subject').value || 'General Study';
   S.task       = document.getElementById('field-task').value || 'Focus session';
   S.duration   = parseInt(document.getElementById('field-duration').value);
@@ -477,10 +493,11 @@ function finishSession(){
   const mins=Math.round(elapsed/60)||1;
   const now=new Date();
   const dateStr=now.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-  const recipe={id:Date.now(),name:S.recipeName,cup:S.cup,base:S.base,drink:S.drink,addons:[...S.addons],
-    subject:S.subject,task:S.task,duration:mins,date:dateStr,username:S.username||'Me',shared:false};
+  const recipe={id:Date.now(),_ts:Date.now(),name:S.recipeName,cup:S.cup,base:S.base,drink:S.drink,addons:[...S.addons],
+    subject:S.subject,task:S.task,duration:mins,date:dateStr,username:S.username||'Me',favorite:false,shared:false};
   S.recipes.unshift(recipe);
   localStorage.setItem('bf_recipes',JSON.stringify(S.recipes));
+  if(S.user){ saveRecipeToCloud(recipe); } // fire-and-forget — recipe is already safe locally either way
   showToast('✓ Session saved to your recipe book!');
   renderTimerCup(0);
   document.getElementById('ambient-lbl').textContent=`${mins} min brewed. Beautiful. ☕`;
@@ -558,7 +575,7 @@ function openJoinModal(roomId){
   if(!room) return;
   document.getElementById('modal-room-name').textContent=room.name;
   document.getElementById('modal-room-sub').textContent=`${room.members.length} friend${room.members.length!==1?'s':''} brewing at this table`;
-  document.getElementById('modal-username').value='';
+  document.getElementById('modal-username').value=S.user?.username||'';
   document.getElementById('join-modal').classList.add('open');
 }
 function closeJoinModal(e){ if(e.target===document.getElementById('join-modal')) closeJoinModalDirect(); }
@@ -587,33 +604,43 @@ function setRecipeTab(tab){
   S.recipeTab=tab;
   S.recipePage=0;
   S.quickTab='all';
-  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.rtab-pill').forEach(t=>t.classList.remove('active'));
   document.getElementById('rtab-'+tab).classList.add('active');
+  const pill=document.querySelector('.rtabs-pill');
+  if(pill) pill.classList.toggle('tab-shared', tab==='shared');
   renderRecipes();
 }
 
 const addonNames={whipped:'Whipped Cream',caramel:'Caramel',honey:'Honey',cinnamon:'Cinnamon',marshmallow:'Marshmallows',boba:'Boba',vanilla:'Vanilla Foam'};
 const baseNames={coffee:'Coffee',matcha:'Matcha',tea:'Tea',chocolate:'Hot Chocolate'};
+const sortLabels={newest:'Newest ↓', oldest:'Oldest ↑', favorite:'Favorites ★'};
 function recipeListRaw(){ return S.recipeTab==='mine' ? S.recipes : S.sharedRecipes; }
 function filteredRecipes(){
   let list=[...recipeListRaw()];
   const q=S.recipeSearch.toLowerCase();
   if(q) list=list.filter(r=>[r.name,r.subject,r.task,r.username,DRINKS[r.drink]?.label,baseNames[r.base]].join(' ').toLowerCase().includes(q));
   if(S.recipeSubject) list=list.filter(r=>r.subject===S.recipeSubject);
-  if(S.recipeDrink) list=list.filter(r=>(r.drink||r.base)===S.recipeDrink || r.base===S.recipeDrink);
   if(S.quickTab==='favorites') list=list.filter(r=>r.favorite);
   if(S.quickTab!=='all' && S.quickTab!=='favorites') list=list.filter(r=>(r.drink||r.base)===S.quickTab || r.base===S.quickTab);
   list.sort((a,b)=>{
-    if(S.recipeSort==='favorite') return (b.favorite?1:0)-(a.favorite?1:0) || (b.id||0)-(a.id||0);
-    return S.recipeSort==='oldest' ? (a.id||0)-(b.id||0) : (b.id||0)-(a.id||0);
+    const at=a._ts||a.id||0, bt=b._ts||b.id||0;
+    if(S.recipeSort==='favorite') return (b.favorite?1:0)-(a.favorite?1:0) || bt-at;
+    return S.recipeSort==='oldest' ? at-bt : bt-at;
   });
   return list;
 }
 function updateRecipeFilters(){
   S.recipeSearch=document.getElementById('recipe-search')?.value||'';
   S.recipeSubject=document.getElementById('filter-subject')?.value||'';
-  S.recipeDrink=document.getElementById('filter-drink')?.value||'';
-  S.recipeSort=document.getElementById('sort-recipes')?.value||'newest';
+  S.recipePage=0; renderRecipes();
+}
+// Tap-to-cycle sort button — one control instead of a dropdown, keeps the
+// toolbar to a single tidy row.
+function cycleSort(){
+  const order=['newest','oldest','favorite'];
+  S.recipeSort = order[(order.indexOf(S.recipeSort)+1) % order.length];
+  const btn=document.getElementById('sort-btn');
+  if(btn) btn.textContent = sortLabels[S.recipeSort];
   S.recipePage=0; renderRecipes();
 }
 function setQuickTab(tab){
@@ -627,12 +654,15 @@ function toggleFavorite(id,event){
   if(event) event.stopPropagation();
   const all=[...S.recipes,...S.sharedRecipes];
   const r=all.find(x=>String(x.id)===String(id));
-  if(r){ r.favorite=!r.favorite; saveRecipeLists(); renderRecipes(); }
+  if(r){
+    r.favorite=!r.favorite; saveRecipeLists(); renderRecipes();
+    if(S.user && S.recipes.includes(r)) updateRecipeFavoriteCloud(r);
+  }
 }
 function refreshRecipeTools(list){
   const subjectSel=document.getElementById('filter-subject');
-  const drinkSel=document.getElementById('filter-drink');
   const tabs=document.getElementById('journal-tabs');
+  const sortBtn=document.getElementById('sort-btn');
   const raw=recipeListRaw();
   if(subjectSel){
     const current=subjectSel.value;
@@ -640,18 +670,16 @@ function refreshRecipeTools(list){
     subjectSel.innerHTML='<option value="">All subjects</option>'+subjects.map(s=>`<option value="${s}">${s}</option>`).join('');
     subjectSel.value=subjects.includes(current)?current:'';
   }
-  if(drinkSel){
-    const current=drinkSel.value;
-    const drinks=[...new Set(raw.map(r=>r.drink||r.base).filter(Boolean))];
-    drinkSel.innerHTML='<option value="">All drinks</option>'+drinks.map(d=>`<option value="${d}">${DRINKS[d]?.label||baseNames[d]||d}</option>`).join('');
-    drinkSel.value=drinks.includes(current)?current:'';
-  }
+  if(sortBtn) sortBtn.textContent = sortLabels[S.recipeSort];
   if(tabs){
     const common=['all','favorites','cappuccino','matcha-latte','caramel-latte','honey-tea'];
-    tabs.innerHTML=common.map(t=>`<button class="journal-tab ${S.quickTab===t?'active':''}" onclick="setQuickTab('${t}')">${t==='all'?'All':t==='favorites'?'Favorites':(DRINKS[t]?.label||t)}</button>`).join('');
+    tabs.innerHTML=common.map(t=>`<button class="journal-tab ${S.quickTab===t?'active':''}" onclick="setQuickTab('${t}')">${t==='all'?'All':t==='favorites'?'★ Favorites':(DRINKS[t]?.label||t)}</button>`).join('');
   }
 }
 
+// Recipe cards now show a full-sized, accurate cup that mirrors exactly
+// what was brewed (same cup shape, base, drink and add-ons), rendered
+// bigger and steaming gently so it feels alive on the page.
 function renderRecipes(){
   const grid=document.getElementById('recipe-grid');
   const list = filteredRecipes();
@@ -660,8 +688,8 @@ function renderRecipes(){
   const nextBtn=document.getElementById('page-next');
   const pageCount=document.getElementById('page-count');
   if(!list.length){
-    grid.innerHTML=`<div class="recipe-card left-page empty-state"><p>${S.recipeTab==='mine'?'No recipes yet — brew your first session':'No shared brews yet — join a study table to create one together'}</p><div class="rc-note">Blank pages are waiting for the next warm memory.</div></div>
-    <div class="recipe-card right-page empty-state"><p>Open the Brew page, finish a session, and this journal will begin to fill.</p></div>`;
+    grid.innerHTML=`<div class="recipe-card empty-state"><p>${S.recipeTab==='mine'?'No recipes yet — brew your first session':'No shared brews yet — join a study table to create one together'}</p><div class="rc-note">Blank pages are waiting for the next warm memory.</div></div>
+    <div class="recipe-card empty-state"><p>Open the Brew page, finish a session, and this journal will begin to fill.</p></div>`;
     if(prevBtn) prevBtn.disabled=true;
     if(nextBtn) nextBtn.disabled=true;
     if(pageCount) pageCount.textContent='blank journal';
@@ -672,19 +700,25 @@ function renderRecipes(){
   const spread=list.slice(S.recipePage*2,S.recipePage*2+2);
   grid.innerHTML = spread.map((r,i)=>{
     const drinkKey=r.drink||r.base;
-    const miniCup=buildCupSVG({size:66,fillFraction:1,steam:false,cup:r.cup,base:r.base,drink:drinkKey,addons:r.addons||[]});
-    const ings=[DRINKS[drinkKey]?.label||baseNames[r.base]||r.base,...(r.addons||[]).filter(a=>a!=='ice').map(a=>addonNames[a]||a)].join(', ');
-    return `<div class="recipe-card ${i===0?'left-page':'right-page'} ${r.favorite?'favorite-page':''}" onclick="changeRecipePage(${i===0?-1:1})">
+    const drinkLabel=DRINKS[drinkKey]?.label||baseNames[r.base]||'Custom Brew';
+    const fullCup=buildCupSVG({size:120,fillFraction:1,steam:true,cup:r.cup,base:r.base,drink:drinkKey,addons:r.addons||[]});
+    const ings=[drinkLabel,...(r.addons||[]).filter(a=>a!=='ice').map(a=>addonNames[a]||a)].join(', ');
+    return `<div class="recipe-card ${r.favorite?'favorite-page':''}" onclick="changeRecipePage(${i===0?-1:1})">
       ${r.shared?'<div class="rc-badge">shared brew</div>':''}
       <div class="rc-top">
-        <div class="rc-name">${r.name}</div>
-        <div>${miniCup}</div>
-      </div>
-      <div class="rc-meta">
-        <span>📚 ${r.subject}</span>
-        <span>✏️ ${r.task}</span>
-        <span>⏱ ${r.duration} min · ${r.date}</span>
-        ${r.username?`<span>☕ by ${r.username}</span>`:''}
+        <div class="rc-headline">
+          <div class="rc-name">${r.name}</div>
+          <div class="rc-meta">
+            <span>📚 ${r.subject}</span>
+            <span>✏️ ${r.task}</span>
+            <span>⏱ ${r.duration} min · ${r.date}</span>
+            ${r.username?`<span>☕ by ${r.username}</span>`:''}
+          </div>
+        </div>
+        <div class="rc-cup-frame">
+          <div class="rc-cup-label">${drinkLabel}</div>
+          ${fullCup}
+        </div>
       </div>
       <div class="rc-ingredients">${ings}</div>
       <div class="rc-note">I brewed this while studying ${r.subject}. The cup kept time, and the page kept the feeling.</div>
@@ -692,24 +726,295 @@ function renderRecipes(){
     </div>`;
   }).join('');
   if(spread.length===1){
-    grid.innerHTML += `<div class="recipe-card right-page empty-state"><p>This side of the spread is still untouched.</p><div class="rc-note">A future recipe belongs here.</div></div>`;
+    grid.innerHTML += `<div class="recipe-card empty-state"><p>This side of the spread is still untouched.</p><div class="rc-note">A future recipe belongs here.</div></div>`;
   }
   if(prevBtn) prevBtn.disabled=S.recipePage===0;
   if(nextBtn) nextBtn.disabled=S.recipePage>=maxPage;
   if(pageCount) pageCount.textContent=`spread ${S.recipePage+1} of ${maxPage+1}`;
 }
 
+// ── Realistic 3D page-flip animation ────────────────────────────────────
+let flippingPage=false;
 function changeRecipePage(delta){
+  if(flippingPage) return;
   const list = filteredRecipes();
   const maxPage=Math.max(0, Math.ceil(list.length/2)-1);
   const next=Math.max(0, Math.min(maxPage, S.recipePage+delta));
   if(next===S.recipePage) return;
-  document.querySelectorAll('.recipe-card').forEach(card=>card.classList.add(delta>0?'turn-next':'turn-prev'));
+
+  const shell = document.querySelector('.flipbook-shell');
+  const grid = document.getElementById('recipe-grid');
+  if(!shell || !grid){ S.recipePage=next; renderRecipes(); return; }
+
+  flippingPage = true;
   playPageSound('turn');
+
+  const frontHTML = grid.innerHTML;
+
+  S.recipePage = next;
+  renderRecipes();
+  const backHTML = grid.innerHTML;
+
+  const gridRect = grid.getBoundingClientRect();
+  const shellRect = shell.getBoundingClientRect();
+
+  const dir = delta>0 ? 'next' : 'prev';
+  const flip = document.createElement('div');
+  flip.className = 'page-flip-3d '+dir;
+  flip.style.top = (gridRect.top - shellRect.top) + 'px';
+  flip.style.left = (gridRect.left - shellRect.left) + 'px';
+  flip.style.width = gridRect.width + 'px';
+  flip.style.height = gridRect.height + 'px';
+  flip.innerHTML =
+    `<div class="flip-face flip-front"><div class="recipe-grid flip-grid">${frontHTML}</div></div>
+     <div class="flip-face flip-back"><div class="recipe-grid flip-grid">${backHTML}</div></div>`;
+  shell.appendChild(flip);
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{ flip.classList.add('turning'); });
+  });
+
   setTimeout(()=>{
-    S.recipePage=next;
-    renderRecipes();
-  },260);
+    flip.remove();
+    flippingPage = false;
+  }, 900);
+}
+
+// ── Auth (Supabase) ──────────────────────────────────────────────────────
+function openAuthModal(tab='signin'){
+  setAuthTab(tab);
+  document.getElementById('auth-modal').classList.add('open');
+}
+function closeAuthModal(e){ if(e.target===document.getElementById('auth-modal')) closeAuthModalDirect(); }
+function closeAuthModalDirect(){
+  document.getElementById('auth-modal').classList.remove('open');
+  document.getElementById('auth-msg').textContent='';
+  document.getElementById('auth-msg').className='auth-msg';
+}
+function setAuthTab(tab){
+  S.authTab=tab;
+  document.getElementById('auth-tab-signin').classList.toggle('active', tab==='signin');
+  document.getElementById('auth-tab-signup').classList.toggle('active', tab==='signup');
+  document.getElementById('auth-username-row').style.display = tab==='signup' ? 'block' : 'none';
+  document.getElementById('auth-title').textContent = tab==='signup' ? 'Join the café' : 'Welcome back';
+  document.getElementById('auth-sub').textContent = tab==='signup'
+    ? 'Create a membership so your brews follow you between visits.'
+    : 'Sign in to keep your recipes with you, wherever you brew.';
+  document.getElementById('auth-submit-btn').textContent = tab==='signup' ? 'Join the Café →' : 'Sign In →';
+  document.getElementById('auth-msg').textContent='';
+  document.getElementById('auth-msg').className='auth-msg';
+}
+function setAuthMsg(msg, type){
+  const el=document.getElementById('auth-msg');
+  el.textContent=msg; el.className='auth-msg'+(type?(' '+type):'');
+}
+function togglePasswordVisibility(){
+  const input=document.getElementById('auth-password');
+  const btn=document.getElementById('pw-toggle-btn');
+  const willShow = input.type==='password';
+  input.type = willShow ? 'text' : 'password';
+  btn.textContent = willShow ? '🙈' : '👁';
+  btn.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
+}
+// Translates Supabase's raw auth errors into something a person can act on,
+// without changing what actually happened.
+function friendlyAuthError(err){
+  const msg = (err && err.message) || '';
+  if(/invalid login credentials/i.test(msg)){
+    return "That email and password don't match our records. Double-check for typos — tap the eye icon to reveal what you typed — or confirm your email first if this account is brand new.";
+  }
+  if(/email not confirmed/i.test(msg)) return 'Please confirm your email first — check your inbox for the confirmation link, then sign in.';
+  if(/user already registered/i.test(msg)) return 'An account with that email already exists — try signing in instead.';
+  if(/password should be at least/i.test(msg)) return msg;
+  return msg || 'Something went wrong. Please try again.';
+}
+async function submitAuth(){
+  if(!supabaseClient){
+    setAuthMsg('Supabase isn\'t connected yet — add your Project URL and anon key at the top of script.js.', 'error');
+    return;
+  }
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const username = document.getElementById('auth-username').value.trim();
+  if(!email || !password){ setAuthMsg('Please fill in your email and password.', 'error'); return; }
+  if(S.authTab==='signup' && password.length<6){ setAuthMsg('Password should be at least 6 characters.', 'error'); return; }
+
+  const btn=document.getElementById('auth-submit-btn');
+  const originalLabel=btn.textContent;
+  btn.disabled=true; btn.textContent='Brewing…';
+
+  try {
+    if(S.authTab==='signup'){
+      if(!username){ setAuthMsg('Please tell us your name.', 'error'); return; }
+      const { data, error } = await supabaseClient.auth.signUp({
+        email, password, options:{ data:{ username } }
+      });
+      if(error) throw error;
+      // Save the public profile row (matches your existing profiles table:
+      // id, username, avatar_url — no email column, so we don't send one).
+      if(data.user){
+        try { await supabaseClient.from('profiles').upsert({ id:data.user.id, username }); }
+        catch(profileErr){ console.warn('Profile save failed (non-blocking):', profileErr); }
+      }
+      if(data.session){
+        setAuthMsg('Welcome to the café! ☕', 'success');
+        setTimeout(closeAuthModalDirect, 900);
+      } else {
+        setAuthMsg('Check your inbox to confirm your email, then sign in.', 'success');
+      }
+    } else {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      setAuthMsg('Welcome back! ☕', 'success');
+      setTimeout(closeAuthModalDirect, 700);
+    }
+  } catch(err){
+    console.error('Auth error:', err);
+    setAuthMsg(friendlyAuthError(err), 'error');
+  } finally {
+    btn.disabled=false; btn.textContent=originalLabel;
+  }
+}
+async function signOutUser(){
+  if(supabaseClient) await supabaseClient.auth.signOut();
+  showToast('Signed out — come back soon ☕');
+  // handleSessionChange (via onAuthStateChange) restores guest recipes and clears S.user
+}
+function renderAuthUI(){
+  const nav=document.getElementById('nav-auth');
+  if(S.user){
+    const initial=(S.user.username||S.user.email||'?').trim().charAt(0).toUpperCase();
+    nav.innerHTML = `
+      <div class="nav-user">
+        <div class="nav-user-avatar">${initial}</div>
+        <span class="nav-user-name">${S.user.username||S.user.email}</span>
+      </div>
+      <a class="signout-link" onclick="signOutUser()">Sign Out</a>`;
+    const uField=document.getElementById('field-username');
+    if(uField && !uField.value) uField.value=S.user.username||'';
+  } else {
+    nav.innerHTML = `<a onclick="openAuthModal('signin')" id="nl-signin">Sign In</a>`;
+  }
+}
+
+// ── Recipe cloud sync ────────────────────────────────────────────────────
+// Matches the real schema: study_sessions (subject/task/duration) →
+// drinks (cup/base/add_ons, keyed to a session) → recipes (name/notes/
+// favorite, keyed to a drink + the owning user). All three are written
+// together when a session finishes, and joined back together on load.
+function guessDrinkKey(cup, base, addons){
+  const set = new Set(addons||[]);
+  const match = Object.entries(DRINKS).find(([, d]) =>
+    d.cup===cup && d.base===base && d.addons.length===set.size && d.addons.every(a=>set.has(a))
+  );
+  return match ? match[0] : base;
+}
+const RECIPE_SELECT = 'id, recipe_name, notes, favorite, created_at, drinks(cup, base, add_ons, image, study_sessions(subject, task, duration))';
+
+async function saveRecipeToCloud(recipe){
+  if(!supabaseClient || !S.user) return null;
+  try {
+    const { data: sessionRow, error: sessionErr } = await supabaseClient.from('study_sessions')
+      .insert({ user_id:S.user.id, subject:recipe.subject, task:recipe.task, duration:recipe.duration, completed:true })
+      .select().single();
+    if(sessionErr) throw sessionErr;
+
+    // `drinks.image` is repurposed to hold the drink preset key (e.g.
+    // "cappuccino") so the exact cup art can be redrawn later.
+    const { data: drinkRow, error: drinkErr } = await supabaseClient.from('drinks')
+      .insert({ session_id:sessionRow.id, cup:recipe.cup, base:recipe.base, add_ons:recipe.addons||[], image:recipe.drink })
+      .select().single();
+    if(drinkErr) throw drinkErr;
+
+    const { data: recipeRow, error: recipeErr } = await supabaseClient.from('recipes')
+      .insert({ user_id:S.user.id, drink_id:drinkRow.id, recipe_name:recipe.name, notes:'', favorite:!!recipe.favorite })
+      .select().single();
+    if(recipeErr) throw recipeErr;
+
+    recipe._cloudId = recipeRow.id;
+    return recipeRow;
+  } catch(e){
+    console.warn('Could not sync recipe to Supabase (it is still saved locally):', e);
+    return null;
+  }
+}
+async function updateRecipeFavoriteCloud(recipe){
+  if(!supabaseClient || !S.user || !recipe._cloudId) return;
+  try {
+    await supabaseClient.from('recipes').update({ favorite: !!recipe.favorite })
+      .eq('id', recipe._cloudId).eq('user_id', S.user.id);
+  } catch(e){ console.warn('Could not sync favorite to Supabase:', e); }
+}
+function cloudRowToRecipe(row){
+  const drink = row.drinks || {};
+  const session = drink.study_sessions || {};
+  const addons = Array.isArray(drink.add_ons) ? drink.add_ons : [];
+  const drinkKey = drink.image || guessDrinkKey(drink.cup, drink.base, addons);
+  const created = row.created_at ? new Date(row.created_at) : new Date();
+  return {
+    id: row.id, _cloudId: row.id, _ts: created.getTime(),
+    name: row.recipe_name || 'Unnamed Brew',
+    cup: drink.cup||'mug', base: drink.base||'coffee', drink: drinkKey, addons,
+    subject: session.subject||'General Study', task: session.task||'Focus session',
+    duration: session.duration||0,
+    date: created.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+    username: S.user?.username || 'Me',
+    favorite: !!row.favorite, shared:false
+  };
+}
+async function loadCloudRecipes(guestSnapshot){
+  if(!supabaseClient || !S.user) return;
+  const localGuest = guestSnapshot || [];
+  try {
+    const { data, error } = await supabaseClient.from('recipes')
+      .select(RECIPE_SELECT).eq('user_id', S.user.id).order('created_at', { ascending:false });
+    if(error) throw error;
+
+    if((!data || data.length===0) && localGuest.length>0){
+      // First time this account has synced — carry the guest's local brews
+      // up to the cloud so nothing made before signing in gets lost.
+      for(const r of localGuest){ await saveRecipeToCloud(r); }
+      const retry = await supabaseClient.from('recipes')
+        .select(RECIPE_SELECT).eq('user_id', S.user.id).order('created_at', { ascending:false });
+      S.recipes = (retry.data||[]).map(cloudRowToRecipe);
+    } else {
+      S.recipes = (data||[]).map(cloudRowToRecipe);
+    }
+    saveRecipeLists();
+    if(document.getElementById('page-recipes').classList.contains('active')) renderRecipes();
+  } catch(e){
+    console.warn('Could not load recipes from Supabase:', e);
+  }
+}
+
+async function handleSessionChange(session){
+  if(session?.user){
+    let username = session.user.user_metadata?.username;
+    if(!username){
+      const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', session.user.id).single();
+      username = profile?.username;
+    }
+    const justSignedIn = !S.user;
+    const guestSnapshot = justSignedIn ? [...S.recipes] : null;
+    if(justSignedIn) localStorage.setItem('bf_recipes_guest', JSON.stringify(guestSnapshot));
+    S.user = { id:session.user.id, email:session.user.email, username };
+    renderAuthUI();
+    await loadCloudRecipes(guestSnapshot || []);
+  } else {
+    if(S.user){
+      S.recipes = JSON.parse(localStorage.getItem('bf_recipes_guest')||'[]');
+      saveRecipeLists();
+      if(document.getElementById('page-recipes').classList.contains('active')) renderRecipes();
+    }
+    S.user = null;
+    renderAuthUI();
+  }
+}
+async function initAuthState(){
+  if(!supabaseClient) return;
+  const { data:{ session } } = await supabaseClient.auth.getSession();
+  await handleSessionChange(session);
+  supabaseClient.auth.onAuthStateChange((_event, session)=>{ handleSessionChange(session); });
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────
@@ -727,6 +1032,8 @@ try { initAudio(); } catch(e) {}
 applyDrinkPreset(S.drink);
 renderHeroCup();
 renderCupPreview();
+renderAuthUI();
+initAuthState();
 
 document.addEventListener('click', startMusic, { once: true });
 
