@@ -6,6 +6,7 @@
 <title>Brew & Focus</title>
 <link rel="stylesheet" href="style.css" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -16,6 +17,9 @@
     <a onclick="showPage('brew')" id="nl-brew">Brew</a>
     <a onclick="showPage('cafe')" id="nl-cafe">Study Café</a>
     <a onclick="showPage('recipes')" id="nl-recipes">Recipe Book</a>
+  </div>
+  <div class="nav-auth" id="nav-auth">
+    <a onclick="openAuthModal('signin')" id="nl-signin">Sign In</a>
   </div>
 </nav>
 
@@ -212,20 +216,21 @@
     <h2>Recipe Book</h2>
     <p>every session, a memory preserved</p>
   </div>
-  <div class="recipe-tabs">
-    <button class="rtab active" onclick="setRecipeTab('mine')" id="rtab-mine">My Recipes</button>
-    <button class="rtab" onclick="setRecipeTab('shared')" id="rtab-shared">Shared Brews</button>
-  </div>
-  <div class="journal-tabs" id="journal-tabs"></div>
-  <div class="recipe-tools">
-    <input id="recipe-search" placeholder="Search handwritten recipes..." oninput="updateRecipeFilters()">
-    <select id="filter-subject" onchange="updateRecipeFilters()"><option value="">All subjects</option></select>
-    <select id="filter-drink" onchange="updateRecipeFilters()"><option value="">All drinks</option></select>
-    <select id="sort-recipes" onchange="updateRecipeFilters()">
-      <option value="newest">Newest first</option>
-      <option value="oldest">Oldest first</option>
-      <option value="favorite">Favorites first</option>
-    </select>
+  <div class="recipe-toolbar">
+    <div class="rtabs-pill">
+      <button class="rtab-pill active" onclick="setRecipeTab('mine')" id="rtab-mine">My Recipes</button>
+      <button class="rtab-pill" onclick="setRecipeTab('shared')" id="rtab-shared">Shared Brews</button>
+      <div class="rtab-pill-thumb"></div>
+    </div>
+    <div class="toolbar-row">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="recipe-search" placeholder="Search your recipes…" oninput="updateRecipeFilters()">
+      </div>
+      <select id="filter-subject" onchange="updateRecipeFilters()"><option value="">All subjects</option></select>
+      <button class="sort-btn" id="sort-btn" onclick="cycleSort()" title="Tap to change sort order">Newest ↓</button>
+    </div>
+    <div class="journal-tabs" id="journal-tabs"></div>
   </div>
   <div class="recipe-stage">
     <div class="flipbook-shell">
@@ -274,6 +279,38 @@
     <button class="btn-p" style="width:100%;" onclick="joinRoom()">Take a seat →</button>
   </div>
 </div>
+
+<!-- Auth modal (Café Membership) -->
+<div class="modal-bg" id="auth-modal" onclick="closeAuthModal(event)">
+  <div class="modal auth-modal" style="position:relative;">
+    <button class="modal-close" onclick="closeAuthModalDirect()">×</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="auth-tab-signin" onclick="setAuthTab('signin')">Sign In</button>
+      <button class="auth-tab" id="auth-tab-signup" onclick="setAuthTab('signup')">Join the Café</button>
+    </div>
+    <h3 id="auth-title">Welcome back</h3>
+    <p id="auth-sub">Sign in to keep your recipes with you, wherever you brew.</p>
+
+    <div class="f-row" id="auth-username-row" style="display:none;margin-bottom:0.9rem;">
+      <label class="f-label" style="color:var(--warm-brown);">Your name</label>
+      <input class="room-f-in" id="auth-username" placeholder="e.g. Amélie…" style="width:100%;">
+    </div>
+    <div class="f-row" style="margin-bottom:0.9rem;">
+      <label class="f-label" style="color:var(--warm-brown);">Email</label>
+      <input class="room-f-in" id="auth-email" type="email" placeholder="you@example.com" style="width:100%;">
+    </div>
+    <div class="f-row" style="margin-bottom:0.4rem;">
+      <label class="f-label" style="color:var(--warm-brown);">Password</label>
+      <div class="pw-field">
+        <input class="room-f-in" id="auth-password" type="password" placeholder="••••••••" style="width:100%;">
+        <button type="button" class="pw-toggle" id="pw-toggle-btn" onclick="togglePasswordVisibility()" aria-label="Show password">👁</button>
+      </div>
+    </div>
+    <div class="auth-msg" id="auth-msg"></div>
+    <button class="btn-p" id="auth-submit-btn" style="width:100%;margin-top:0.8rem;" onclick="submitAuth()">Sign In →</button>
+  </div>
+</div>
+
 <script src="script.js"></script>
 </body>
 </html>
