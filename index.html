@@ -39,7 +39,7 @@
       </div>
     </div>
     <div class="desk-scene" aria-hidden="true">
-      <img class="desk-art" src="assets/image/Espresso Martini Poster.jpeg" alt="">
+      <img class="desk-art" src="assets/image/cafe-desk-reference.jpeg" alt="">
       <div class="desk-note">today's ritual:<br>one warm cup,<br>one quiet page</div>
       <div class="bean-trail"></div>
       <div class="hero-cup" id="hero-cup"></div>
@@ -216,32 +216,76 @@
     <h2>Recipe Book</h2>
     <p>every session, a memory preserved</p>
   </div>
-  <div class="recipe-toolbar">
-    <div class="rtabs-pill">
-      <button class="rtab-pill active" onclick="setRecipeTab('mine')" id="rtab-mine">My Recipes</button>
-      <button class="rtab-pill" onclick="setRecipeTab('shared')" id="rtab-shared">Shared Brews</button>
-      <div class="rtab-pill-thumb"></div>
-    </div>
-    <div class="toolbar-row">
-      <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input id="recipe-search" placeholder="Search your recipes…" oninput="updateRecipeFilters()">
+
+  <div class="book-shelf-scene">
+    <!-- One continuous book: a fixed spine on the left, and a content area
+         that widens from a closed portrait cover into the open two-page
+         spread — same object, not two disconnected pieces. -->
+    <div class="book-object">
+      <div class="book-spine-fixed"></div>
+      <div class="book-content" id="book-content">
+
+        <!-- Closed cover — tap to open -->
+        <div class="book-cover-closed" id="book-cover" onclick="openRecipeBook()" role="button" tabindex="0"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRecipeBook();}"
+             aria-label="Open your recipe book">
+          <div class="cover-face">
+            <div class="cover-pages-edge"></div>
+            <h2 class="cover-title">RECIPE<br>BOOK</h2>
+            <div class="cover-subtitle">A JOURNAL</div>
+            <div class="cover-illustrations">
+              <svg viewBox="0 0 60 70" class="cover-icon"><path d="M14,14 L46,14 L43,58 C43,63 39,66 30,66 C21,66 17,63 17,58 Z" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="30" cy="14" rx="16" ry="4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+              <svg viewBox="0 0 60 70" class="cover-icon"><path d="M16,18 C15,18 14,19 15,21 L21,55 C22,60 25,63 30,63 C35,63 38,60 39,55 L45,21 C46,19 45,18 44,18 Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M40,24 C46,24 49,29 49,35 C49,41 46,45 40,45" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+              <svg viewBox="0 0 60 70" class="cover-icon"><path d="M15,22 C14,22 13,23 14,25 L19,52 C20,57 24,60 30,60 C36,60 40,57 41,52 L46,25 C47,23 46,22 45,22 Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M38,27 C45,27 48,31 48,36 C48,41 45,44 38,44" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="30" cy="60" rx="17" ry="3.2" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+            </div>
+            <div class="cover-tagline">every cup, a little <span>memory</span></div>
+            <div class="cover-byline">brewed by <span id="cover-byline-name">You</span></div>
+          </div>
+          <div class="cover-hint">tap to open ☕</div>
+        </div>
+
+        <!-- Opened pages — hidden until the cover is tapped -->
+        <div class="book-open-view" id="book-open-view">
+          <div class="flipbook-shell">
+            <!-- The bookmark ribbon IS the navigation control now — tap it
+                 to slide the tabs/search/filters out from under it. -->
+            <button class="bookmark-tab" id="filter-toggle-btn" onclick="toggleFilterDrawer()"
+                    aria-expanded="false" aria-controls="filter-drawer" title="Search & browse your recipes">
+              <span>🔍</span>
+            </button>
+            <div class="filter-drawer" id="filter-drawer">
+              <div class="rtabs-pill">
+                <button class="rtab-pill active" onclick="setRecipeTab('mine')" id="rtab-mine">My Recipes</button>
+                <button class="rtab-pill" onclick="setRecipeTab('shared')" id="rtab-shared">Shared Brews</button>
+                <div class="rtab-pill-thumb"></div>
+              </div>
+              <div class="toolbar-row">
+                <div class="search-wrap">
+                  <span class="search-icon">🔍</span>
+                  <input id="recipe-search" placeholder="Search your recipes…" oninput="updateRecipeFilters()">
+                </div>
+                <select id="filter-subject" onchange="updateRecipeFilters()"><option value="">All subjects</option></select>
+                <button class="sort-btn" id="sort-btn" onclick="cycleSort()" title="Tap to change sort order">Newest ↓</button>
+              </div>
+              <div class="journal-tabs" id="journal-tabs"></div>
+            </div>
+            <div class="book-binding"></div>
+            <div class="recipe-grid" id="recipe-grid"></div>
+          </div>
+        </div>
+
       </div>
-      <select id="filter-subject" onchange="updateRecipeFilters()"><option value="">All subjects</option></select>
-      <button class="sort-btn" id="sort-btn" onclick="cycleSort()" title="Tap to change sort order">Newest ↓</button>
     </div>
-    <div class="journal-tabs" id="journal-tabs"></div>
-  </div>
-  <div class="recipe-stage">
-    <div class="flipbook-shell">
-      <div class="bookmark"></div>
-      <div class="book-binding"></div>
-      <div class="recipe-grid" id="recipe-grid"></div>
-    </div>
-    <div class="book-controls">
-      <button class="page-btn" id="page-prev" onclick="changeRecipePage(-1)" title="Previous page">‹</button>
-      <span id="page-count">page 1</span>
-      <button class="page-btn" id="page-next" onclick="changeRecipePage(1)" title="Next page">›</button>
+
+    <!-- Reader's controls — live outside the book itself, like a hand
+         turning pages and setting the book down, not printed content. -->
+    <div class="book-reader-chrome" id="book-reader-chrome">
+      <div class="book-controls">
+        <button class="page-btn" id="page-prev" onclick="changeRecipePage(-1)" title="Previous page">‹</button>
+        <span id="page-count">page 1</span>
+        <button class="page-btn" id="page-next" onclick="changeRecipePage(1)" title="Next page">›</button>
+      </div>
+      <button class="close-book-link" onclick="closeRecipeBook()">‹ close the book</button>
     </div>
   </div>
 </div>
