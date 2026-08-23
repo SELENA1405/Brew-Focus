@@ -311,7 +311,7 @@ function showPage(name) {
   const nl = document.getElementById('nl-'+name);
   if(nl) nl.classList.add('active');
   if(name==='brew') renderCupPreview();
-  if(name==='recipes') renderRecipes();
+  if(name==='recipes'){ resetRecipeBookCover(); renderRecipes(); }
   if(name==='cafe') renderRooms();
   if(name==='home') renderHeroCup();
 }
@@ -600,6 +600,163 @@ function joinRoom(){
 }
 
 // ── Recipe Book ───────────────────────────────────────────────────────────
+// The book stays closed until tapped — opening is a small deliberate ritual.
+// It slides right to make room, then unfolds fully; closing folds shut and
+// slides back to center — a mirrored, physical round trip.
+function resetRecipeBookCover(){
+  const cover=document.getElementById('book-cover');
+  const openView=document.getElementById('book-open-view');
+  const content=document.getElementById('book-content');
+  const chrome=document.getElementById('book-reader-chrome');
+  const bookObject=document.querySelector('.book-object');
+  if(content){ content.classList.remove('is-open','content-ready'); }
+  if(cover){ cover.classList.remove('opening'); cover.style.display=''; delete cover.dataset.animating; }
+  if(openView){ openView.classList.remove('shown'); openView.style.display='none'; }
+  if(chrome){ chrome.classList.remove('shown'); chrome.style.display='none'; }
+  if(bookObject){ bookObject.classList.remove('sliding-solo','sliding-with-pages'); bookObject.style.setProperty('--book-shift','0px'); delete bookObject.dataset.shift; }
+  closeFilterDrawer();
+  const byline=document.getElementById('cover-byline-name');
+  if(byline) byline.textContent = S.user?.username || S.username || 'You';
+}
+
+// Waits for a specific CSS transition to actually finish on an element
+// (rather than a guessed delay), with a fallback timeout as a safety net.
+function waitForTransitionEnd(el, propertyName, timeoutMs){
+  return new Promise(resolve=>{
+    let done=false;
+    const handler=(e)=>{ if(e.target!==el || e.propertyName!==propertyName) return; done=true; el.removeEventListener('transitionend', handler); resolve(); };
+    el.addEventListener('transitionend', handler);
+    setTimeout(()=>{ if(!done){ el.removeEventListener('transitionend', handler); resolve(); } }, timeoutMs);
+  });
+}
+// Measures how wide the open spread will be without ever showing it —
+// transitions are disabled for an instant so nothing flickers.
+function measureOpenWidth(content){
+  const prevTransition = content.style.transition;
+  content.style.transition = 'none';
+  content.classList.add('is-open');
+  const openW = content.getBoundingClientRect().width;
+  content.classList.remove('is-open');
+  void content.offsetWidth;
+  content.style.transition = prevTransition;
+  return openW;
+}
+
+async function openRecipeBook(){
+  const cover=document.getElementById('book-cover');
+  const openView=document.getElementById('book-open-view');
+  const content=document.getElementById('book-content');
+  const chrome=document.getElementById('book-reader-chrome');
+  const bookObject=document.querySelector('.book-object');
+  if(!cover || !bookObject || cover.dataset.animating==='1') return;
+  cover.dataset.animating='1';
+  playPageSound('open');
+
+  const closedW = content.getBoundingClientRect().width;
+  const openW = measureOpenWidth(content);
+  const shift = Math.max(0, (openW - closedW) / 2);
+  bookObject.dataset.shift = String(shift);
+
+  // Stage 1 — slide the whole closed book to the right, making room on the
+  // left for the pages it's about to reveal.
+  bookObject.classList.add('sliding-solo');
+  bookObject.style.setProperty('--book-shift', shift+'px');
+  await waitForTransitionEnd(bookObject, 'transform', 650);
+  bookObject.classList.remove('sliding-solo');
+
+  // Stage 2 — the cover swings open at its own fixed size, book still
+  // shifted right, so it never stretches mid-turn.
+  cover.classList.add('opening');
+  await waitForTransitionEnd(cover, 'transform', 1100);
+
+  // Stage 3 — swap to the pages (still narrow, clipped by the overflow),
+  // then widen the window leftward while sliding the whole book back to
+  // center at the same time. Because both use the identical duration and
+  // easing, the right edge stays pinned throughout — it reads as one book
+  // unfolding fully into a centered spread, not two separate motions.
+  cover.style.display='none';
+  openView.style.display='block';
+  void content.offsetWidth;
+  bookObject.classList.add('sliding-with-pages');
+  requestAnimationFrame(()=>{
+    content.classList.add('is-open');
+    content.classList.add('content-ready');
+    bookObject.style.setProperty('--book-shift', '0px');
+    openView.classList.add('shown');
+    if(chrome){ chrome.style.display='block'; requestAnimationFrame(()=>chrome.classList.add('shown')); }
+  });
+  renderRecipes();
+  await waitForTransitionEnd(content, 'width', 950);
+  bookObject.classList.remove('sliding-with-pages');
+
+  cover.dataset.animating='0';
+}
+
+async function closeRecipeBook(){
+  const cover=document.getElementById('book-cover');
+  const openView=document.getElementById('book-open-view');
+  const content=document.getElementById('book-content');
+  const chrome=document.getElementById('book-reader-chrome');
+  const bookObject=document.querySelector('.book-object');
+  if(!cover || !bookObject || cover.dataset.animating==='1') return;
+  cover.dataset.animating='1';
+  playPageSound('close');
+  closeFilterDrawer();
+  const shift = parseFloat(bookObject.dataset.shift || '0');
+
+  if(chrome) chrome.classList.remove('shown');
+  openView.classList.remove('shown');
+
+  // Stage 1 (mirrors opening's Stage 3, reversed) — fold the pages shut,
+  // narrowing the window while sliding the whole book toward the right at
+  // the exact same pace, so the right edge stays pinned exactly as it did
+  // opening up.
+  bookObject.classList.add('sliding-with-pages');
+  bookObject.style.setProperty('--book-shift', shift+'px');
+  content.classList.remove('content-ready');
+  content.classList.remove('is-open');
+  await waitForTransitionEnd(content, 'width', 950);
+  bookObject.classList.remove('sliding-with-pages');
+
+  // Stage 2 (mirrors opening's Stage 2, reversed) — pages are gone, the
+  // cover is back (already turned away, so nothing jumps) and swings shut
+  // at its own fixed size, book still shifted right the whole time.
+  openView.style.display='none';
+  if(chrome) chrome.style.display='none';
+  cover.style.display='';
+  void cover.offsetHeight;
+  requestAnimationFrame(()=>{ cover.classList.remove('opening'); });
+  await waitForTransitionEnd(cover, 'transform', 1100);
+
+  // Stage 3 (mirrors opening's Stage 1, reversed) — the closed book slides
+  // back from the right to its resting, centered position.
+  bookObject.classList.add('sliding-solo');
+  bookObject.style.setProperty('--book-shift', '0px');
+  await waitForTransitionEnd(bookObject, 'transform', 650);
+  bookObject.classList.remove('sliding-solo');
+
+  cover.dataset.animating='0';
+}
+
+// Bookmark-ribbon-as-button: tucks the tabs/search/filters away by default,
+// slides them out when tapped — nothing floats outside the book.
+function toggleFilterDrawer(){
+  const drawer=document.getElementById('filter-drawer');
+  const btn=document.getElementById('filter-toggle-btn');
+  if(!drawer || !btn) return;
+  const willOpen = !drawer.classList.contains('open');
+  drawer.classList.toggle('open', willOpen);
+  btn.setAttribute('aria-expanded', String(willOpen));
+  btn.querySelector('span').textContent = willOpen ? '✕' : '🔍';
+  playPageSound('turn');
+}
+function closeFilterDrawer(){
+  const drawer=document.getElementById('filter-drawer');
+  const btn=document.getElementById('filter-toggle-btn');
+  if(drawer) drawer.classList.remove('open');
+  if(btn){ btn.setAttribute('aria-expanded','false'); const s=btn.querySelector('span'); if(s) s.textContent='🔍'; }
+}
+
 function setRecipeTab(tab){
   S.recipeTab=tab;
   S.recipePage=0;
@@ -701,7 +858,11 @@ function renderRecipes(){
   grid.innerHTML = spread.map((r,i)=>{
     const drinkKey=r.drink||r.base;
     const drinkLabel=DRINKS[drinkKey]?.label||baseNames[r.base]||'Custom Brew';
-    const fullCup=buildCupSVG({size:120,fillFraction:1,steam:true,cup:r.cup,base:r.base,drink:drinkKey,addons:r.addons||[]});
+    // Always drawn as the tall glass silhouette (matching the Brew page
+    // preview) for a consistent look across the book, regardless of which
+    // vessel was actually used that session — the liquid, foam, and
+    // add-ons still reflect exactly what was brewed.
+    const fullCup=buildCupSVG({size:130,fillFraction:1,steam:true,cup:'glass',base:r.base,drink:drinkKey,addons:r.addons||[]});
     const ings=[drinkLabel,...(r.addons||[]).filter(a=>a!=='ice').map(a=>addonNames[a]||a)].join(', ');
     return `<div class="recipe-card ${r.favorite?'favorite-page':''}" onclick="changeRecipePage(${i===0?-1:1})">
       ${r.shared?'<div class="rc-badge">shared brew</div>':''}
@@ -895,6 +1056,8 @@ function renderAuthUI(){
   } else {
     nav.innerHTML = `<a onclick="openAuthModal('signin')" id="nl-signin">Sign In</a>`;
   }
+  const byline=document.getElementById('cover-byline-name');
+  if(byline) byline.textContent = S.user?.username || S.username || 'You';
 }
 
 // ── Recipe cloud sync ────────────────────────────────────────────────────
