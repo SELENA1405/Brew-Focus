@@ -30,100 +30,124 @@
 <div id="page-home" class="page active">
   <div class="hero">
     <div class="hero-copy">
-      <div class="hero-deco">✦ &nbsp; a cozy café desk &nbsp; ✦</div>
-      <h1 class="hero-title">Brew &<br><em>Focus</em></h1>
+      <div class="hero-eyebrow">A cozy café desk</div>
+      <h1 class="hero-title">Brew &amp;<br><em>Focus</em></h1>
+      <div class="hero-rule" aria-hidden="true"><span></span></div>
       <p class="hero-sub">Settle into a warm coffee-shop corner where notes, cups, rain, and little study rituals become memories worth keeping.</p>
       <div class="hero-btns">
         <button class="btn-p" onclick="showPage('brew')">Start Brewing</button>
         <button class="btn-s" onclick="showPage('cafe')">Join a Study Café</button>
       </div>
+      <ol class="hero-ritual">
+        <li><span>I.</span>Brew a drink</li>
+        <li><span>II.</span>Study in focus</li>
+        <li><span>III.</span>Keep the recipe</li>
+      </ol>
     </div>
-    <div class="desk-scene" aria-hidden="true">
-      <img class="desk-art" src="assets/image/cafe-desk-reference.jpeg" alt="">
-      <div class="desk-note">today's ritual:<br>one warm cup,<br>one quiet page</div>
-      <div class="bean-trail"></div>
-      <div class="hero-cup" id="hero-cup"></div>
-      <div class="home-steam">
-        <div class="s-line"></div><div class="s-line"></div><div class="s-line"></div>
+
+    <!-- An arched café window with today's cup on the shelf -->
+    <div class="hero-display" aria-hidden="true">
+      <div class="hero-window">
+        <div class="hero-fanlight"></div>
+        <div class="hero-sign">Warm cups <i></i> Quiet pages</div>
+        <div class="hero-shelf"></div>
+        <div class="hero-cup" id="hero-cup"></div>
+        <div class="bean-trail"></div>
       </div>
+      <div class="desk-note">today's ritual:<br>one warm cup,<br>one quiet page</div>
     </div>
   </div>
 </div>
 
 <!-- ═══════ BREW ═══════════════════════════════════════════════════════════ -->
 <div id="page-brew" class="page">
+  <header class="brew-head">
+    <p class="brew-eyebrow">The Café Counter</p>
+    <h2 class="sec-title">Craft your drink</h2>
+    <div class="brew-rule" aria-hidden="true"><span></span></div>
+    <p class="sec-sub">collectible watercolor café recipes</p>
+  </header>
+
   <div class="brew-wrap">
-    <div>
-      <h2 class="sec-title">Craft your drink</h2>
-      <p class="sec-sub">— collectible watercolor café recipes —</p>
+    <!-- The menu: everything that decides what's in the cup -->
+    <section class="menu-card" aria-label="Drink menu">
+      <div class="menu-title">Menu</div>
 
-      <div class="opt-group">
-        <div class="opt-label">Drink recipe</div>
-        <div class="chips drink-presets" id="chips-drink">
-          <div class="chip sel" data-group="drink" data-val="cappuccino">Cappuccino</div>
-          <div class="chip" data-group="drink" data-val="matcha-latte">Matcha Latte</div>
-          <div class="chip" data-group="drink" data-val="mocha">Mocha</div>
-          <div class="chip" data-group="drink" data-val="hot-chocolate">Hot Chocolate</div>
-          <div class="chip" data-group="drink" data-val="black-coffee">Black Coffee</div>
-          <div class="chip" data-group="drink" data-val="milk-tea">Milk Tea</div>
-          <div class="chip" data-group="drink" data-val="caramel-latte">Caramel Latte</div>
-          <div class="chip" data-group="drink" data-val="vanilla-latte">Vanilla Latte</div>
-          <div class="chip" data-group="drink" data-val="honey-tea">Honey Tea</div>
-          <div class="chip" data-group="drink" data-val="iced-americano">Iced Americano</div>
+      <div class="menu-section">
+        <h3 class="menu-h"><span class="menu-num">I.</span>The Drink</h3>
+        <div class="menu-list" id="chips-drink">
+          <button type="button" class="chip menu-item sel" data-group="drink" data-val="cappuccino">Cappuccino</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="matcha-latte">Matcha Latte</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="mocha">Mocha</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="hot-chocolate">Hot Chocolate</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="black-coffee">Black Coffee</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="milk-tea">Milk Tea</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="caramel-latte">Caramel Latte</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="vanilla-latte">Vanilla Latte</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="honey-tea">Honey Tea</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="iced-americano">Iced Americano</button>
         </div>
       </div>
 
-      <div class="opt-group">
-        <div class="opt-label">Cup</div>
-        <div class="chips" id="chips-cup">
-          <div class="chip sel" data-group="cup" data-val="mug">🫖 Vintage Mug</div>
-          <div class="chip" data-group="cup" data-val="teacup">🍵 Teacup</div>
-          <div class="chip" data-group="cup" data-val="glass">🥛 Latte Glass</div>
-          <div class="chip" data-group="cup" data-val="takeaway">☕ Takeaway</div>
+      <div class="menu-section">
+        <h3 class="menu-h"><span class="menu-num">II.</span>The Cup</h3>
+        <div class="menu-tags" id="chips-cup">
+          <button type="button" class="chip menu-tag sel" data-group="cup" data-val="mug">Vintage Mug</button>
+          <button type="button" class="chip menu-tag" data-group="cup" data-val="teacup">Teacup</button>
+          <button type="button" class="chip menu-tag" data-group="cup" data-val="glass">Latte Glass</button>
+          <button type="button" class="chip menu-tag" data-group="cup" data-val="takeaway">Takeaway</button>
         </div>
       </div>
 
-      <div class="opt-group">
-        <div class="opt-label">Base</div>
-        <div class="chips" id="chips-base">
-          <div class="chip sel" data-group="base" data-val="coffee">Coffee</div>
-          <div class="chip" data-group="base" data-val="matcha">Matcha</div>
-          <div class="chip" data-group="base" data-val="tea">Tea</div>
-          <div class="chip" data-group="base" data-val="chocolate">Hot Chocolate</div>
+      <div class="menu-section">
+        <h3 class="menu-h"><span class="menu-num">III.</span>The Base</h3>
+        <div class="menu-tags" id="chips-base">
+          <button type="button" class="chip menu-tag sel" data-group="base" data-val="coffee">Coffee</button>
+          <button type="button" class="chip menu-tag" data-group="base" data-val="matcha">Matcha</button>
+          <button type="button" class="chip menu-tag" data-group="base" data-val="tea">Tea</button>
+          <button type="button" class="chip menu-tag" data-group="base" data-val="chocolate">Hot Chocolate</button>
         </div>
       </div>
 
-      <div class="opt-group">
-        <div class="opt-label">Add-ons (pick any)</div>
-        <div class="chips" id="chips-addons">
-          <div class="chip" data-group="addons" data-val="whipped">Whipped Cream</div>
-          <div class="chip" data-group="addons" data-val="caramel">Caramel</div>
-          <div class="chip" data-group="addons" data-val="honey">Honey</div>
-          <div class="chip" data-group="addons" data-val="cinnamon">Cinnamon</div>
-          <div class="chip" data-group="addons" data-val="marshmallow">Marshmallows</div>
-          <div class="chip" data-group="addons" data-val="boba">Boba</div>
-          <div class="chip" data-group="addons" data-val="vanilla">Vanilla Foam</div>
+      <div class="menu-section">
+        <h3 class="menu-h"><span class="menu-num">IV.</span>Additions <span class="menu-hint">choose any</span></h3>
+        <div class="menu-checks" id="chips-addons">
+          <button type="button" class="chip menu-check" data-group="addons" data-val="whipped">Whipped Cream</button>
+          <button type="button" class="chip menu-check" data-group="addons" data-val="caramel">Caramel</button>
+          <button type="button" class="chip menu-check" data-group="addons" data-val="honey">Honey</button>
+          <button type="button" class="chip menu-check" data-group="addons" data-val="cinnamon">Cinnamon</button>
+          <button type="button" class="chip menu-check" data-group="addons" data-val="marshmallow">Marshmallows</button>
+          <button type="button" class="chip menu-check" data-group="addons" data-val="boba">Boba</button>
+          <button type="button" class="chip menu-check" data-group="addons" data-val="vanilla">Vanilla Foam</button>
         </div>
       </div>
+    </section>
 
-      <div class="ornament">· · ·</div>
+    <!-- The cup, on display in an arched café window -->
+    <div class="brew-counter">
+      <div id="cup-preview"></div>
+    </div>
 
-      <div class="session-fields">
-        <div class="f-row">
-          <label class="f-label">Your name</label>
-          <input class="f-in" id="field-username" type="text" placeholder="e.g. Amélie, Yuki…">
+    <!-- The order slip: what this session is for -->
+    <section class="order-slip" aria-label="Your session">
+      <div class="slip-head">Your order</div>
+      <input class="recipe-name-in" id="recipe-name" type="text" placeholder="Name your brew…" maxlength="40" aria-label="Name your brew">
+      <div class="slip-grid">
+        <div class="slip-field">
+          <label class="slip-label" for="field-username">Your name</label>
+          <input class="slip-in" id="field-username" type="text" placeholder="Amélie, Yuki…">
         </div>
-        <div class="f-row">
-          <label class="f-label">Subject</label>
-          <input class="f-in" id="field-subject" type="text" placeholder="e.g. History, Chemistry…">
+        <div class="slip-field">
+          <label class="slip-label" for="field-subject">Subject</label>
+          <input class="slip-in" id="field-subject" type="text" placeholder="History, Chemistry…">
         </div>
-        <div class="f-row">
-          <label class="f-label">Today's task</label>
-          <input class="f-in" id="field-task" type="text" placeholder="e.g. Read Chapter 4…">
+        <div class="slip-field full">
+          <label class="slip-label" for="field-task">Today's task</label>
+          <input class="slip-in" id="field-task" type="text" placeholder="Read Chapter 4…">
         </div>
-        <div class="f-row">
-          <label class="f-label">Duration</label>
-          <select class="f-sel" id="field-duration">
+        <div class="slip-field">
+          <label class="slip-label" for="field-duration">Duration</label>
+          <select class="slip-in slip-sel" id="field-duration">
             <option value="15">15 min — a quick sip</option>
             <option value="25" selected>25 min — classic pomodoro</option>
             <option value="40">40 min — deep focus</option>
@@ -131,9 +155,9 @@
             <option value="90">90 min — the long steep</option>
           </select>
         </div>
-        <div class="f-row">
-          <label class="f-label">Ambience</label>
-          <select class="ambient-select" id="field-ambience" onchange="setAmbience(this.value)">
+        <div class="slip-field">
+          <label class="slip-label" for="field-ambience">Ambience</label>
+          <select class="slip-in slip-sel" id="field-ambience" onchange="setAmbience(this.value)">
             <option value="cozy-cafe">Cozy Café</option>
             <option value="rainy-bookstore">Rainy Bookstore</option>
             <option value="vintage-library">Vintage Library</option>
@@ -147,13 +171,8 @@
           </select>
         </div>
       </div>
-    </div>
-
-    <div class="preview-panel">
-      <input class="recipe-name-in" id="recipe-name" type="text" placeholder="Name your brew…" maxlength="40">
-      <div id="cup-preview" style="filter:drop-shadow(0 12px 28px rgba(0,0,0,0.45))"></div>
-      <button class="btn-p" style="margin-top:2rem;width:100%;" onclick="startSession()">Begin Session →</button>
-    </div>
+      <button class="btn-p brew-begin" onclick="startSession()">Begin session</button>
+    </section>
   </div>
 </div>
 

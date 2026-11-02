@@ -93,15 +93,35 @@ function buildCupSVG(opts={}) {
       saucer:`<ellipse cx="${cx}" cy="${H-26}" rx="58" ry="9" fill="${C.liq3}" fill-opacity="0.35" stroke="${C.liq2}" stroke-width="1.2"/>`,
       hl:`M${cx-32},72 C${cx-28},88 ${cx-27},112 ${cx-28},134`,
     },
-    glass: {
-      outer:`M${cx-36},28 L${cx-46},${H-38} L${cx+46},${H-38} L${cx+36},28 Z`,
-      lx:cx-34, ly:35, lw:68,
-      innerBottom:H-42,
-      handle:'',
-      rim:`<rect x="${cx-38}" y="23" width="76" height="10" rx="4" fill="${C.foamH}" fill-opacity="0.6" stroke="${C.liq2}" stroke-width="1.2"/>`,
-      saucer:'',
-      hl:`M${cx-26},42 C${cx-22},70 ${cx-22},100 ${cx-24},130`,
-    },
+    // Vintage footed café glass: a gently swelling tulip bowl with a gold
+    // rim and pressed-glass fluting, on a short stem with a knot and a
+    // round foot.
+    glass: (()=>{
+      // Fixed proportions at every size (the bowl doesn't stretch taller in
+      // bigger drawings): bowl yt→yb, then stem and foot.
+      const yb = H-60;               // bottom of the bowl
+      const yt = yb-98;              // rim
+      const footY = H-24;
+      return {
+        outer:`M${cx-37},${yt} C${cx-39},${yt+28} ${cx-47},${yb-46} ${cx-42},${yb-16} C${cx-38},${yb-2} ${cx-18},${yb+4} ${cx},${yb+4} C${cx+18},${yb+4} ${cx+38},${yb-2} ${cx+42},${yb-16} C${cx+47},${yb-46} ${cx+39},${yt+28} ${cx+37},${yt} Z`,
+        lx:cx-46, ly:yt+7, lw:92,
+        innerBottom:yb,
+        handle:'',
+        rim:`<ellipse cx="${cx}" cy="${yt}" rx="37" ry="4.5" fill="${C.foamH}" fill-opacity="0.45" stroke="${C.liq2}" stroke-width="1.3"/>
+             <path d="M${cx-37},${yt+0.5} C${cx-25},${yt+6} ${cx+25},${yt+6} ${cx+37},${yt+0.5}" stroke="#C9A24A" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.85"/>`,
+        saucer:'',
+        hl:`M${cx-29},${yt+16} C${cx-31},${yt+38} ${cx-34},${yb-40} ${cx-31},${yb-18}`,
+        // drawn behind the bowl: stem, knot and foot
+        stand:`
+          <path d="M${cx-8},${yb+2} C${cx-3},${yb+9} ${cx-3},${footY-10} ${cx-6},${footY-3} L${cx+6},${footY-3} C${cx+3},${footY-10} ${cx+3},${yb+9} ${cx+8},${yb+2} Z"
+            fill="${C.foamH}" fill-opacity="0.35" stroke="${C.liq2}" stroke-width="1.6" stroke-linejoin="round"/>
+          <ellipse cx="${cx}" cy="${yb+15}" rx="6.5" ry="3.2" fill="${C.foamH}" fill-opacity="0.5" stroke="${C.liq2}" stroke-width="1.4"/>
+          <ellipse cx="${cx}" cy="${footY}" rx="34" ry="6.5" fill="${C.foamH}" fill-opacity="0.35" stroke="${C.liq2}" stroke-width="1.8"/>
+          <path d="M${cx-30},${footY+2.5} C${cx-16},${footY+7} ${cx+16},${footY+7} ${cx+30},${footY+2.5}" stroke="white" stroke-width="1.4" fill="none" stroke-opacity="0.35" stroke-linecap="round"/>`,
+        // pressed-glass fluting, over the liquid
+        deco:[-26,-13,0,13,26].map(dx=>`<path d="M${cx+dx*0.92},${yt+6} C${cx+dx*1.08},${yt+32} ${cx+dx*1.1},${yb-30} ${cx+dx*0.85},${yb}" stroke="white" stroke-width="1.6" fill="none" stroke-opacity="0.13" stroke-linecap="round"/>`).join(''),
+      };
+    })(),
     takeaway: {
       outer:`M${cx-36},46 L${cx-30},30 L${cx+30},30 L${cx+36},46 L${cx+44},${H-40} L${cx-44},${H-40} Z`,
       lx:cx-38, ly:56, lw:76,
@@ -259,6 +279,8 @@ function buildCupSVG(opts={}) {
   <!-- drop shadow -->
   <ellipse cx="${cx}" cy="${H-12}" rx="${size*0.38}" ry="9" fill="${C.shadow}" fill-opacity="0.6"/>
 
+  ${sh.stand||''}
+
   <!-- cup body watercolour base -->
   ${cupBody}
 
@@ -290,6 +312,7 @@ function buildCupSVG(opts={}) {
   ${sh.saucer}
 
   <!-- highlight -->
+  ${sh.deco ? `<g clip-path="url(#${uid}-cup)">${sh.deco}</g>` : ''}
   ${cupHL}
 
   <!-- steam -->
@@ -322,7 +345,7 @@ function renderHeroCup(){
 }
 function renderCupPreview(){
   const el = document.getElementById('cup-preview');
-  if(el) el.innerHTML = `<div style="font-family:'Caveat',cursive;color:var(--gold);font-size:1.15rem;margin-bottom:-0.7rem;">${DRINKS[S.drink]?.label||'Custom Brew'}</div>` + buildCupSVG({size:230,fillFraction:1,steam:true,drink:S.drink});
+  if(el) el.innerHTML = `<div class="preview-drink-label">${DRINKS[S.drink]?.label||'Custom Brew'}</div>` + buildCupSVG({size:210,fillFraction:1,steam:true,drink:S.drink});
 }
 
 function applyDrinkPreset(key){
