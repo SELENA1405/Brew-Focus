@@ -480,6 +480,12 @@ body::after {
    the closed portrait cover and the open two-page spread, so it reads as
    the same physical book expanding rather than two unrelated pieces. ── */
 .book-shelf-scene {
+  /* The closed book is exactly the right half of the open book: the cover
+     is one page wide and as tall as the spread, so opening it reveals the
+     real pages rather than swapping to a different-looking object. */
+  --spread-w:min(900px,88vw);
+  --page-w:calc(var(--spread-w) / 2);
+  --book-h:584px;
   max-width:1120px; margin:0 auto; position:relative; z-index:2;
   perspective:2400px; perspective-origin:left center;
   display:flex; flex-direction:column; align-items:center;
@@ -509,16 +515,17 @@ body::after {
   box-shadow:inset -4px 0 10px rgba(0,0,0,0.4), inset 2px 0 0 rgba(245,232,211,0.06);
 }
 .book-content {
-  position:relative; width:min(360px,80vw); overflow:hidden;
+  position:relative; width:var(--page-w); overflow:hidden;
   border-radius:0 8px 8px 0;
   transition:width 0.85s cubic-bezier(0.45,0.05,0.35,1);
   transform-style:preserve-3d;
 }
-.book-content.is-open { width:min(1080px,88vw); }
+.book-content.is-open { width:var(--spread-w); }
+.book-object.is-open .book-spine-fixed { display:none; }
 .book-content.content-ready { overflow:visible; }
 
 .book-cover-closed {
-  position:relative; width:100%; height:520px;
+  position:relative; width:100%; height:var(--book-h);
   display:flex; flex-direction:column; cursor:pointer;
   transition:transform 1s cubic-bezier(0.5,0.02,0.28,1), filter 1s ease;
   transform-origin:left center; transform-style:preserve-3d;
@@ -526,17 +533,45 @@ body::after {
 }
 .book-cover-closed:hover { filter:brightness(1.03); }
 .book-cover-closed:focus-visible { box-shadow:0 0 0 3px var(--gold) inset; }
-.book-cover-closed.opening {
-  transform:rotateY(-155deg) translateZ(-4px);
-  filter:brightness(0.62);
+
+/* Cover swing overlay (built in openRecipeBook/closeRecipeBook). It sits
+   outside .book-content's clipping so the cover stays visible as it turns. */
+.cover-flip-stage { position:absolute; z-index:5; pointer-events:none; transform-origin:center center; }
+.cover-flip-space { position:absolute; inset:0; perspective:2400px; }
+.cover-flip-space > * { position:absolute; }
+.cover-under-clip { overflow:hidden; }
+/* Copies of the spread painted on the turning cover: the cover's hint and
+   the reader's bookmark/drawer aren't part of the printed pages. */
+.cover-flip-stage .cover-hint, .cover-flip-stage .bookmark-tab, .cover-flip-stage .filter-drawer { visibility:hidden; }
+.cover-table-shadow {
+  opacity:0; border-radius:8px 0 0 8px;
+  box-shadow:0 30px 60px rgba(0,0,0,0.48), 0 2px 0 rgba(0,0,0,0.2);
 }
-.book-cover-closed::after {
-  /* shadow the swinging cover casts onto the pages beneath it */
-  content:''; position:absolute; inset:0; background:#000; opacity:0;
-  border-radius:0 8px 8px 0; pointer-events:none;
-  transition:opacity 1s ease;
+/* The first page, revealed under the cover as it lifts. */
+.cover-under-page {
+  border-radius:0 8px 8px 0;
+  background:
+    linear-gradient(90deg, rgba(74,52,40,0.22), rgba(74,52,40,0) 9%),
+    linear-gradient(168deg, #fbf3e4, #EFDCBF 100%);
+  box-shadow:0 2px 0 rgba(107,79,58,0.06);
 }
-.book-cover-closed.opening::after { opacity:0.22; }
+.cover-under-page::after {
+  content:''; position:absolute; top:6px; right:0; bottom:6px; width:6px;
+  background:repeating-linear-gradient(180deg, #e2d3ae 0 2px, #cdb98e 2px 3px);
+}
+/* The inside of the cover: a warm patterned endpaper, seen once the cover
+   lies open. */
+.cover-inside {
+  border-radius:8px 0 0 8px;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,240,215,0.35), transparent 55%),
+    radial-gradient(circle at 75% 80%, rgba(122,46,58,0.12), transparent 50%),
+    repeating-linear-gradient(45deg, rgba(107,79,58,0.07) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgba(107,79,58,0.05) 0 2px, transparent 2px 6px),
+    linear-gradient(160deg, #d9bf92, #c4a271);
+  box-shadow:inset 0 0 0 14px rgba(255,248,235,0.12), inset 0 0 0 15px rgba(122,82,46,0.35),
+             inset -10px 0 18px rgba(60,35,20,0.25);
+}
 
 .cover-face {
   flex:1; position:relative; overflow:hidden; border-radius:0 8px 8px 0;
@@ -544,7 +579,7 @@ body::after {
     radial-gradient(circle at 20% 10%, rgba(199,168,109,0.07), transparent 50%),
     linear-gradient(155deg, #f3ead9, #e9dcc2 60%, #ddccaa);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  padding:2.6rem 1.6rem 2rem; text-align:center; color:var(--ink);
+  padding:2.6rem 1.6rem 3.4rem; text-align:center; color:var(--ink);
   height:100%;
 }
 .cover-pages-edge {
@@ -574,8 +609,8 @@ body::after {
 }
 .cover-byline span { font-weight:600; }
 .cover-hint {
-  text-align:center; padding-top:0.6rem;
-  font-family:'Caveat',cursive; font-size:1.05rem; color:var(--gold);
+  position:absolute; left:0; right:0; bottom:0.9rem; text-align:center;
+  font-family:'Caveat',cursive; font-size:1.05rem; color:var(--caramel);
   animation:coverHintPulse 3.6s ease-in-out infinite;
 }
 @keyframes coverHintPulse { 0%,100% { opacity:0.45; } 50% { opacity:0.95; } }
@@ -584,7 +619,7 @@ body::after {
 .book-open-view {
   display:none; opacity:0; transform:translateY(10px);
   transition:opacity 0.5s ease, transform 0.5s ease;
-  min-width:min(1080px,88vw);
+  min-width:var(--spread-w);
 }
 .book-open-view.shown { opacity:1; transform:translateY(0); }
 
@@ -684,8 +719,8 @@ body::after {
 .journal-tab.active { background:var(--gold); color:var(--dark); border-color:var(--gold); box-shadow:0 6px 16px rgba(0,0,0,0.18); }
 
 @media (prefers-reduced-motion: reduce) {
-  .book-content, .book-cover-closed, .book-cover-closed.opening, .book-open-view,
-  .book-reader-chrome, .cover-hint, .filter-drawer, .bookmark-tab, .book-cover-closed::after,
+  .book-content, .book-cover-closed, .book-open-view,
+  .book-reader-chrome, .cover-hint, .filter-drawer, .bookmark-tab,
   .book-object.sliding-solo, .book-object.sliding-with-pages {
     transition-duration:0.01ms !important; animation-duration:0.01ms !important;
   }
@@ -894,7 +929,7 @@ body::after {
   .toolbar-row { flex-direction:column; }
   .book-cover-closed { height:440px; }
   .cover-title { font-size:2rem; }
-  .cover-face { padding:2rem 1.2rem 1.6rem; }
+  .cover-face { padding:2rem 1.2rem 3rem; }
   .bookmark-tab { width:42px; height:54px; top:-14px; }
   .filter-drawer.open { margin-top:1.8rem; }
   .flipbook-shell { padding:22px 14px 30px; }
