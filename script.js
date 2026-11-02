@@ -2125,11 +2125,209 @@ function renderProfilePage(){
   document.getElementById('gz-recent').innerHTML = recent.length
     ? recent.map(r=>`<article><h4>${esc(r.name||'Untitled Brew')}</h4><p>${esc(r.subject||'')}${r.task?` — ${esc(r.task)}`:''}. ${Number(r.duration)||0} minutes${r.shared?' at a shared table':''}.</p><span class="gz-dateline-small">${esc(r.date||'')}</span></article>`).join('')
     : `<p class="gz-small">The presses are quiet. Finish a study session and the first story will run here.</p>`;
+  document.getElementById('gz-member-no').textContent = 'No. ' + String(gzHash(S.user.id||'') % 10000).padStart(4,'0');
+  const monthStart=new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const thisMonth=all.filter(r=>Number(r._ts||r.id)>=monthStart);
+  const monthMin=thisMonth.reduce((n,r)=>n+(Number(r.duration)||0),0);
+  document.getElementById('gz-month').innerHTML = `<b>${now.toLocaleDateString('en-GB',{month:'long'})}:</b> ${thisMonth.length} session${thisMonth.length===1?'':'s'}, ${monthMin} minutes.`;
+  renderGazetteExtras(all);
+  fillExtras();
   // the edit form
   const n=document.getElementById('gz-in-name'), u=document.getElementById('gz-in-username');
   if(document.activeElement!==n) n.value = p.display_name || '';
   if(document.activeElement!==u) u.value = username;
   n.placeholder = username || 'Your name';
+}
+
+// ── More of the Gazette: stories and columns written from your recipe book ──
+const GZ_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const GZ_AMBIENCE = { 'cozy-cafe':'Cozy Café', 'rainy-bookstore':'Rainy Bookstore', 'vintage-library':'Vintage Library', 'fireplace':'Fireplace Reading Room',
+  'midnight-cafe':'Midnight Café', 'kyoto-tea':'Kyoto Tea House', 'autumn-coffee':'Autumn Coffee Shop', 'forest-cabin':'Forest Cabin', 'ocean-waves':'Ocean Waves', 'white-noise':'White Noise' };
+const GZ_WEATHER = {
+  'cozy-cafe':      ['Warm and steamy', 'Clear skies over the counter, with a light drizzle of milk foam by afternoon.', 21],
+  'rainy-bookstore':['Steady rain', 'Showers against the shop window all day. Ideal reading conditions; umbrellas optional.', 14],
+  'vintage-library':['Still and hushed', 'Calm air between the stacks, with scattered turning of pages.', 18],
+  'fireplace':      ['Crackling and cosy', 'A warm front from the hearth; outlook settled into the evening.', 23],
+  'midnight-cafe':  ['Clear and starry', 'A slow saxophone drifting in from the west. Visibility: excellent till late.', 12],
+  'kyoto-tea':      ['Mild, with steam', 'Gentle breezes through the paper screens; a quiet day ahead.', 17],
+  'autumn-coffee':  ['Crisp, golden leaves', 'Cool mornings and amber afternoons. Bring a scarf.', 11],
+  'forest-cabin':   ['Pine-scented', 'Light winds through the trees, wood smoke rising by dusk.', 9],
+  'ocean-waves':    ['Sea breeze', 'Rolling surf and bright spells; tide in your favour all afternoon.', 22],
+  'white-noise':    ['Overcast hum', 'A steady, even hum with no surprises. Focus expected to hold.', 16],
+};
+const GZ_SIGNS = [
+  'The beans are in your favour today. Begin the hardest chapter first; the rest will follow like a second cup.',
+  'A quiet corner awaits you. Guard it well, and twenty-five minutes will feel like ten.',
+  'Expect a small breakthrough after the third page. Celebrate with something warm.',
+  'A friend may ask you to study together. Say yes, and pour two cups.',
+  'Your notes are wiser than you think. Re-read yesterday’s before starting today’s.',
+  'Patience is steeping. Do not lift the lid too early.',
+  'Today favours the methodical. Line up your pens; the stars will do the rest.',
+  'An old question will finally make sense. Write it down before it cools.',
+];
+const GZ_QUOTES = [
+  ['Well begun is half done.', 'Aristotle'],
+  ['It does not matter how slowly you go, so long as you do not stop.', 'Confucius'],
+  ['An investment in knowledge pays the best interest.', 'Benjamin Franklin'],
+  ['The beautiful thing about learning is that nobody can take it away from you.', 'B. B. King'],
+  ['Live as if you were to die tomorrow. Learn as if you were to live forever.', 'Mahatma Gandhi'],
+  ['I have no special talents. I am only passionately curious.', 'Albert Einstein'],
+];
+const GZ_WORDS = [
+  ['Lucubration','loo-kyoo-BRAY-shun','Study or writing done late at night, by lamplight.'],
+  ['Cogitate','KOJ-ih-tayt','To think deeply and carefully about something.'],
+  ['Ruminate','ROO-mih-nayt','To turn a thought over and over, as one stirs a cup.'],
+  ['Vade mecum','VAH-day MAY-kum','A handbook carried everywhere for constant reference.'],
+  ['Erudite','EHR-yoo-dyte','Having or showing great learning.'],
+  ['Assiduous','uh-SID-yoo-us','Showing great care and steady perseverance.'],
+  ['Marginalia','mar-jih-NAY-lee-uh','Notes written in the margins of a book.'],
+  ['Sedulous','SEJ-uh-lus','Diligent in application; persistent.'],
+];
+// The moon tonight, from a known new moon and the length of a lunar month.
+function moonPhase(date=new Date()){
+  const days=(date.getTime() - Date.UTC(2000,0,6,18,14))/86400000;
+  const f=((days % 29.530588853) + 29.530588853) % 29.530588853 / 29.530588853;
+  const names=['New moon','Waxing crescent','First quarter','Waxing gibbous','Full moon','Waning gibbous','Last quarter','Waning crescent'];
+  return { name:names[Math.round(f*8)%8], f };
+}
+const GZ_ADS = [
+  ['WANTED', 'One quiet corner table, window seat preferred. Will trade for good company and a warm scone.'],
+  ['FOR SALE', 'Highlighters, barely used, all colours. Owner has discovered the pencil. Enquire at the counter.'],
+  ['LOST', 'One train of thought, last seen around page 42. If found, please return before the exam.'],
+  ['NOTICE', 'The café regrets that the last croissant has been eaten. More are expected at dawn.'],
+];
+function gzHash(str){ let h=0; for(const ch of str) h=(h*31 + ch.charCodeAt(0))|0; return Math.abs(h); }
+function gzDay(t){ const d=new Date(t); d.setHours(0,0,0,0); return d.getTime(); }
+
+function gazetteStats(all){
+  const DAY=86400000;
+  const withTime=all.filter(r=>Number(r._ts||r.id)>1e11).map(r=>({...r, t:Number(r._ts||r.id)}));
+  const minutes=all.reduce((n,r)=>n+(Number(r.duration)||0),0);
+  const longest=all.reduce((m,r)=>(Number(r.duration)||0)>(Number(m?.duration)||0)?r:m, null);
+  const days=[...new Set(withTime.map(r=>gzDay(r.t)))].sort((a,b)=>a-b);
+  let best=0, run=0, prev=null;
+  for(const d of days){ run = (prev!==null && d-prev===DAY) ? run+1 : 1; best=Math.max(best,run); prev=d; }
+  const today=gzDay(Date.now());
+  let current=0;
+  if(days.length && (today-days[days.length-1]) <= DAY){ current=1; for(let i=days.length-1;i>0 && days[i]-days[i-1]===DAY;i--) current++; }
+  const byWeekday=[0,0,0,0,0,0,0]; withTime.forEach(r=>byWeekday[new Date(r.t).getDay()]++);
+  const weekStart=today - 6*DAY, prevStart=today - 13*DAY;
+  const bases=['coffee','matcha','tea','chocolate'];
+  const exchange=bases.map(b=>{
+    const now=withTime.filter(r=>r.base===b && r.t>=weekStart).length;
+    const before=withTime.filter(r=>r.base===b && r.t>=prevStart && r.t<weekStart).length;
+    return {b, now, before, total:all.filter(r=>r.base===b).length};
+  });
+  const tally=key=>{ const m=new Map(); all.forEach(r=>{ const k=key(r); if(k) m.set(k,(m.get(k)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]); };
+  return { sessions:all.length, minutes, avg: all.length ? Math.round(minutes/all.length) : 0, longest, daysStudied:days.length, current, best,
+    favourites:all.filter(r=>r.favorite).length, shared:all.filter(r=>r.shared).length, byWeekday, exchange,
+    topSubject:tally(r=>r.subject && r.subject!=='General Study' ? r.subject : null)[0],
+    topCup:tally(r=>r.cup)[0], busiestDay: byWeekday.some(n=>n) ? byWeekday.indexOf(Math.max(...byWeekday)) : null };
+}
+
+function renderGazetteExtras(all){
+  const st=gazetteStats(all);
+  const name=displayNameOf();
+  const cupNames={mug:'vintage mug', teacup:'teacup', glass:'latte glass', takeaway:'takeaway cup'};
+  // Lead story
+  const headline = st.sessions
+    ? `${esc(name).toUpperCase()} LOGS ${st.sessions} SESSION${st.sessions===1?'':'S'}, ${st.minutes>=60?(st.minutes/60).toFixed(1)+' HOURS':st.minutes+' MINUTES'} AT THE DESK`
+    : `${esc(name).toUpperCase()} TAKES A SEAT AT THE CAFÉ`;
+  const paras = st.sessions ? [
+    `In what regulars are calling a steady and studious run, ${esc(name)} has completed ${st.sessions} focus session${st.sessions===1?'':'s'} at Brew &amp; Focus, averaging ${st.avg} minutes a sitting.`,
+    st.longest ? `The longest stretch on record came during “${esc(st.longest.name||'an untitled brew')}”, a ${Number(st.longest.duration)||0}-minute session${st.longest.subject?` devoted to ${esc(st.longest.subject)}`:''}. Witnesses report the cup was empty long before the work was.` : '',
+    st.topSubject ? `${esc(st.topSubject[0])} remains the subject of choice, appearing in ${st.topSubject[1]} session${st.topSubject[1]===1?'':'s'}.` : '',
+    st.topCup ? `Asked about the ${cupNames[st.topCup[0]]||st.topCup[0]}, a favourite companion through ${st.topCup[1]} session${st.topCup[1]===1?'':'s'}, our subject declined to comment, citing a deadline.` : '',
+    st.busiestDay!==null ? `${['Sundays','Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays'][st.busiestDay]} have proved the busiest day at the desk.` : '',
+    st.current>1 ? `With a ${st.current}-day streak under way, the presses are being kept warm for tomorrow’s edition.` : `The Gazette will continue to follow the story closely.`,
+  ].filter(Boolean) : [
+    `A new face has been spotted at Brew &amp; Focus. ${esc(name)} joined the café recently and is expected to brew a first cup any day now.`,
+    `Staff report that a quiet corner has been kept free, a timer has been set to twenty-five minutes, and the kettle is warm.`,
+    `The Gazette will report on the first session as soon as it is complete. Readers are advised to watch this space.`,
+  ];
+  document.getElementById('gz-lead-head').innerHTML = headline;
+  document.getElementById('gz-lead-body').innerHTML = paras.map(p=>`<p>${p}</p>`).join('');
+  // Weather (from your chosen ambience)
+  const amb = S.ambience in GZ_WEATHER ? S.ambience : 'cozy-cafe';
+  const [sky, outlook, temp] = GZ_WEATHER[amb];
+  document.getElementById('gz-weather').innerHTML = `
+    <div class="gz-weather-top"><div class="gz-temp">${temp}°</div><div><b>${sky}</b><span>${GZ_AMBIENCE[amb]}</span></div></div>
+    <p class="gz-text">${outlook}</p>
+    <div class="gz-tides"><span>Focus: <b>high</b></span><span>Distractions: <b>low</b></span><span>Steam: <b>rising</b></span></div>`;
+  // By the numbers
+  const rows=[['Sessions',st.sessions],['Average sitting',`${st.avg} min`],['Longest sitting',`${Number(st.longest?.duration)||0} min`],['Days at the desk',st.daysStudied],
+    ['Current streak',`${st.current} day${st.current===1?'':'s'}`],['Best streak',`${st.best} day${st.best===1?'':'s'}`],['Favourites',st.favourites],['Shared brews',st.shared]];
+  document.getElementById('gz-numbers').innerHTML = rows.map(([k,v])=>`<div><span>${k}</span><i></i><b>${v}</b></div>`).join('');
+  // The week at a glance
+  const max=Math.max(1, ...st.byWeekday);
+  const order=[1,2,3,4,5,6,0];
+  document.getElementById('gz-week').innerHTML = `
+    <div class="gz-plot">${order.map(d=>{ const n=st.byWeekday[d]; const pct=n?Math.max(Math.round(n/max*100),6):0;
+      return `<div class="gz-col${d===st.busiestDay&&n?' top':''}"><span class="gz-col-n">${n||''}</span><i style="height:${pct}%"></i></div>`; }).join('')}</div>
+    <div class="gz-axis">${order.map(d=>`<span>${GZ_DAYS[d]}</span>`).join('')}</div>`;
+  // The Bean Exchange
+  const names={coffee:'Coffee', matcha:'Matcha', tea:'Tea', chocolate:'Cocoa'};
+  const exMax=Math.max(1, ...st.exchange.map(x=>x.total));
+  document.getElementById('gz-exchange').innerHTML = `<div class="gz-ex-head"><span>Bean</span><span>All-time</span><span>Wk</span><span>Chg</span></div>` +
+    st.exchange.map(x=>{ const ch=x.now-x.before; const sym = ch>0?'▲':ch<0?'▼':'—';
+      return `<div class="gz-ex-row"><span>${names[x.b]}</span><span class="gz-ex-bar"><i style="width:${Math.round(x.total/exMax*100)}%"></i><em>${x.total}</em></span><span>${x.now}</span><span class="${ch>0?'up':ch<0?'down':''}">${sym}${ch?' '+Math.abs(ch):''}</span></div>`; }).join('') +
+    `<p class="gz-small gz-ex-note">Cups brewed this week against last week. All-time leader: <b>${names[[...st.exchange].sort((a,b)=>b.total-a.total)[0].b]}</b>.</p>`;
+  // Brewoscope and quote of the day (change daily)
+  const dayIndex=Math.floor(Date.now()/86400000);
+  document.getElementById('gz-horoscope').textContent = GZ_SIGNS[(dayIndex + gzHash(S.user?.id||'')) % GZ_SIGNS.length];
+  const moon=moonPhase();
+  const lucky = st.sessions ? (DRINKS[all[(dayIndex) % all.length].drink]?.label || 'Cappuccino') : ['Cappuccino','Honey Tea','Matcha Latte','Mocha'][dayIndex%4];
+  document.getElementById('gz-almanac').innerHTML = `
+    <div><span>Lucky drink</span><b>${esc(lucky)}</b></div>
+    <div><span>Lucky number</span><b>${(dayIndex*7 + gzHash(S.user?.id||'')) % 31 + 1}</b></div>
+    <div><span>Moon</span><b><i class="gz-moon" style="--lit:${Math.round((1-Math.cos(moon.f*2*Math.PI))/2*100)}%;${moon.f>0.5?'transform:scaleX(-1)':''}"></i>${moon.name}</b></div>`;
+  const [w, say, means] = GZ_WORDS[(dayIndex*3) % GZ_WORDS.length];
+  document.getElementById('gz-word').innerHTML = `<div class="gz-word-k">Word of the Day</div><p><b>${w}</b> <span>(${say})</span> \u2014 ${means}</p>`;
+  const [q, who] = GZ_QUOTES[dayIndex % GZ_QUOTES.length];
+  document.getElementById('gz-quote').innerHTML = `<blockquote>“${q}”</blockquote><cite>— ${who}</cite>`;
+  // Small ads
+  document.getElementById('gz-ads').innerHTML = GZ_ADS.map(([k,t])=>`<div class="gz-ad"><b>${k}.</b> ${t}</div>`).join('');
+  renderGazetteSociety();
+}
+
+// Your cafés, fetched when the page opens.
+async function renderGazetteSociety(){
+  const el=document.getElementById('gz-society');
+  if(!S.user || !supabaseClient){ el.innerHTML=''; return; }
+  try{
+    const cafes = await CafeDB.listMine();
+    if(!document.getElementById('page-profile').classList.contains('active')) return;
+    el.innerHTML = cafes.length
+      ? cafes.slice(0,4).map(c=>`<div class="gz-soc"><b>${esc(c.name)}</b> <span>${vibeOf(c.vibe).label}</span><p>${c.members.map(m=>esc(m.username)).join(', ')}${c.owner_id===S.user.id?' — hosted by our subject':''}.</p></div>`).join('')
+      : `<p class="gz-small">Our subject has not yet been seen at a shared table. Readers wishing to study together may send an invitation.</p>`;
+  } catch(e){
+    el.innerHTML = `<p class="gz-small">The society pages are being typeset. Check back shortly.</p>`;
+  }
+}
+
+// Bio, favourite song and favourite book: typed straight onto the page and
+// saved with the account (no form to submit).
+const EXTRA_FIELDS = { bio:['gz-bio',220], fav_song:['gz-song',80], fav_book:['gz-book',80] };
+let extrasTimer=null, extrasSaved='';
+function readExtras(){ const o={}; for(const [k,[id,max]] of Object.entries(EXTRA_FIELDS)) o[k]=document.getElementById(id).value.trim().slice(0,max); return o; }
+function fillExtras(){
+  const m=S.user?.meta||{};
+  for(const [k,[id]] of Object.entries(EXTRA_FIELDS)){ const el=document.getElementById(id); if(document.activeElement!==el) el.value=m[k]||''; }
+  extrasSaved=JSON.stringify(readExtras());
+}
+function queueExtrasSave(){ clearTimeout(extrasTimer); extrasTimer=setTimeout(saveExtras, 1200); }
+async function saveExtras(){
+  clearTimeout(extrasTimer);
+  if(!supabaseClient || !S.user) return;
+  const data=readExtras(); const key=JSON.stringify(data);
+  if(key===extrasSaved) return;
+  extrasSaved=key;
+  try{
+    const { error } = await supabaseClient.auth.updateUser({ data });
+    if(error) throw error;
+    S.user.meta={ ...(S.user.meta||{}), ...data };
+    setProfileMsg('Saved to the morning edition.', 'success');
+  } catch(e){ extrasSaved=''; setProfileMsg('Couldn\u2019t save that just now \u2014 please try again.', 'error'); }
 }
 
 function setProfileMsg(msg, type){ const el=document.getElementById('gz-msg'); el.textContent=msg||''; el.className='gz-msg'+(type?' '+type:''); }
@@ -2602,7 +2800,7 @@ async function handleSessionChange(session){
     const justSignedIn = !S.user;
     const guestSnapshot = justSignedIn ? [...S.recipes] : null;
     if(justSignedIn) localStorage.setItem('bf_recipes_guest', JSON.stringify(guestSnapshot));
-    S.user = { id:session.user.id, email:session.user.email, username };
+    S.user = { id:session.user.id, email:session.user.email, username, meta };
     await loadMyProfile();
     renderAuthUI();
     if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();

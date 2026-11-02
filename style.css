@@ -1202,10 +1202,117 @@ body::after {
 .gz-dot { font-size:0.5rem; letter-spacing:0; }
 
 .gz-grid { display:grid; gap:1rem; grid-template-columns:1fr 1.55fr 1fr;
-  grid-template-areas:"since portrait edit" "hours portrait topbrew" "recent recent subjects"; }
-.gz-box { border:1.5px solid var(--rule); border-radius:7px; padding:1.1rem 1.15rem 1.2rem; position:relative; }
+  grid-template-areas:
+    "since portrait edit"
+    "hours portrait topbrew"
+    "lead lead weather"
+    "numbers week exchange"
+    "recent recent subjects"
+    "society horoscope quote"
+    "ads ads ads"; }
+.gz-box { border:1.5px solid var(--rule); border-radius:7px; padding:0.95rem 1.1rem 1rem; position:relative; }
 .gz-since { grid-area:since; } .gz-portrait { grid-area:portrait; } .gz-edit { grid-area:edit; }
 .gz-hours-box { grid-area:hours; } .gz-topbrew-box { grid-area:topbrew; } .gz-recent-box { grid-area:recent; } .gz-subjects-box { grid-area:subjects; }
+.gz-lead { grid-area:lead; } .gz-weather-box { grid-area:weather; } .gz-numbers-box { grid-area:numbers; } .gz-week-box { grid-area:week; }
+.gz-exchange-box { grid-area:exchange; } .gz-society-box { grid-area:society; } .gz-horoscope-box { grid-area:horoscope; } .gz-quote-box { grid-area:quote; } .gz-ads-box { grid-area:ads; }
+
+/* index strip and footer */
+.gz-index { font-family:'Lora',serif; font-size:0.76rem; text-align:center; padding:0.4rem 0; border-bottom:1px solid var(--rule); }
+.gz-index i { font-family:'Playfair Display',serif; }
+.gz-foot { margin-top:1.4rem; padding-top:0.5rem; border-top:2px solid var(--rule); text-align:center; font-family:'Lora',serif; font-size:0.7rem; letter-spacing:0.22em; text-transform:uppercase; }
+.gz-left { text-align:left; }
+.gz-stamp { width:max-content; margin:0.7rem auto 0.7rem; padding:0.45rem 0.9rem; text-align:center; transform:rotate(-4deg);
+  border:2px solid #7a1f24; outline:1px solid rgba(122,31,36,0.6); outline-offset:3px; border-radius:3px; color:#7a1f24; opacity:0.82; }
+.gz-stamp span { display:block; font-family:'Lora',serif; font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; }
+.gz-stamp b { display:block; font-family:'Courier New', Courier, monospace; font-size:1.15rem; letter-spacing:0.08em; }
+.gz-month { font-family:'Lora',serif; font-size:0.82rem; text-align:center; padding-top:0.5rem; border-top:1px dashed rgba(42,38,32,0.45); }
+/* lead story: big headline, byline, columns with a drop cap */
+.gz-lead-head { font-family:'Playfair Display',serif; font-weight:700; font-size:clamp(1.4rem, 2.6vw, 2rem); line-height:1.08; letter-spacing:-0.005em; margin:0.2rem 0 0.4rem; }
+.gz-byline { font-family:'Lora',serif; font-style:italic; font-size:0.78rem; padding-bottom:0.5rem; margin-bottom:0.6rem; border-bottom:1px solid rgba(42,38,32,0.4); }
+.gz-lead-body { columns:3 12rem; column-gap:1.3rem; column-rule:1px solid rgba(42,38,32,0.35); }
+.gz-lead-body p { font-family:'Lora',serif; font-size:0.86rem; line-height:1.5; text-align:justify; hyphens:auto; margin-bottom:0.5rem; }
+.gz-lead-body p:first-child::first-letter { float:left; font-family:'Playfair Display',serif; font-weight:700; font-size:3.1rem; line-height:0.82; padding:0.2rem 0.4rem 0 0; }
+/* weather */
+.gz-weather-top { display:flex; align-items:center; gap:0.8rem; margin-bottom:0.5rem; }
+.gz-temp { font-family:'Playfair Display',serif; font-weight:700; font-size:3rem; line-height:1; }
+.gz-weather-top b { display:block; font-family:'Playfair Display',serif; font-size:1.1rem; }
+.gz-weather-top span { font-family:'Lora',serif; font-size:0.72rem; letter-spacing:0.16em; text-transform:uppercase; }
+.gz-tides { display:flex; flex-direction:column; gap:0.15rem; margin-top:0.6rem; padding-top:0.5rem; border-top:1px dashed rgba(42,38,32,0.45); font-family:'Lora',serif; font-size:0.78rem; }
+/* by the numbers: a dotted-leader table */
+.gz-numbers div { display:flex; align-items:baseline; gap:0.4rem; font-family:'Lora',serif; font-size:0.84rem; line-height:1.85; }
+.gz-numbers i { flex:1; border-bottom:1px dotted rgba(42,38,32,0.6); transform:translateY(-0.25em); }
+.gz-numbers b { font-family:'Playfair Display',serif; font-size:0.98rem; }
+/* the week: an engraved column chart with gridlines */
+.gz-plot { display:grid; grid-template-columns:repeat(7, 1fr); gap:0.45rem; align-items:end; height:132px;
+  border-bottom:1.5px solid var(--rule);
+  background:repeating-linear-gradient(0deg, transparent 0 calc(25% - 1px), rgba(42,38,32,0.16) calc(25% - 1px) 25%) 0 18px/100% calc(100% - 18px) no-repeat; }
+.gz-col { height:100%; padding-top:18px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:3px; }
+.gz-col i { display:block; width:76%; border:1.2px solid var(--ink); border-bottom:none; border-radius:2px 2px 0 0;
+  background:repeating-linear-gradient(135deg, rgba(28,25,21,0.85) 0 1.2px, transparent 1.2px 3.6px); }
+.gz-col.top i { background:repeating-linear-gradient(135deg, rgba(28,25,21,0.9) 0 1.5px, transparent 1.5px 3px), rgba(168,69,46,0.22); }
+.gz-col-n { font-family:'Playfair Display',serif; font-size:0.8rem; line-height:1; min-height:0.8rem; }
+.gz-axis { display:grid; grid-template-columns:repeat(7, 1fr); gap:0.45rem; margin-top:0.35rem; text-align:center;
+  font-family:'Lora',serif; font-weight:500; font-size:0.6rem; letter-spacing:0.08em; text-transform:uppercase; }
+.gz-chart-note { margin-top:0.6rem; font-style:italic; }
+/* the bean exchange: a market table */
+.gz-exchange { font-family:'Courier New', Courier, monospace; font-size:0.86rem; }
+.gz-ex-head, .gz-ex-row { display:grid; grid-template-columns:4rem 1fr 1.5rem 2.2rem; gap:0.45rem; align-items:center; padding:0.32rem 0; }
+.gz-ex-bar { display:flex; align-items:center; gap:0.3rem; height:0.72rem; min-width:0; }
+.gz-ex-bar i { display:block; height:100%; min-width:2px; border:1px solid var(--ink); background:repeating-linear-gradient(135deg, rgba(28,25,21,0.85) 0 1px, transparent 1px 3px); }
+.gz-ex-bar em { font-style:normal; font-size:0.74rem; }
+.gz-ex-row > span:nth-child(n+3), .gz-ex-head > span:nth-child(n+3) { text-align:right; }
+.gz-ex-head { font-family:'Lora',serif; font-size:0.66rem; letter-spacing:0.16em; text-transform:uppercase; border-bottom:1.5px solid var(--rule); }
+.gz-ex-row { border-bottom:1px dotted rgba(42,38,32,0.45); }
+.gz-ex-row .up { color:#2f5a32; } .gz-ex-row .down { color:#8a1f24; }
+.gz-ex-note { margin-top:0.55rem; }
+
+/* bio under the portrait, and favourite song & book in the side boxes */
+.gz-bio { margin:0.1rem 0 0.9rem; padding:0.55rem 0.6rem 0.4rem; border-top:1px solid rgba(42,38,32,0.45); border-bottom:1px solid rgba(42,38,32,0.45); }
+.gz-bio-label { display:block; text-align:center; font-family:'Lora',serif; font-weight:500; font-size:0.62rem; letter-spacing:0.22em; text-transform:uppercase; margin-bottom:0.2rem; }
+.gz-bio-in { width:100%; resize:none; border:none; background:transparent; outline:none; color:var(--ink);
+  font-family:'Playfair Display',serif; font-style:italic; font-size:0.98rem; line-height:1.45; text-align:center; }
+.gz-bio-in::placeholder, .gz-fav-in::placeholder { color:rgba(42,38,32,0.45); }
+.gz-bio-in:focus, .gz-fav-in:focus { background:rgba(255,255,255,0.3); }
+.gz-since, .gz-hours-box, .gz-topbrew-box { display:flex; flex-direction:column; }
+.gz-fav { margin-top:auto; padding-top:0.55rem; border-top:1px dashed rgba(42,38,32,0.45); }
+.gz-fav-head { display:flex; align-items:center; gap:0.45rem; margin-bottom:0.2rem; }
+.gz-fav-head svg { width:20px; height:20px; flex:none; color:var(--ink); }
+.gz-fav-head label { font-family:'Lora',serif; font-weight:500; font-size:0.66rem; letter-spacing:0.18em; text-transform:uppercase; }
+.gz-fav-in { width:100%; border:none; border-bottom:1px dotted rgba(42,38,32,0.6); background:transparent; outline:none; padding:0.25rem 0.1rem;
+  font-family:'Playfair Display',serif; font-style:italic; font-size:0.98rem; color:var(--ink); }
+.gz-month { margin-top:auto; }
+.gz-topbrew-box #gz-topbrew { margin-bottom:0.6rem; }
+.gz-hours-box .gz-big { font-size:3.6rem; margin-bottom:0.3rem; }
+.gz-hours-box .gz-text { font-size:0.86rem; }
+/* society, brewoscope, quote, ads */
+.gz-soc { padding:0.35rem 0; border-bottom:1px dotted rgba(42,38,32,0.45); }
+.gz-soc:last-child { border-bottom:none; }
+.gz-soc b { font-family:'Playfair Display',serif; font-size:1rem; }
+.gz-soc span { font-family:'Lora',serif; font-size:0.66rem; letter-spacing:0.14em; text-transform:uppercase; }
+.gz-soc p { font-family:'Lora',serif; font-size:0.8rem; line-height:1.4; }
+.gz-horoscope { font-style:italic; text-align:center; text-align-last:center; margin-bottom:0.5rem; }
+.gz-horoscope { margin-bottom:0.5rem; }
+.gz-horoscope-box, .gz-quote-box { display:flex; flex-direction:column; }
+.gz-almanac { margin-top:auto; padding-top:0.5rem; border-top:1px dashed rgba(42,38,32,0.45); display:grid; grid-template-columns:repeat(3, 1fr); gap:0.4rem; text-align:center; }
+.gz-almanac span { display:block; font-family:'Lora',serif; font-size:0.56rem; letter-spacing:0.16em; text-transform:uppercase; }
+.gz-almanac b { display:flex; align-items:center; justify-content:center; gap:0.3rem; font-family:'Playfair Display',serif; font-size:0.86rem; line-height:1.2; margin-top:0.15rem; }
+/* a little moon disc, lit according to the phase */
+.gz-moon { flex:none; width:0.8rem; height:0.8rem; border-radius:50%; border:1px solid var(--ink);
+  background:linear-gradient(90deg, var(--ink) 0 calc(100% - var(--lit, 50%)), transparent 0); }
+.gz-word { margin-top:auto; padding-top:0.5rem; border-top:1px dashed rgba(42,38,32,0.45); text-align:center; font-family:'Lora',serif; }
+.gz-word-k { font-size:0.56rem; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:0.15rem; }
+.gz-word b { font-family:'Playfair Display',serif; font-size:1rem; }
+.gz-word span { font-size:0.72rem; font-style:italic; }
+.gz-word p { font-size:0.74rem; line-height:1.25; margin-top:0; }
+.gz-quote-box .gz-kicker, .gz-horoscope-box .gz-kicker { margin-bottom:0.3rem; }
+.gz-quote-box .gz-word { padding-top:0.35rem; }
+.gz-quote-box .gz-quote cite { margin-bottom:0.35rem; }
+.gz-quote blockquote { font-family:'Playfair Display',serif; font-style:italic; font-size:1rem; line-height:1.3; text-align:center; }
+.gz-quote cite { display:block; text-align:center; font-family:'Lora',serif; font-style:normal; font-size:0.72rem; letter-spacing:0.18em; text-transform:uppercase; margin-top:0.3rem; margin-bottom:0.5rem; }
+.gz-ads { display:grid; grid-template-columns:repeat(4, 1fr); gap:0 1rem; }
+.gz-ad { font-family:'Lora',serif; font-size:0.78rem; line-height:1.4; padding:0 0.2rem 0 1rem; border-left:1px solid rgba(42,38,32,0.35); }
+.gz-ad:first-child { border-left:none; padding-left:0; }
+.gz-ad b { font-family:'Playfair Display',serif; letter-spacing:0.04em; }
 .gz-kicker { font-family:'Lora',serif; font-weight:500; font-size:0.8rem; letter-spacing:0.08em; text-transform:uppercase; text-align:center; margin-bottom:0.5rem; }
 .gz-fancy { font-family:'Playfair Display',serif; font-weight:700; font-size:1.15rem; text-transform:none; letter-spacing:0.02em; font-variant:small-caps;
   text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:4px; }
@@ -1217,7 +1324,7 @@ body::after {
 .gz-headline { font-family:'Playfair Display',serif; font-weight:500; font-size:1.7rem; text-align:center; line-height:1.15; margin-bottom:0.7rem; }
 
 /* the portrait: printed in sepia halftone */
-.gz-photo { position:relative; margin:0 auto; width:100%; aspect-ratio:1/1; border-radius:5px; overflow:hidden; background:#d8cdb6; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25); }
+.gz-photo { position:relative; margin:0 auto; width:100%; aspect-ratio:6/5; border-radius:5px; overflow:hidden; background:#d8cdb6; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.25); }
 .gz-photo img { width:100%; height:100%; object-fit:cover; display:block; filter:grayscale(1) sepia(0.35) contrast(1.12) brightness(1.02); }
 .gz-photo::after { content:''; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:0.35;
   background:radial-gradient(circle, rgba(0,0,0,0.55) 0.7px, transparent 1.2px) 0 0/4px 4px; }
@@ -1255,7 +1362,7 @@ body::after {
 .gz-form .gz-press { margin-top:0.2rem; }
 
 .gz-cup { display:flex; justify-content:center; filter:grayscale(0.5) sepia(0.4) contrast(1.05); }
-.gz-cup svg { width:110px; height:auto; }
+.gz-cup svg { width:74px; height:auto; }
 .gz-topbrew-name { font-family:'Playfair Display',serif; font-weight:700; font-size:1.25rem; text-align:center; margin-top:0.2rem; }
 .gz-topbrew-box .gz-small { text-align:center; }
 .gz-columns { display:grid; grid-template-columns:repeat(3, 1fr); gap:0 1.1rem; }
@@ -1279,14 +1386,20 @@ body::after {
 
 @media (max-width:820px){
   .gazette { padding:1.6rem 1.2rem 1.8rem; transform:none; }
-  .gz-grid { grid-template-columns:1fr 1fr; grid-template-areas:"portrait portrait" "edit edit" "since hours" "topbrew subjects" "recent recent"; }
+  .gz-grid { grid-template-columns:1fr 1fr; grid-template-areas:"portrait portrait" "edit edit" "lead lead" "since hours" "weather topbrew" "numbers exchange" "week week" "recent recent" "subjects society" "horoscope quote" "ads ads"; }
+  .gz-ads { grid-template-columns:1fr 1fr; gap:0.8rem 1rem; }
+  .gz-ad:nth-child(3) { border-left:none; padding-left:0; }
   .gz-columns { grid-template-columns:1fr; gap:0.9rem; }
   .gz-columns article { border-left:none; padding-left:0; border-top:1px solid rgba(42,38,32,0.3); padding-top:0.7rem; }
   .gz-columns article:first-child { border-top:none; padding-top:0; }
 }
 @media (max-width:520px){
   #page-profile { padding:5.5rem 0.6rem 3rem; }
-  .gz-grid { grid-template-columns:1fr; grid-template-areas:"portrait" "edit" "since" "hours" "topbrew" "subjects" "recent"; }
+  .gz-grid { grid-template-columns:1fr; grid-template-areas:"portrait" "edit" "lead" "since" "hours" "weather" "numbers" "week" "exchange" "topbrew" "subjects" "recent" "society" "horoscope" "quote" "ads"; }
+  .gz-ads { grid-template-columns:1fr; }
+  .gz-ad { border-left:none; padding-left:0; border-top:1px solid rgba(42,38,32,0.3); padding-top:0.5rem; }
+  .gz-ad:first-child { border-top:none; padding-top:0; }
+  .gz-index { font-size:0.68rem; }
   .gz-ears { font-size:0.6rem; letter-spacing:0.1em; }
   .gz-dateline { font-size:0.62rem; letter-spacing:0.16em; gap:0.5rem; }
   .gz-big { font-size:3.6rem; }
