@@ -687,8 +687,12 @@ function closedBookGeometry(scene, bookObject, content, cover, spread){
   const sceneLeft = scene.getBoundingClientRect().left;
   const fits = sceneLeft + sceneW/2 - W >= 8;
   const spreadMode = fits && !!spread && spread.twoCol && Math.abs(spread.w - 2*W) <= 6;
-  const H = spreadMode ? spread.h : face.offsetHeight;
-  return {spineW, W, H, front: spreadMode ? cover : face, spread, spreadMode, objW, sceneW,
+  // Phones: a single-page book. Closed and open it's the same size, so the
+  // cover swings off to the left revealing the real first page beneath it.
+  const singleMode = !spreadMode && !!spread && !spread.twoCol && Math.abs(spread.w - W) <= 6;
+  const pageMode = spreadMode || singleMode;
+  const H = pageMode ? spread.h : face.offsetHeight;
+  return {spineW, W, H, front: pageMode ? cover : face, spread, spreadMode, singleMode, pageMode, objW, sceneW,
           left:bookObject.offsetLeft, top:bookObject.offsetTop, fits, shift: fits ? shiftFull : 0};
 }
 
@@ -715,6 +719,11 @@ function buildCoverStage(scene, g){
     under = placeEl(makeDiv('cover-under-clip'), g.spineW, 0, g.W, g.H);
     under.appendChild(paperClone(g.spread.clone, 2*g.W, g.H, -g.W));
     back = g.spread.clone; backW = 2*g.W;
+  } else if(g.singleMode){
+    // The real first page under the cover; the cover's inside on its back.
+    under = placeEl(makeDiv('cover-under-clip'), g.spineW, 0, g.W, g.H);
+    under.appendChild(paperClone(g.spread.clone, g.W, g.H, 0));
+    back = makeDiv('cover-inside');
   } else {
     under = placeEl(makeDiv('cover-under-page'), g.spineW, 0, g.W, g.H);
     back = makeDiv('cover-inside');
@@ -733,7 +742,7 @@ function buildCoverStage(scene, g){
   return {stage, cast, parts, fader, tableShadow};
 }
 function coverSwingAnimations(c, g, duration){
-  const anims = animateCurl(c.parts, {dir:1, duration, angle: g.fits ? 180 : 100, fadeEl: g.fits ? null : c.fader, lift:22});
+  const anims = animateCurl(c.parts, {dir:1, duration, angle: (g.fits || g.singleMode) ? 180 : 100, fadeEl: g.fits ? null : c.fader, lift:22});
   if(g.fits) anims.push(c.tableShadow.animate([
     {opacity:0}, {opacity:0, offset:0.55}, {opacity:1}
   ], {duration, easing:'ease-in', fill:'both'}));
@@ -823,8 +832,8 @@ async function openRecipeBook(){
   const swing = coverSwingAnimations(c, g, COVER_SWING_MS);
   await swing[0].finished.catch(()=>{});
 
-  if(g.spreadMode){
-    // The overlay now shows exactly the open spread, in exactly its place:
+  if(g.pageMode){
+    // The overlay now shows exactly the open book, in exactly its place:
     // swap in the real one underneath it — nothing visibly changes.
     setBookState(true, 0);
     cover.style.visibility='';
@@ -887,8 +896,8 @@ async function closeRecipeBook(){
   const swing = coverSwingAnimations(c, g, COVER_SWING_MS);
   swing.forEach(a=>{ a.pause(); a.currentTime = COVER_SWING_MS; }); // cover lying open
 
-  if(g.spreadMode){
-    // The overlay is a pixel match for the open spread: swap to the closed
+  if(g.pageMode){
+    // The overlay is a pixel match for the open book: swap to the closed
     // book (cover hidden beneath the overlay) with no visible change.
     cover.style.visibility='hidden';
     setBookState(false, g.shift);
@@ -1034,6 +1043,16 @@ function refreshRecipeTools(list){
 // Recipe cards now show a full-sized, accurate cup that mirrors exactly
 // what was brewed (same cup shape, base, drink and add-ons), rendered
 // bigger and steaming gently so it feels alive on the page.
+// Phones show one page at a time (a single-page book); wider screens show
+// a two-page spread.
+const PHONE_BOOK_MQ = window.matchMedia ? window.matchMedia('(max-width:700px)') : null;
+function pagesPerSpread(){ return PHONE_BOOK_MQ && PHONE_BOOK_MQ.matches ? 1 : 2; }
+if(PHONE_BOOK_MQ){
+  const relayout=()=>{ const v=document.getElementById('book-open-view'); if(v && v.style.display==='block') renderRecipes(); };
+  if(PHONE_BOOK_MQ.addEventListener) PHONE_BOOK_MQ.addEventListener('change', relayout);
+  else if(PHONE_BOOK_MQ.addListener) PHONE_BOOK_MQ.addListener(relayout);
+}
+
 function renderRecipes(){
   const grid=document.getElementById('recipe-grid');
   const list = filteredRecipes();
@@ -1042,16 +1061,17 @@ function renderRecipes(){
   const nextBtn=document.getElementById('page-next');
   const pageCount=document.getElementById('page-count');
   if(!list.length){
-    grid.innerHTML=`<div class="recipe-card empty-state"><p>${S.recipeTab==='mine'?'No recipes yet — brew your first session':'No shared brews yet — join a study table to create one together'}</p><div class="rc-note">Blank pages are waiting for the next warm memory.</div></div>
-    <div class="recipe-card empty-state"><p>Open the Brew page, finish a session, and this journal will begin to fill.</p></div>`;
+    grid.innerHTML=`<div class="recipe-card empty-state"><p>${S.recipeTab==='mine'?'No recipes yet — brew your first session':'No shared brews yet — join a study table to create one together'}</p><div class="rc-note">Blank pages are waiting for the next warm memory.</div></div>`
+      + (pagesPerSpread()===2 ? `<div class="recipe-card empty-state"><p>Open the Brew page, finish a session, and this journal will begin to fill.</p></div>` : '');
     if(prevBtn) prevBtn.disabled=true;
     if(nextBtn) nextBtn.disabled=true;
     if(pageCount) pageCount.textContent='blank journal';
     return;
   }
-  const maxPage=Math.max(0, Math.ceil(list.length/2)-1);
+  const per=pagesPerSpread();
+  const maxPage=Math.max(0, Math.ceil(list.length/per)-1);
   S.recipePage=Math.min(S.recipePage,maxPage);
-  const spread=list.slice(S.recipePage*2,S.recipePage*2+2);
+  const spread=list.slice(S.recipePage*per,S.recipePage*per+per);
   grid.innerHTML = spread.map((r,i)=>{
     const drinkKey=r.drink||r.base;
     const drinkLabel=DRINKS[drinkKey]?.label||baseNames[r.base]||'Custom Brew';
@@ -1061,7 +1081,7 @@ function renderRecipes(){
     // add-ons still reflect exactly what was brewed.
     const fullCup=buildCupSVG({size:130,fillFraction:1,steam:true,cup:'glass',base:r.base,drink:drinkKey,addons:r.addons||[]});
     const ings=[drinkLabel,...(r.addons||[]).filter(a=>a!=='ice').map(a=>addonNames[a]||a)].join(', ');
-    return `<div class="recipe-card ${r.favorite?'favorite-page':''}" onclick="changeRecipePage(${i===0?-1:1})">
+    return `<div class="recipe-card ${r.favorite?'favorite-page':''}" onclick="changeRecipePage(${per===1||i===1?1:-1})">
       ${r.shared?'<div class="rc-badge">shared brew</div>':''}
       <div class="rc-top">
         <div class="rc-headline">
@@ -1083,12 +1103,12 @@ function renderRecipes(){
       <button class="fav-btn ${r.favorite?'':'off'}" onclick="toggleFavorite('${r.id}',event)" title="Favorite recipe">★</button>
     </div>`;
   }).join('');
-  if(spread.length===1){
+  if(spread.length===1 && per===2){
     grid.innerHTML += `<div class="recipe-card empty-state"><p>This side of the spread is still untouched.</p><div class="rc-note">A future recipe belongs here.</div></div>`;
   }
   if(prevBtn) prevBtn.disabled=S.recipePage===0;
   if(nextBtn) nextBtn.disabled=S.recipePage>=maxPage;
-  if(pageCount) pageCount.textContent=`spread ${S.recipePage+1} of ${maxPage+1}`;
+  if(pageCount) pageCount.textContent=`${per===1?'page':'spread'} ${S.recipePage+1} of ${maxPage+1}`;
 }
 
 // ── Realistic 3D page-flip animation ────────────────────────────────────
@@ -1211,7 +1231,7 @@ function animateCurl({leaf, strips, shades}, {dir, duration, angle=180, fadeEl=n
 function changeRecipePage(delta){
   if(flippingPage) return;
   const list = filteredRecipes();
-  const maxPage=Math.max(0, Math.ceil(list.length/2)-1);
+  const maxPage=Math.max(0, Math.ceil(list.length/pagesPerSpread())-1);
   const next=Math.max(0, Math.min(maxPage, S.recipePage+delta));
   if(next===S.recipePage) return;
 
@@ -1219,7 +1239,7 @@ function changeRecipePage(delta){
   const grid = document.getElementById('recipe-grid');
   const oldCards=[...(grid?.children||[])];
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(!shell || !grid || oldCards.length<2 || reduceMotion || !Element.prototype.animate){
+  if(!shell || !grid || !oldCards.length || reduceMotion || !Element.prototype.animate){
     S.recipePage=next; renderRecipes(); playPageSound('turn'); return;
   }
 
@@ -1238,7 +1258,12 @@ function changeRecipePage(delta){
   renderRecipes();
   const newCards=[...grid.children];
   const dir = delta>0 ? 1 : -1;
-  const stacked = oldRects[1].y >= oldRects[0].y + oldRects[0].h - 1;
+  if(oldCards.length===1 && newCards.length===1){
+    flipSinglePage(shell, frontCards[0], newCards[0], oldRects[0], dir)
+      .catch(()=>{}).then(()=>{ flippingPage=false; });
+    return;
+  }
+  const stacked = oldRects.length<2 || oldRects[1].y >= oldRects[0].y + oldRects[0].h - 1;
 
   const run = stacked
     ? flipStackedPage(shell, frontCards, oldGrid, dir)
@@ -1288,6 +1313,35 @@ function flipSpreadLeaf(shell, oldCards, newCards, oldRects, newRects, dir){
     {opacity:0}, {opacity:0, offset:0.5}, {opacity:0.9, offset:0.82}, {opacity:0}
   ], {duration:FLIP_MS, easing:'ease-in', fill:'forwards'});
 
+  return anims[0].finished.then(()=>stage.remove(), ()=>stage.remove());
+}
+
+// Phone (single-page book): turning forward, the page curls up from the
+// spine and over to the left, off the edge of the book; turning back, the
+// previous page curls in from the left and settles on top.
+function flipSinglePage(shell, oldCard, newCard, r, dir){
+  const stage = makeDiv('page-flip-stage');
+  stage.style.perspectiveOrigin = `${r.x}px ${r.y + r.h/2}px`;
+  const fader = makeDiv('flip-fader');
+  fader.style.perspectiveOrigin = stage.style.perspectiveOrigin;
+  const paperBack = makeDiv('recipe-card flip-paper-back');
+  const turning = dir>0 ? oldCard : newCard;
+  const parts = buildCurlLeaf({hinge:r.x, y:r.y, W:r.w, H:r.h, gap:0, dir:1, front:turning, back:paperBack});
+  if(dir<0){
+    // Keep the current page showing underneath until the previous one lands.
+    const stay = placeEl(makeDiv('flip-static'), r.x, r.y, r.w, r.h);
+    stay.appendChild(paperClone(oldCard, r.w, r.h));
+    stage.appendChild(stay);
+  }
+  const cast = placeEl(makeDiv('flip-cast-shadow'), r.x, r.y, r.w, r.h);
+  cast.style.background = 'linear-gradient(to right, rgba(25,12,4,0.5), rgba(25,12,4,0.15) 40%, rgba(25,12,4,0) 80%)';
+  fader.appendChild(parts.leaf);
+  stage.append(cast, fader);
+  shell.appendChild(stage);
+  const anims = animateCurl(parts, {dir:1, duration:FLIP_MS, fadeEl:fader});
+  anims.push(cast.animate([{opacity:0},{opacity:1, offset:0.25},{opacity:0.4, offset:0.6},{opacity:0}],
+    {duration:FLIP_MS, easing:'ease-out', fill:'both'}));
+  if(dir<0) anims.forEach(a=>{ a.pause(); a.currentTime=FLIP_MS; a.playbackRate=-1; a.play(); });
   return anims[0].finished.then(()=>stage.remove(), ()=>stage.remove());
 }
 
