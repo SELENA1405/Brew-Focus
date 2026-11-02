@@ -2043,6 +2043,8 @@ function friendlyAuthError(err){
   if(/user already registered|already been registered/i.test(msg)) return 'An account with that email already exists — try logging in instead.';
   if(/signups? not allowed for otp|user not found/i.test(msg)) return 'There’s no account with that email yet — sign up first.';
   if(/rate limit|too many/i.test(msg)) return 'Too many emails have been sent recently. Please wait a little while and try again.';
+  if(/not authori[sz]ed|email_address_not_authorized/i.test(msg)) return 'We couldn\u2019t send an email to that address right now. Please try again later.';
+  if(/error sending|smtp|sending (confirmation|recovery|magic)/i.test(msg)) return 'Our email service had a problem sending that message. Please try again in a few minutes.';
   if(/only request this after|after \d+ seconds/i.test(msg)) return 'Please wait a minute before asking for another email.';
   if(/provider is not enabled|unsupported provider/i.test(msg)) return 'Google sign-in isn’t switched on for this app yet.';
   if(/should be different from the old password/i.test(msg)) return 'Your new password needs to be different from the old one.';
@@ -2092,6 +2094,13 @@ async function submitAuth(){
         email, password, options:{ data:{ username }, emailRedirectTo: AUTH_HOME }
       });
       if(error) throw error;
+      // Supabase answers a sign-up for an email that already has an account
+      // with a look-alike "success" (no identities) and sends no email.
+      if(data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
+        setAuthMsg('There\u2019s already an account with this email. Log in instead, or use \u201cForgot password?\u201d if you can\u2019t remember it.', 'error');
+        renderAuthFoot(`Already a member? <button type="button" class="auth-link" onclick="setAuthTab('signin')">Log in</button>`);
+        return;
+      }
       if(data.user){
         try { await supabaseClient.from('profiles').upsert({ id:data.user.id, username }); }
         catch(profileErr){ console.warn('Profile save failed (non-blocking):', profileErr); }
