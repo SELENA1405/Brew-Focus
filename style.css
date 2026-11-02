@@ -826,6 +826,8 @@ body::after {
 .flip-face-back { transform:rotateY(180deg); }
 .flip-face .recipe-card, .flip-static .recipe-card, .flip-sheet .recipe-card { cursor:default; box-shadow:none; }
 .flip-shade { position:absolute; inset:0; opacity:0; pointer-events:none; }
+.flip-fader { position:absolute; inset:0; perspective:2200px; }
+.flip-paper-back { padding:0; }
 
 /* Toast */
 .toast {
@@ -924,17 +926,20 @@ body::after {
   .room-fields { grid-template-columns:1fr; }
   #page-recipes { padding-left:0.75rem; padding-right:0.75rem; }
   .book-spine-fixed { width:22px; }
-  .book-content { width:min(300px,74vw); }
-  .book-content.is-open { width:94vw; }
+  /* Phones: a single-page book — the same size closed and open, with the
+     spine staying on the left as the binding. */
+  .book-shelf-scene { --book-h:540px; }
+  .book-content, .book-content.is-open { width:min(340px,84vw); }
+  .book-object.is-open .book-spine-fixed { display:block; }
+  .book-open-view { min-width:0; }
   .toolbar-row { flex-direction:column; }
-  .book-cover-closed { height:440px; }
   .cover-title { font-size:2rem; }
   .cover-face { padding:2rem 1.2rem 3rem; }
   .bookmark-tab { width:42px; height:54px; top:-14px; }
   .filter-drawer.open { margin-top:1.8rem; }
   .flipbook-shell { padding:22px 14px 30px; }
   .recipe-grid { grid-template-columns:1fr; min-height:auto; }
-  .recipe-card { min-height:auto; padding:1.6rem 1.3rem; }
+  .recipe-card { min-height:calc(var(--book-h) - 52px); padding:1.6rem 1.3rem; }
   .rc-cup-frame { width:96px; }
   .book-binding { display:none; }
 }
