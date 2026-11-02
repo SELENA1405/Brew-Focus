@@ -895,7 +895,31 @@ function renderRecipes(){
 }
 
 // ── Realistic 3D page-flip animation ────────────────────────────────────
+// Only one leaf turns, hinged at the spine, the way a real page does. The
+// leaf is built from a few nested vertical strips so it can curl: the outer
+// edge leads as the page lifts, then trails as it falls flat on the other
+// side. Light falls off the turning paper, and it casts a soft shadow on
+// the page it uncovers and on the page it lands on.
 let flippingPage=false;
+const FLIP_MS=1150;
+const FLIP_STRIPS=5;
+
+// A detached copy of a page, pinned to an exact size so it can be clipped
+// into strips without reflowing.
+function paperClone(card, w, h, left){
+  const c=card.cloneNode(true);
+  c.removeAttribute('onclick');
+  c.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+  Object.assign(c.style,{position:'absolute', top:'0', left:(left||0)+'px', width:w+'px', height:h+'px',
+    minHeight:'0', margin:'0', transform:'none', transition:'none', boxSizing:'border-box'});
+  return c;
+}
+function placeEl(el, x, y, w, h){
+  Object.assign(el.style,{left:x+'px', top:y+'px', width:w+'px', height:h+'px'});
+  return el;
+}
+function makeDiv(cls){ const d=document.createElement('div'); d.className=cls; return d; }
+
 function changeRecipePage(delta){
   if(flippingPage) return;
   const list = filteredRecipes();
@@ -905,40 +929,174 @@ function changeRecipePage(delta){
 
   const shell = document.querySelector('.flipbook-shell');
   const grid = document.getElementById('recipe-grid');
-  if(!shell || !grid){ S.recipePage=next; renderRecipes(); return; }
+  const oldCards=[...(grid?.children||[])];
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!shell || !grid || oldCards.length<2 || reduceMotion || !Element.prototype.animate){
+    S.recipePage=next; renderRecipes(); playPageSound('turn'); return;
+  }
 
   flippingPage = true;
   playPageSound('turn');
 
-  const frontHTML = grid.innerHTML;
+  // Measure the current spread with layout offsets (not bounding rects) so
+  // the book's slight tilt doesn't skew the numbers.
+  const gx=grid.offsetLeft, gy=grid.offsetTop;
+  const rect=c=>({x:gx+c.offsetLeft, y:gy+c.offsetTop, w:c.offsetWidth, h:c.offsetHeight});
+  const oldRects=oldCards.map(rect);
+  const oldGrid={x:gx, y:gy, w:grid.offsetWidth, h:grid.offsetHeight};
+  const frontCards=oldCards.map(c=>c.cloneNode(true));
 
   S.recipePage = next;
   renderRecipes();
-  const backHTML = grid.innerHTML;
+  const newCards=[...grid.children];
+  const dir = delta>0 ? 1 : -1;
+  const stacked = oldRects[1].y >= oldRects[0].y + oldRects[0].h - 1;
 
-  const gridRect = grid.getBoundingClientRect();
-  const shellRect = shell.getBoundingClientRect();
+  const run = stacked
+    ? flipStackedPage(shell, frontCards, oldGrid, dir)
+    : flipSpreadLeaf(shell, frontCards, newCards, oldRects, newCards.map(rect), dir);
+  run.catch(()=>{}).then(()=>{ flippingPage=false; });
+}
 
-  const dir = delta>0 ? 'next' : 'prev';
-  const flip = document.createElement('div');
-  flip.className = 'page-flip-3d '+dir;
-  flip.style.top = (gridRect.top - shellRect.top) + 'px';
-  flip.style.left = (gridRect.left - shellRect.left) + 'px';
-  flip.style.width = gridRect.width + 'px';
-  flip.style.height = gridRect.height + 'px';
-  flip.innerHTML =
-    `<div class="flip-face flip-front"><div class="recipe-grid flip-grid">${frontHTML}</div></div>
-     <div class="flip-face flip-back"><div class="recipe-grid flip-grid">${backHTML}</div></div>`;
-  shell.appendChild(flip);
+function flipSpreadLeaf(shell, oldCards, newCards, oldRects, newRects, dir){
+  const [L, R] = oldRects;
+  const W = R.w;
+  const H = Math.max(L.h, R.h, newRects[0]?.h||0, newRects[1]?.h||0);
+  const top = Math.min(L.y, R.y);
+  const gap = Math.max(0, R.x - (L.x + L.w));
+  const hinge = L.x + L.w + gap/2;
+  const leafW = W + gap/2;
+  const s = leafW / FLIP_STRIPS;
 
-  requestAnimationFrame(()=>{
-    requestAnimationFrame(()=>{ flip.classList.add('turning'); });
+  const stage = makeDiv('page-flip-stage');
+  stage.style.perspectiveOrigin = `${hinge}px ${top + H/2}px`;
+
+  // The page that stays put keeps showing the old content until the leaf
+  // lands on it (underneath, the grid already holds the new spread).
+  const stayRect = dir>0 ? L : R;
+  const stay = placeEl(makeDiv('flip-static'), stayRect.x, top, stayRect.w, H);
+  stay.appendChild(paperClone(oldCards[dir>0?0:1], stayRect.w, H));
+  stage.appendChild(stay);
+
+  // Shadow the lifting leaf throws onto the page it uncovers…
+  const turnRect = dir>0 ? R : L;
+  const castShadow = placeEl(makeDiv('flip-cast-shadow'), turnRect.x, top, turnRect.w, H);
+  castShadow.style.background = `linear-gradient(to ${dir>0?'right':'left'}, rgba(25,12,4,0.55), rgba(25,12,4,0.18) 35%, rgba(25,12,4,0) 75%)`;
+  stage.appendChild(castShadow);
+  // …and onto the page it's about to settle on.
+  const landShadow = placeEl(makeDiv('flip-cast-shadow'), stayRect.x, top, stayRect.w, H);
+  landShadow.style.background = `linear-gradient(to ${dir>0?'left':'right'}, rgba(25,12,4,0.5), rgba(25,12,4,0.12) 45%, rgba(25,12,4,0) 85%)`;
+  stage.appendChild(landShadow);
+
+  // The leaf: hinged at the spine, built from nested strips so it can bend.
+  const leaf = placeEl(makeDiv('flip-leaf'), dir>0 ? hinge : hinge-leafW, top, leafW, H);
+  leaf.style.transformOrigin = dir>0 ? 'left center' : 'right center';
+
+  const frontCard = oldCards[dir>0?1:0];
+  const backCard  = newCards[dir>0?0:1];
+  // Where each strip's slice of the page sits. A point d px from the spine
+  // on the turning page lands d px from the spine on the other side, so the
+  // back face shows the destination page mirrored across the spine.
+  const offNear = i => gap/2 - i*s;            // page that starts/ends beside the spine on the far side
+  const offFar  = i => -(leafW - (i+1)*s);     // page mirrored across the spine
+  const frontOff = dir>0 ? offNear : offFar;
+  const backOff  = dir>0 ? offFar  : offNear;
+
+  const strips=[], shades=[];
+  let parent = leaf;
+  for(let i=0;i<FLIP_STRIPS;i++){
+    const strip = makeDiv('flip-strip');
+    strip.style.width = (s+0.6)+'px'; // hair of overlap hides seams between strips
+    if(dir>0){ strip.style.left = (i===0 ? 0 : s)+'px'; strip.style.transformOrigin='left center'; }
+    else     { strip.style.left = (i===0 ? leafW-s : -s)+'px'; strip.style.transformOrigin='right center'; }
+
+    const front = makeDiv('flip-face');
+    front.appendChild(paperClone(frontCard, W, H, frontOff(i)));
+    const back = makeDiv('flip-face flip-face-back');
+    back.appendChild(paperClone(backCard, W, H, backOff(i)));
+
+    // Shading deepens smoothly toward the outer edge, where the paper curls
+    // most. Each face gets a gradient spanning its own slice so neighbouring
+    // strips blend without visible bands. d0/d1 = distance from the spine at
+    // the face's local left/right edge (back faces are mirrored).
+    const near=i*s, far=(i+1)*s;
+    const faces = [[front, dir>0 ? [near,far] : [far,near]], [back, dir>0 ? [far,near] : [near,far]]];
+    faces.forEach(([face,[d0,d1]])=>{
+      const shade = makeDiv('flip-shade');
+      const a = d => (0.5 + 0.5*d/leafW).toFixed(3);
+      shade.style.background = `linear-gradient(to right, rgba(42,22,10,${a(d0)}), rgba(42,22,10,${a(d1)}))`;
+      face.appendChild(shade);
+      shades.push(shade);
+    });
+    strip.append(front, back);
+    parent.appendChild(strip);
+    strips.push(strip);
+    parent = strip;
+  }
+  stage.appendChild(leaf);
+  shell.appendChild(stage);
+
+  const ease='cubic-bezier(0.55,0.06,0.3,1)';
+  const anims=[];
+  anims.push(leaf.animate([
+    {transform:'rotateY(0deg)'},
+    {transform:`rotateY(${-dir*28}deg)`, offset:0.22, easing:'cubic-bezier(0.4,0,0.6,1)'},
+    {transform:`rotateY(${-dir*180}deg)`}
+  ], {duration:FLIP_MS, easing:ease, fill:'forwards'}));
+
+  // Curl: the outer edge leads while lifting, then trails as it falls flat.
+  strips.forEach((strip,i)=>{
+    if(i===0) return;
+    const b = 7 + i*1.5;
+    strip.animate([
+      {transform:'rotateY(0deg)'},
+      {transform:`rotateY(${-dir*b}deg)`, offset:0.25},
+      {transform:`rotateY(${-dir*b*0.35}deg)`, offset:0.5},
+      {transform:`rotateY(${dir*b*0.8}deg)`, offset:0.78},
+      {transform:'rotateY(0deg)'}
+    ], {duration:FLIP_MS, easing:'ease-in-out', fill:'forwards'});
   });
 
-  setTimeout(()=>{
-    flip.remove();
-    flippingPage = false;
-  }, 900);
+  // Paper darkens as it turns edge-on to the light, brightens as it lies flat.
+  shades.forEach(el=>{
+    el.animate([
+      {opacity:0},
+      {opacity:0.42, offset:0.5},
+      {opacity:0.08, offset:0.85},
+      {opacity:0}
+    ], {duration:FLIP_MS, easing:'linear', fill:'forwards'});
+  });
+  castShadow.animate([
+    {opacity:0}, {opacity:1, offset:0.2}, {opacity:0.55, offset:0.5}, {opacity:0}
+  ], {duration:FLIP_MS*0.8, easing:'ease-out', fill:'forwards'});
+  landShadow.animate([
+    {opacity:0}, {opacity:0, offset:0.5}, {opacity:0.9, offset:0.82}, {opacity:0}
+  ], {duration:FLIP_MS, easing:'ease-in', fill:'forwards'});
+
+  return anims[0].finished.then(()=>stage.remove(), ()=>stage.remove());
+}
+
+// Phone layout: the spread is stacked, so the whole sheet peels away from
+// one edge, revealing the next spread beneath it.
+function flipStackedPage(shell, oldCards, g, dir){
+  const stage = makeDiv('page-flip-stage');
+  stage.style.perspectiveOrigin = `${dir>0 ? g.x : g.x+g.w}px ${g.y + g.h/2}px`;
+  const sheet = placeEl(makeDiv('flip-leaf flip-sheet'), g.x, g.y, g.w, g.h);
+  sheet.style.transformOrigin = dir>0 ? 'left center' : 'right center';
+  const inner = makeDiv('recipe-grid');
+  Object.assign(inner.style,{position:'absolute', inset:'0', minHeight:'0'});
+  oldCards.forEach(c=>{ c.removeAttribute('onclick'); inner.appendChild(c); });
+  const shade = makeDiv('flip-shade');
+  sheet.append(inner, shade);
+  stage.appendChild(sheet);
+  shell.appendChild(stage);
+  const a = sheet.animate([
+    {transform:'rotateY(0deg)', opacity:1},
+    {transform:`rotateY(${-dir*70}deg)`, opacity:1, offset:0.7},
+    {transform:`rotateY(${-dir*105}deg)`, opacity:0}
+  ], {duration:FLIP_MS*0.8, easing:'cubic-bezier(0.5,0.05,0.4,1)', fill:'forwards'});
+  shade.animate([{opacity:0},{opacity:0.45}], {duration:FLIP_MS*0.8, fill:'forwards'});
+  return a.finished.then(()=>stage.remove(), ()=>stage.remove());
 }
 
 // ── Auth (Supabase) ──────────────────────────────────────────────────────
