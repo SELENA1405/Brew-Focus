@@ -67,6 +67,10 @@
     <div class="brew-rule" aria-hidden="true"><span></span></div>
     <p class="sec-sub">collectible watercolor café recipes</p>
   </header>
+  <div class="brew-cafe-banner" id="brew-cafe-banner" hidden>
+    Brewing for <strong id="brew-cafe-name"></strong>
+    <button type="button" onclick="returnToCafeRoom()">back to the table</button>
+  </div>
 
   <div class="brew-wrap">
     <!-- The menu: everything that decides what's in the cup -->
@@ -219,29 +223,90 @@
   </header>
   <div class="cafe-wrap">
 
-    <!-- Open a table -->
-    <section class="reserve-card" aria-label="Open a new table">
-      <div class="reserve-head">
-        <h3>Reserve a table</h3>
-        <p>Open a table and invite friends to study alongside you.</p>
-      </div>
-      <div class="reserve-fields">
-        <div class="slip-field">
-          <label class="slip-label" for="room-name">Table name</label>
-          <input class="slip-in" id="room-name" placeholder="Midnight Study Hall…">
-        </div>
-        <div class="slip-field">
-          <label class="slip-label" for="room-username">Your name</label>
-          <input class="slip-in" id="room-username" placeholder="Yuki…">
-        </div>
-        <button class="btn-p reserve-btn" onclick="createRoom()">Open table</button>
+    <!-- Signed out: cafés are for members -->
+    <section class="reserve-card signin-card" id="cafe-signed-out" hidden>
+      <h3>Cafés are for members</h3>
+      <p>Sign in to open your own café, invite friends, and study together around one table.</p>
+      <div class="signin-actions">
+        <button class="btn-p" onclick="openAuthModal('signin')">Sign in</button>
+        <button class="btn-s signin-join" onclick="openAuthModal('signup')">Join the café</button>
       </div>
     </section>
 
-    <h3 class="cafe-section-h"><span>Tables open now</span></h3>
-    <div class="rooms-grid" id="rooms-grid"></div>
+    <div id="cafe-signed-in" hidden>
+      <div id="cafe-invites" hidden></div>
 
-    <p class="cafe-foot">Join a table to brew and study alongside friends. Each person's drink sits on the shared table.</p>
+      <!-- Open a café -->
+      <section class="reserve-card" aria-label="Open a new café">
+        <div class="reserve-head">
+          <h3>Open a café</h3>
+          <p>Name it, choose its atmosphere, then invite your friends in.</p>
+        </div>
+        <div class="slip-field">
+          <label class="slip-label" for="room-name">Café name</label>
+          <input class="slip-in" id="room-name" maxlength="60" placeholder="Midnight Study Hall…">
+        </div>
+        <div class="slip-label vibe-label">Atmosphere</div>
+        <div class="vibe-picker" id="vibe-picker"></div>
+        <div class="reserve-foot">
+          <button class="btn-p reserve-btn" onclick="createCafe()">Open café</button>
+          <div class="join-code">
+            <label class="slip-label" for="join-code">Have a code?</label>
+            <div class="join-code-row">
+              <input class="slip-in" id="join-code" maxlength="12" placeholder="AB12CD" autocomplete="off" onkeydown="if(event.key==='Enter')joinWithCode()">
+              <button class="btn-s join-code-btn" onclick="joinWithCode()">Join</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <h3 class="cafe-section-h"><span>Your cafés</span></h3>
+      <div class="rooms-grid" id="rooms-grid"></div>
+    </div>
+
+    <p class="cafe-foot">Each café has one shared table. Everyone's drink sits in front of them, and the host keeps time for the whole table.</p>
+  </div>
+</div>
+
+<!-- ═══════ INSIDE A CAFÉ ═══════════════════════════════════════════════ -->
+<div id="page-caferoom" class="page">
+  <div class="cr vibe-parisian" id="cafe-room">
+    <div class="cr-bar">
+      <button class="cr-back" onclick="backToCafeList()">‹ All cafés</button>
+      <div class="cr-title">
+        <div class="cr-vibe" id="cr-vibe">Parisian Café</div>
+        <h2 id="cr-name">…</h2>
+        <div class="cr-tagline" id="cr-tagline"></div>
+      </div>
+      <button class="btn-s cr-invite" onclick="openInviteModal()">Invite a friend</button>
+    </div>
+
+    <div class="cr-scene">
+      <div class="cr-wall" aria-hidden="true">
+        <div class="cr-deco cr-deco-l"></div>
+        <div class="cr-window"><div class="cr-sky"></div><div class="cr-weather"></div><div class="cr-frame"></div></div>
+        <div class="cr-deco cr-deco-r"></div>
+        <div class="cr-sign" id="cr-sign"></div>
+      </div>
+      <div class="cr-table">
+        <div class="cr-seats" id="cr-seats"></div>
+      </div>
+    </div>
+
+    <div class="cr-panel">
+      <div class="cr-mine" id="cr-mine"></div>
+      <div class="cr-timer">
+        <div class="study-clock">
+          <div class="clock-label">Shared timer</div>
+          <div class="time-disp" id="cr-time">25:00</div>
+          <div class="steep-bar" aria-hidden="true"><span id="cr-steep"></span></div>
+        </div>
+        <div class="cr-timer-status" id="cr-timer-status"></div>
+        <div class="cr-timer-ctrl" id="cr-timer-ctrl"></div>
+      </div>
+    </div>
+
+    <div class="cr-foot"><button class="cr-leave" id="cr-leave" onclick="leaveCafePermanently()">Leave this café</button></div>
   </div>
 </div>
 
@@ -339,26 +404,38 @@
   </div>
 </div>
 
-<!-- Join room modal -->
-<div class="modal-bg" id="join-modal" onclick="closeJoinModal(event)">
+<!-- Invite friends to a café -->
+<div class="modal-bg" id="invite-modal" onclick="closeInviteModal(event)">
   <div class="modal">
-    <button class="modal-close" onclick="closeJoinModalDirect()" aria-label="Close">×</button>
-    <h3 id="modal-room-name">Join Table</h3>
-    <p id="modal-room-sub">Brew a drink together</p>
+    <button class="modal-close" onclick="closeInviteModal()" aria-label="Close">×</button>
+    <h3>Invite a friend</h3>
+    <p>to <span id="invite-cafe-name"></span></p>
     <div class="f-row">
-      <label class="room-f-label" for="modal-username">Your name</label>
-      <input class="room-f-in" id="modal-username" placeholder="Amélie…">
+      <label class="room-f-label" for="invite-link">Share this link</label>
+      <div class="invite-link-row">
+        <input class="room-f-in" id="invite-link" readonly onclick="this.select()">
+        <button class="btn-p invite-copy" onclick="copyInviteLink()">Copy</button>
+      </div>
+      <div class="invite-code-line">or tell them the code <strong id="invite-code"></strong></div>
     </div>
-    <div class="modal-group">
-      <div class="room-f-label">Your base drink</div>
-      <div class="modal-tags" id="modal-base-chips">
-        <button type="button" class="chip modal-tag sel" data-group="modal-base" data-val="coffee">Coffee</button>
-        <button type="button" class="chip modal-tag" data-group="modal-base" data-val="matcha">Matcha</button>
-        <button type="button" class="chip modal-tag" data-group="modal-base" data-val="tea">Tea</button>
-        <button type="button" class="chip modal-tag" data-group="modal-base" data-val="chocolate">Hot Chocolate</button>
+    <div class="f-row">
+      <label class="room-f-label" for="invite-username">Or invite by username</label>
+      <div class="invite-link-row">
+        <input class="room-f-in" id="invite-username" placeholder="Yuki…" autocomplete="off" onkeydown="if(event.key==='Enter')sendInvite()">
+        <button class="btn-s invite-send" onclick="sendInvite()">Send</button>
       </div>
     </div>
-    <button class="btn-p" style="width:100%;" onclick="joinRoom()">Take a seat</button>
+    <div class="auth-msg" id="invite-msg"></div>
+  </div>
+</div>
+
+<!-- The café's menu -->
+<div class="modal-bg" id="order-modal" onclick="closeOrderMenu(event)">
+  <div class="modal order-modal">
+    <button class="modal-close" onclick="closeOrderMenu()" aria-label="Close">×</button>
+    <h3 id="order-title">Menu</h3>
+    <p id="order-sub"></p>
+    <div class="order-list" id="order-list"></div>
   </div>
 </div>
 

@@ -28,6 +28,14 @@ The project was designed with a warm, nostalgic café aesthetic inspired by vint
 * Realistic book-style interface
 * Page-flipping animations and sound effects
 
+### 🫖 Study Café
+
+* Open your own café and choose its atmosphere: Parisian Café, Rainy Bookstore, Kyoto Tea House, Midnight Jazz Café, Library Reading Room or Fireside Cabin
+* Invite friends with a link, a six-letter code, or their username
+* Step inside and sit at one shared table — brew your own drink or order from the café's menu
+* Study together on one shared timer kept by the host; everyone's drink empties together
+* Finished sessions are saved to Shared Brews in your recipe book
+
 ### 🎵 Background Music
 
 * Optional background music for studying
@@ -48,6 +56,7 @@ The project was designed with a warm, nostalgic café aesthetic inspired by vint
 * CSS3
 * JavaScript (Vanilla JS)
 * Local Storage
+* Supabase (accounts, saved recipes, Study Café with realtime updates)
 
 ---
 
@@ -69,7 +78,16 @@ index.html
 
 in your browser.
 
-No installation or database setup is required.
+No installation is required to brew and study on your own.
+
+### Study Café setup (once)
+
+The Study Café stores cafés, seats and invitations in Supabase. To turn it on:
+
+1. Open your Supabase project → **SQL Editor** → **New query**.
+2. Paste the contents of `supabase/cafes.sql` and click **Run**.
+
+That creates the café tables, the server functions for creating, joining, inviting and the shared timer, and the security rules that keep each café private to its members. It's safe to run again.
 
 ---
 
@@ -81,6 +99,8 @@ brew-and-focus/
 ├── index.html
 ├── style.css
 ├── script.js
+├── supabase/
+│   └── cafes.sql      (Study Café database setup)
 │
 ├── assets/
 │   ├── images/
