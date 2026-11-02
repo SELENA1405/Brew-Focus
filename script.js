@@ -59,10 +59,13 @@ const BC = {
 // ── Build cup SVG (old watercolour art style) ─────────────────────────────
 function buildCupSVG(opts={}) {
   const {
-    size=200, fillFraction=1, steam=true,
+    size:outSize=200, fillFraction=1, steam=true,
     cup=S.cup, base=S.base, addons=S.addons, drink=S.drink
   } = opts;
   const C = BC[base]||BC.coffee;
+  // The cup shapes use fixed pixel offsets, so tiny cups are drawn at a
+  // comfortable size and scaled down rather than squeezed out of shape.
+  const size = outSize < 120 ? 180 : outSize;
   const H = Math.round(size*1.35);
   const cx = size/2;
   const uid = 'c'+Math.random().toString(36).slice(2,7);
@@ -271,7 +274,7 @@ function buildCupSVG(opts={}) {
       <animateTransform attributeName="transform" type="translate" values="0,0;${4-i},${-8}" dur="${dur}" begin="${delay}" repeatCount="indefinite"/>
     </path>`).join('') : '';
 
-  return `<svg width="${size}" height="${H}" viewBox="0 0 ${size} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="${outSize}" height="${Math.round(outSize*1.35)}" viewBox="0 0 ${size} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <clipPath id="${uid}-cup"><path d="${sh.outer}"/></clipPath>
   </defs>
@@ -553,7 +556,7 @@ function saveRooms(){ localStorage.setItem('bf_rooms',JSON.stringify(S.rooms)); 
 function createRoom(){
   const name = document.getElementById('room-name').value.trim();
   const user = document.getElementById('room-username').value.trim();
-  if(!name){ showToast('Give your table a name ☕'); return; }
+  if(!name){ showToast('Give your table a name'); return; }
   if(!user){ showToast('Tell us your name first!'); return; }
   const base = S.modalBase||'coffee';
   const room = {
@@ -569,24 +572,25 @@ function createRoom(){
 function renderRooms(){
   const grid = document.getElementById('rooms-grid');
   if(!S.rooms.length){
-    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1;"><p>No tables open yet — be the first to brew together ☕</p></div>`;
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1;"><p>No tables open yet — be the first to brew together.</p></div>`;
     return;
   }
   grid.innerHTML = S.rooms.map(room=>{
     const memberCups = room.members.map(m=>`
       <div class="member-slot">
-        ${buildCupSVG({size:52,fillFraction:1,steam:false,cup:m.cup||'mug',base:m.base||'coffee',addons:m.addons||[]})}
+        ${buildCupSVG({size:64,fillFraction:1,steam:false,cup:m.cup||'mug',base:m.base||'coffee',addons:m.addons||[]})}
         <span class="member-name">${m.username}</span>
       </div>`).join('');
     const sharedCount = room.recipes?room.recipes.length:0;
     return `<div class="room-card">
       <div class="room-card-name">${room.name}</div>
       <div class="room-card-meta">
-        <span>👥 ${room.members.length} at the table · ${room.created}</span>
-        <span>📖 ${sharedCount} shared recipe${sharedCount!==1?'s':''}</span>
+        <span>${room.members.length} seated</span><i></i>
+        <span>${sharedCount} shared recipe${sharedCount!==1?'s':''}</span>
       </div>
-      <div class="room-table">${memberCups}</div>
-      <button class="room-join-btn" onclick="openJoinModal(${room.id})">Take a seat →</button>
+      <div class="room-card-date">opened ${room.created}</div>
+      <div class="room-table"><div class="room-cups">${memberCups}</div></div>
+      <button class="room-join-btn" onclick="openJoinModal(${room.id})">Take a seat</button>
     </div>`;
   }).join('');
 }
@@ -967,6 +971,9 @@ async function closeRecipeBook(){
   cover.dataset.animating='0';
 }
 
+const ICON_SEARCH='<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12.6 12.6l4.4 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const ICON_CLOSE='<svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
 // Bookmark-ribbon-as-button: tucks the tabs/search/filters away by default,
 // slides them out when tapped — nothing floats outside the book.
 function toggleFilterDrawer(){
@@ -976,14 +983,14 @@ function toggleFilterDrawer(){
   const willOpen = !drawer.classList.contains('open');
   drawer.classList.toggle('open', willOpen);
   btn.setAttribute('aria-expanded', String(willOpen));
-  btn.querySelector('span').textContent = willOpen ? '✕' : '🔍';
+  btn.querySelector('span').innerHTML = willOpen ? ICON_CLOSE : ICON_SEARCH;
   playPageSound('turn');
 }
 function closeFilterDrawer(){
   const drawer=document.getElementById('filter-drawer');
   const btn=document.getElementById('filter-toggle-btn');
   if(drawer) drawer.classList.remove('open');
-  if(btn){ btn.setAttribute('aria-expanded','false'); const s=btn.querySelector('span'); if(s) s.textContent='🔍'; }
+  if(btn){ btn.setAttribute('aria-expanded','false'); const s=btn.querySelector('span'); if(s) s.innerHTML=ICON_SEARCH; }
 }
 
 function setRecipeTab(tab){
@@ -1104,17 +1111,18 @@ function renderRecipes(){
     // add-ons still reflect exactly what was brewed.
     const fullCup=buildCupSVG({size:130,fillFraction:1,steam:true,cup:'glass',base:r.base,drink:drinkKey,addons:r.addons||[]});
     const ings=[drinkLabel,...(r.addons||[]).filter(a=>a!=='ice').map(a=>addonNames[a]||a)].join(', ');
+    const pageNo=S.recipePage*per+i+1;
     return `<div class="recipe-card ${r.favorite?'favorite-page':''}" onclick="changeRecipePage(${per===1||i===1?1:-1})">
       ${r.shared?'<div class="rc-badge">shared brew</div>':''}
       <div class="rc-top">
         <div class="rc-headline">
           <div class="rc-name">${r.name}</div>
-          <div class="rc-meta">
-            <span>📚 ${r.subject}</span>
-            <span>✏️ ${r.task}</span>
-            <span>⏱ ${r.duration} min · ${r.date}</span>
-            ${r.username?`<span>☕ by ${r.username}</span>`:''}
-          </div>
+          <dl class="rc-meta">
+            <div><dt>Subject</dt><dd>${r.subject}</dd></div>
+            <div><dt>Task</dt><dd>${r.task}</dd></div>
+            <div><dt>Steeped</dt><dd>${r.duration} min · ${r.date}</dd></div>
+            ${r.username?`<div><dt>Brewed by</dt><dd>${r.username}</dd></div>`:''}
+          </dl>
         </div>
         <div class="rc-cup-frame">
           <div class="rc-cup-label">${drinkLabel}</div>
@@ -1123,7 +1131,10 @@ function renderRecipes(){
       </div>
       <div class="rc-ingredients">${ings}</div>
       <div class="rc-note">I brewed this while studying ${r.subject}. The cup kept time, and the page kept the feeling.</div>
-      <button class="fav-btn ${r.favorite?'':'off'}" onclick="toggleFavorite('${r.id}',event)" title="Favorite recipe">★</button>
+      <div class="rc-foot">
+        <span class="rc-folio">No. ${pageNo}</span>
+        <button class="fav-btn ${r.favorite?'':'off'}" onclick="toggleFavorite('${r.id}',event)" title="Favorite recipe" aria-label="Favorite recipe">★</button>
+      </div>
     </div>`;
   }).join('');
   if(spread.length===1 && per===2){
@@ -1146,10 +1157,28 @@ const FLIP_STRIPS=5;
 
 // A detached copy of a page, pinned to an exact size so it can be clipped
 // into strips without reflowing.
+// Gives every id inside a copied element a fresh name, and points the copy's
+// own references (e.g. the cup's clip-path="url(#…)") at the renamed ids.
+// Stripping ids instead would break those references — the liquid would
+// lose its glass-shaped clip and show as a plain rectangle mid-animation.
+let cloneIdSeq=0;
+function uniquifyIds(root){
+  const map={}; const n=++cloneIdSeq;
+  root.querySelectorAll('[id]').forEach(el=>{ const nid=`${el.id}-k${n}`; map[el.id]=nid; el.id=nid; });
+  if(!n || !Object.keys(map).length) return;
+  root.querySelectorAll('*').forEach(el=>{
+    for(const at of [...el.attributes]){
+      let v=at.value;
+      if(v.includes('url(#')) v=v.replace(/url\(#([^)]+)\)/g,(m,id)=>map[id]?`url(#${map[id]})`:m);
+      if((at.name==='href'||at.name==='xlink:href') && v.startsWith('#') && map[v.slice(1)]) v='#'+map[v.slice(1)];
+      if(v!==at.value) el.setAttribute(at.name, v);
+    }
+  });
+}
 function paperClone(card, w, h, left){
   const c=card.cloneNode(true);
   ['id','onclick','onkeydown','tabindex','role'].forEach(a=>c.removeAttribute(a));
-  c.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+  uniquifyIds(c);
   Object.assign(c.style,{position:'absolute', top:'0', left:(left||0)+'px', width:w+'px', height:h+'px',
     minHeight:'0', margin:'0', transform:'none', transition:'none', boxSizing:'border-box',
     display:'', visibility:'', filter:'none', transformStyle:'flat'});
