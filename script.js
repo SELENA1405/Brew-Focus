@@ -624,16 +624,17 @@ const CAFE_VIBES = {
       {key:'black-coffee', name:'Archive Roast',       note:'deep and steady'},
       {key:'matcha-latte', name:'Margin Notes Matcha', note:'calm focus'},
     ]},
-  cabin: { label:'Fireside Cabin', tagline:'crackling logs and snow outside', ambience:'fireplace',
+  beach: { label:'Beach Café', tagline:'sea breeze and red umbrellas', ambience:'ocean-waves',
     menu:[
-      {key:'hot-chocolate', name:'Snowfall Cocoa',   note:'marshmallows and cream'},
-      {key:'caramel-latte', name:'Ember Caramel',    note:'toasty and sweet'},
-      {key:'mocha',         name:'Lodge Mocha',      note:'warm to the fingertips'},
-      {key:'honey-tea',     name:'Hearth Honey Tea', note:'soothing by the fire'},
+      {key:'iced-americano', name:'Seaside Cold Brew',    note:'over ice, by the water'},
+      {key:'caramel-latte',  name:'Salted Caramel Latte', note:'sweet with a hint of sea salt'},
+      {key:'honey-tea',      name:'Sunset Honey Tea',     note:'golden and gentle'},
+      {key:'matcha-latte',   name:'Coconut Matcha',       note:'green, creamy, breezy'},
     ]},
 };
 const VIBE_KEYS = Object.keys(CAFE_VIBES);
-const vibeOf = key => CAFE_VIBES[key] || CAFE_VIBES.parisian;
+// (cafés opened as the old Fireside Cabin are shown as the Beach Café)
+const vibeOf = key => CAFE_VIBES[key==='cabin' ? 'beach' : key] || CAFE_VIBES.parisian;
 const myCafeName = () => S.user?.username || (S.user?.email||'').split('@')[0] || 'Friend';
 
 // ── Data layer: every Supabase call the café makes ──
@@ -690,7 +691,7 @@ const CafeDB = {
 };
 
 // ── The café list (Study Café page) ──
-let selectedVibe = 'parisian';
+let selectedVibe = 'midnight';
 let unsubInvites = null;
 
 function renderVibePicker(){
@@ -890,7 +891,8 @@ function renderCafeRoom(){
   const c=S.room?.cafe; if(!c) return;
   const v=vibeOf(c.vibe);
   const room=document.getElementById('cafe-room');
-  room.className = 'cr vibe-'+(CAFE_VIBES[c.vibe]?c.vibe:'parisian');
+  const vk = c.vibe==='cabin' ? 'beach' : c.vibe;
+  room.className = 'cr vibe-'+(CAFE_VIBES[vk]?vk:'parisian');
   // the floor around the room takes on the café's colour too
   document.getElementById('page-caferoom').style.background = getComputedStyle(room).getPropertyValue('--cr-page').trim() || '#1a0f08';
   document.getElementById('cr-vibe').textContent = v.label;
@@ -933,8 +935,8 @@ const vicon = (name, size=16) => `<svg class="vicon" viewBox="0 0 20 20" width="
 // as round, seen from a little above. You always sit at the front.
 const TABLE = { cx:500, cy:236, rx:270, ry:90, chairRx:372, chairRy:142, cupRx:178, cupRy:62, w:1000, h:440 };
 const TABLE_STYLE = {   // tabletop finish and centrepiece for each café type
-  parisian:'marble', bookstore:'wood', kyoto:'wood', midnight:'lacquer', library:'leather', cabin:'wood' };
-const CENTREPIECE = { parisian:'flowers', bookstore:'books', kyoto:'ikebana', midnight:'candle', library:'lamp', cabin:'lantern' };
+  parisian:'marble', bookstore:'wood', kyoto:'wood', midnight:'lacquer', library:'leather', beach:'linen' };
+const CENTREPIECE = { parisian:'flowers', bookstore:'books', kyoto:'ikebana', midnight:'candle', library:'lamp', beach:'carafe' };
 
 function seatAngles(n){ return Array.from({length:n}, (_,i)=> Math.PI/2 + i*2*Math.PI/n); }
 function seatPoint(a, rx, ry){ return { x:TABLE.cx + rx*Math.cos(a), y:TABLE.cy + ry*Math.sin(a) }; }
@@ -969,6 +971,7 @@ function centrepieceSVG(kind, at){
   const glow = `<ellipse cx="${x}" cy="${y-30}" rx="70" ry="44" fill="url(#cp-glow)"/>`;
   switch(kind){
     case 'candle': return glow+`<rect x="${x-7}" y="${y-38}" width="14" height="34" rx="2" fill="#efe3c6"/><path d="M${x},${y-50} C${x+6},${y-42} ${x+4},${y-38} ${x},${y-37} C${x-4},${y-38} ${x-6},${y-42} ${x},${y-50}z" fill="#f6c45a"/><ellipse cx="${x}" cy="${y-3}" rx="20" ry="6" fill="#b48a3a"/>`;
+    case 'carafe': return `<path d="M${x-12},${y-6} C${x-18},${y-24} ${x-14},${y-36} ${x-6},${y-42} L${x-6},${y-56} L${x+6},${y-56} L${x+6},${y-42} C${x+14},${y-36} ${x+18},${y-24} ${x+12},${y-6}z" fill="rgba(210,235,245,0.65)" stroke="#8aa7b4" stroke-width="1.5"/><path d="M${x-12},${y-20} C${x-6},${y-17} ${x+6},${y-23} ${x+13},${y-20} L${x+12},${y-6} L${x-12},${y-6}z" fill="rgba(240,170,90,0.55)"/><circle cx="${x+30}" cy="${y-8}" r="8" fill="#f2cf3a" stroke="#c9a420"/><circle cx="${x+44}" cy="${y-4}" r="7" fill="#f2cf3a" stroke="#c9a420"/><path d="M${x+34},${y-16} c4,-6 10,-6 12,-2" stroke="#5f7a4a" stroke-width="2" fill="none"/>`;
     case 'lantern': return glow+`<path d="M${x-14},${y-6} h28 l-3,-34 h-22z" fill="rgba(255,200,110,0.55)" stroke="#2e1a0c" stroke-width="3"/><path d="M${x-10},${y-40} h20 M${x},${y-40} v-10" stroke="#2e1a0c" stroke-width="3" fill="none"/><ellipse cx="${x}" cy="${y-22}" rx="5" ry="8" fill="#ffd27a"/>`;
     case 'lamp': return glow+`<path d="M${x-26},${y-44} h52 l-8,-14 h-36z" fill="#2f6a4a" stroke="#173025" stroke-width="2"/><path d="M${x},${y-44} v38" stroke="#b48a3a" stroke-width="4"/><ellipse cx="${x}" cy="${y-4}" rx="22" ry="6" fill="#b48a3a"/>`;
     case 'books': return `<rect x="${x-34}" y="${y-14}" width="68" height="12" rx="2" fill="#7a2e3a"/><rect x="${x-28}" y="${y-25}" width="58" height="11" rx="2" fill="#2f5a4a"/><rect x="${x-31}" y="${y-35}" width="54" height="10" rx="2" fill="#c7a86d"/><path d="M${x-22},${y-8} h50" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>`;
@@ -977,6 +980,15 @@ function centrepieceSVG(kind, at){
       <path d="M${x},${y-34} C${x-6},${y-52} ${x-16},${y-60} ${x-22},${y-66} M${x},${y-34} C${x+2},${y-54} ${x+10},${y-62} ${x+18},${y-70} M${x},${y-34} v-36" stroke="#5f7a4a" stroke-width="2" fill="none"/>
       <circle cx="${x-22}" cy="${y-68}" r="7" fill="#c8453a"/><circle cx="${x+18}" cy="${y-72}" r="6" fill="#e6a0a8"/><circle cx="${x}" cy="${y-74}" r="7" fill="#f3d58a"/>`;
   }
+}
+
+function tableclothSVG(){
+  const {cx,cy,rx,ry}=TABLE, drop=78, n=18;
+  let hem=''; for(let i=0;i<n;i++){ const x0=cx-rx+6+i*(2*rx-12)/n, w=(2*rx-12)/n; hem+=` q${(w/2).toFixed(1)},14 ${w.toFixed(1)},0`; }
+  return `<path d="M${cx-rx},${cy} A${rx},${ry} 0 0 0 ${cx+rx},${cy} L${cx+rx-6},${cy+drop} L${cx-rx+6},${cy+drop} Z" fill="#f2ecdf"/>
+    <path d="M${cx-rx+6},${cy+drop} ${hem}" fill="#f7f2e7" stroke="#d8cdb6" stroke-width="1.2"/>
+    <path d="M${cx-rx+40},${cy+20} L${cx-rx+46},${cy+drop} M${cx-80},${cy+ry-4} L${cx-82},${cy+drop+4} M${cx+90},${cy+ry-6} L${cx+94},${cy+drop+4} M${cx+rx-40},${cy+20} L${cx+rx-46},${cy+drop}" stroke="rgba(150,130,100,0.25)" stroke-width="3" fill="none"/>
+    <path d="M${cx-rx+8},${cy+drop-10} H${cx+rx-8}" stroke="#e2d6bd" stroke-width="2" stroke-dasharray="2 5"/>`;
 }
 
 function tableSVG(seatCount, vibe){
@@ -995,6 +1007,7 @@ function tableSVG(seatCount, vibe){
       <pattern id="top-wood" width="140" height="22" patternUnits="userSpaceOnUse"><rect width="140" height="22" fill="var(--table)"/><path d="M0 6 C35 2 70 10 140 5 M0 15 C40 19 90 11 140 17" stroke="var(--table-2)" stroke-opacity="0.45" stroke-width="1.4" fill="none"/></pattern>
       <pattern id="top-marble" width="260" height="120" patternUnits="userSpaceOnUse"><rect width="260" height="120" fill="#efe9df"/><path d="M-10 30 C40 10 70 60 130 40 S220 70 270 30 M20 100 C70 80 120 110 170 85 S240 90 270 110" stroke="#b9ada0" stroke-width="1.6" fill="none" opacity="0.7"/><path d="M60 0 C80 30 60 60 90 120" stroke="#cfc4b6" stroke-width="1" fill="none"/></pattern>
       <pattern id="top-lacquer" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#1a1420"/></pattern>
+      <pattern id="top-linen" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#f7f2e7"/><path d="M0 6h12M6 0v12" stroke="#ece4d2" stroke-width="0.8"/></pattern>
       <pattern id="top-leather" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#2f5a40"/><circle cx="2" cy="2" r="0.7" fill="#244834"/><circle cx="6" cy="6" r="0.7" fill="#3a6a4c"/></pattern>
     </defs>
     <ellipse cx="${cx}" cy="${cy+196}" rx="250" ry="26" fill="rgba(0,0,0,0.32)"/>
@@ -1003,6 +1016,7 @@ function tableSVG(seatCount, vibe){
     <path d="M${cx-8},${cy+30} C${cx-6},${cy+90} ${cx-10},${cy+150} ${cx-14},${cy+184}" stroke="rgba(255,255,255,0.12)" stroke-width="5" fill="none"/>
     <ellipse cx="${cx}" cy="${cy+190}" rx="92" ry="16" fill="var(--table-2)"/>
     <ellipse cx="${cx}" cy="${cy+16}" rx="${rx}" ry="${ry}" fill="var(--table-2)"/>
+    ${finish==='linen' ? tableclothSVG() : ''}
     <ellipse class="cr-tabletop" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#top-${finish})"/>
     <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#top-sheen)"/>
     <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="var(--table-rim)" stroke-width="4"/>
@@ -1020,9 +1034,10 @@ function renderSeats(force){
   const frac = (running || remaining<total) ? remaining/total : 1;
   const key=Math.round(frac*50);
   const seatCount = Math.min(8, Math.max(4, c.members.length + (c.members.length<8 ? 1 : 0)));
-  const layoutKey = `${c.vibe}|${seatCount}`;
+  const vibe = c.vibe==='cabin' ? 'beach' : c.vibe;
+  const layoutKey = `${vibe}|${seatCount}`;
   const wrap=document.getElementById('cr-tablewrap');
-  if(force || wrap.dataset.layout!==layoutKey){ wrap.querySelector('.cr-furniture-slot').innerHTML = tableSVG(seatCount, c.vibe); wrap.dataset.layout=layoutKey; }
+  if(force || wrap.dataset.layout!==layoutKey){ wrap.querySelector('.cr-furniture-slot').innerHTML = tableSVG(seatCount, vibe); wrap.dataset.layout=layoutKey; }
   if(!force && key===S.room.lastFrac) return;
   S.room.lastFrac=key;
   const me=c.members.find(m=>m.user_id===S.user.id);
@@ -1041,15 +1056,21 @@ function renderSeats(force){
     const pos=`left:${(p.x/TABLE.w*100).toFixed(2)}%; top:${(p.y/TABLE.h*100).toFixed(2)}%; --s:${s.toFixed(3)}; z-index:${Math.round(p.y)};`;
     if(!m) return `<div class="cr-seat open" style="${pos}" title="An empty chair — invite a friend"></div>`;
     const here=S.room.presence.has(m.user_id);
-    const cup = m.drink
+    const mine=m.user_id===S.user.id;
+    const cupArt = m.drink
       ? buildCupSVG({size:104, fillFraction:frac, steam: frac>0.08, cup:m.drink.cup||'mug', base:m.drink.base||'coffee', drink:m.drink.drink, addons:m.drink.addons||[]})
-      : `<div class="seat-empty" aria-hidden="true"></div>`;
-    return `<div class="cr-seat ${here?'here':'away'} ${m.user_id===S.user.id?'me':''}" style="${pos}">
+      : '';
+    // Your own place: tap the little menu card (or your cup) to order from your seat.
+    const cup = mine
+      ? (m.drink ? `<button type="button" class="cr-mycup" onclick="openOrderMenu()" title="Order something else" aria-label="Order something else">${cupArt}</button>`
+                 : `<button type="button" class="seat-order" onclick="openOrderMenu()" aria-label="Order a drink"><span class="seat-order-card">${vicon('menu',18)}<span>Menu</span></span><span class="seat-order-hint">tap to order</span></button>`)
+      : (m.drink ? cupArt : `<div class="seat-empty" aria-hidden="true"></div>`);
+    return `<div class="cr-seat ${here?'here':'away'} ${mine?'me':''}" style="${pos}">
       <div class="cr-cup">${cup}</div>
       <div class="cr-card">
         <span class="cr-dot" title="${here?'Here now':'Away'}"></span><span class="cr-who">${esc(m.username)}</span>${m.user_id===c.owner_id?'<span class="cr-host">host</span>':''}
       </div>
-      <div class="cr-drinkname">${m.drink ? esc(m.drink.label||'') : 'no drink yet'}</div>
+      ${m.drink ? `<div class="cr-drinkname">${esc(m.drink.label||'')}</div>` : (mine ? '' : `<div class="cr-drinkname">deciding\u2026</div>`)}
     </div>`;
   }).join('');
   document.getElementById('cr-seats').innerHTML = html;

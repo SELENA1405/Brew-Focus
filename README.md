@@ -30,7 +30,7 @@ The project was designed with a warm, nostalgic café aesthetic inspired by vint
 
 ### 🫖 Study Café
 
-* Open your own café and choose its atmosphere: Parisian Café, Rainy Bookstore, Kyoto Tea House, Midnight Jazz Café, Library Reading Room or Fireside Cabin
+* Open your own café and choose its atmosphere: Parisian Café, Rainy Bookstore, Kyoto Tea House, Midnight Jazz Café, Library Reading Room or Beach Café
 * Invite friends with a link, a six-letter code, or their username
 * Step inside and sit at one shared table — brew your own drink or order from the café's menu
 * Study together on one shared timer kept by the host; everyone's drink empties together
