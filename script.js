@@ -610,10 +610,16 @@ function resetRecipeBookCover(){
   const chrome=document.getElementById('book-reader-chrome');
   const bookObject=document.querySelector('.book-object');
   if(content){ content.classList.remove('is-open','content-ready'); }
-  if(cover){ cover.classList.remove('opening'); cover.style.display=''; delete cover.dataset.animating; }
+  if(cover){ cover.style.display=''; delete cover.dataset.animating; }
   if(openView){ openView.classList.remove('shown'); openView.style.display='none'; }
   if(chrome){ chrome.classList.remove('shown'); chrome.style.display='none'; }
-  if(bookObject){ bookObject.classList.remove('sliding-solo','sliding-with-pages'); bookObject.style.setProperty('--book-shift','0px'); delete bookObject.dataset.shift; }
+  if(bookObject){
+    bookObject.getAnimations().forEach(a=>a.cancel());
+    bookObject.classList.remove('sliding-solo','sliding-with-pages','is-open'); bookObject.style.setProperty('--book-shift','0px');
+    bookObject.style.transformOrigin=''; delete bookObject.dataset.shift;
+  }
+  document.querySelectorAll('.cover-flip-stage').forEach(el=>el.remove());
+  if(cover) cover.style.visibility='';
   closeFilterDrawer();
   const byline=document.getElementById('cover-byline-name');
   if(byline) byline.textContent = S.user?.username || S.username || 'You';
@@ -629,112 +635,303 @@ function waitForTransitionEnd(el, propertyName, timeoutMs){
     setTimeout(()=>{ if(!done){ el.removeEventListener('transitionend', handler); resolve(); } }, timeoutMs);
   });
 }
-// Measures how wide the open spread will be without ever showing it —
-// transitions are disabled for an instant so nothing flickers.
-function measureOpenWidth(content){
-  const prevTransition = content.style.transition;
-  content.style.transition = 'none';
-  content.classList.add('is-open');
-  const openW = content.getBoundingClientRect().width;
-  content.classList.remove('is-open');
-  void content.offsetWidth;
-  content.style.transition = prevTransition;
-  return openW;
-}
-
-async function openRecipeBook(){
+// Puts the book straight into its open or closed resting state, no motion.
+function setBookState(open, shift){
   const cover=document.getElementById('book-cover');
   const openView=document.getElementById('book-open-view');
   const content=document.getElementById('book-content');
   const chrome=document.getElementById('book-reader-chrome');
   const bookObject=document.querySelector('.book-object');
-  if(!cover || !bookObject || cover.dataset.animating==='1') return;
+  const drawer=document.getElementById('filter-drawer');
+  const els=[bookObject, content, openView, chrome, drawer].filter(Boolean);
+  els.forEach(el=>el.style.transition='none');
+  cover.style.display = open ? 'none' : '';
+  openView.style.display = open ? 'block' : 'none';
+  openView.classList.toggle('shown', open);
+  content.classList.toggle('is-open', open);
+  content.classList.toggle('content-ready', open);
+  bookObject.classList.toggle('is-open', open);
+  bookObject.style.setProperty('--book-shift', (shift||0)+'px');
+  if(chrome){ chrome.style.display = open ? 'block' : 'none'; chrome.classList.toggle('shown', open); }
+  void bookObject.offsetWidth;
+  els.forEach(el=>el.style.transition='');
+}
+
+// Snapshot of the open spread (call while the book is open): its size, and
+// a copy of it to paint onto the turning cover and the page beneath it.
+function snapshotSpread(){
+  const shell=document.querySelector('.flipbook-shell');
+  const grid=document.getElementById('recipe-grid');
+  const cols=getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length;
+  return {w:shell.offsetWidth, h:shell.offsetHeight, twoCol: cols>=2, clone: shell.cloneNode(true)};
+}
+
+// Geometry of the closed book: spine width, cover size, and how far the book
+// must slide right so its spine sits at the centre of the scene — where the
+// cover hinges open and where the open spread's binding will be.
+//
+// On wide screens the closed book is exactly the right half of the open
+// book (see --page-w / --book-h in the CSS), so as the cover swings it
+// reveals the real right-hand page, its back carries the real left-hand
+// page, and once it lands the picture IS the open spread — one book, no
+// swap. On narrow screens (stacked pages, or no room on the left) the cover
+// swings partway and fades instead.
+function closedBookGeometry(scene, bookObject, content, cover, spread){
+  const spineEl = bookObject.querySelector('.book-spine-fixed');
+  const spineW = spineEl ? spineEl.offsetWidth : 0;
+  const W = content.offsetWidth;
+  const face = cover.querySelector('.cover-face') || cover;
+  const objW = bookObject.offsetWidth;
+  const sceneW = scene.clientWidth;
+  const shiftFull = objW/2 - spineW;
+  const sceneLeft = scene.getBoundingClientRect().left;
+  const fits = sceneLeft + sceneW/2 - W >= 8;
+  const spreadMode = fits && !!spread && spread.twoCol && Math.abs(spread.w - 2*W) <= 6;
+  const H = spreadMode ? spread.h : face.offsetHeight;
+  return {spineW, W, H, front: spreadMode ? cover : face, spread, spreadMode, objW, sceneW,
+          left:bookObject.offsetLeft, top:bookObject.offsetTop, fits, shift: fits ? shiftFull : 0};
+}
+
+// Builds the overlay that draws the cover swinging: the page underneath,
+// the shadow the cover casts on it, and the curling cover leaf itself. It
+// sits in the scene (outside the book's clipping) with the book's own tilt
+// and shift, so it lines up exactly with the real cover.
+function buildCoverStage(scene, g){
+  const stage = makeDiv('cover-flip-stage');
+  stage.setAttribute('aria-hidden','true');
+  Object.assign(stage.style,{
+    left:g.left+'px', top:g.top+'px', width:g.objW+'px', height:g.H+'px',
+    transform:`rotate(-0.5deg) translateX(${g.shift}px)`
+  });
+  // Perspective lives on an untransformed inner layer: Chrome stops hiding
+  // back faces when perspective shares an element with a 2D transform.
+  const space = makeDiv('cover-flip-space');
+  space.style.perspectiveOrigin = `${g.spineW}px ${g.H/2}px`;
+  stage.appendChild(space);
+
+  let under, back, backW = g.W;
+  if(g.spreadMode){
+    // Right half of the real spread under the cover; left half on its back.
+    under = placeEl(makeDiv('cover-under-clip'), g.spineW, 0, g.W, g.H);
+    under.appendChild(paperClone(g.spread.clone, 2*g.W, g.H, -g.W));
+    back = g.spread.clone; backW = 2*g.W;
+  } else {
+    under = placeEl(makeDiv('cover-under-page'), g.spineW, 0, g.W, g.H);
+    back = makeDiv('cover-inside');
+  }
+  const tableShadow = placeEl(makeDiv('cover-table-shadow'), g.spineW - g.W, 0, g.W, g.H);
+  const cast = placeEl(makeDiv('flip-cast-shadow'), g.spineW, 0, g.W, g.H);
+  cast.style.background = 'linear-gradient(to right, rgba(25,12,4,0.6), rgba(25,12,4,0.2) 40%, rgba(25,12,4,0) 80%)';
+  const parts = buildCurlLeaf({hinge:g.spineW, y:0, W:g.W, H:g.H, gap:0, dir:1, front:g.front, back, backW});
+  // The leaf sits in its own full-size layer (carrying the perspective) so
+  // it can fade without flattening.
+  const fader = makeDiv('cover-flip-space');
+  fader.style.perspectiveOrigin = space.style.perspectiveOrigin;
+  fader.appendChild(parts.leaf);
+  space.append(tableShadow, under, cast, fader);
+  scene.appendChild(stage);
+  return {stage, cast, parts, fader, tableShadow};
+}
+function coverSwingAnimations(c, g, duration){
+  const anims = animateCurl(c.parts, {dir:1, duration, angle: g.fits ? 180 : 100, fadeEl: g.fits ? null : c.fader, lift:22});
+  if(g.fits) anims.push(c.tableShadow.animate([
+    {opacity:0}, {opacity:0, offset:0.55}, {opacity:1}
+  ], {duration, easing:'ease-in', fill:'both'}));
+  anims.push(c.cast.animate([
+    {opacity:0}, {opacity:1, offset:0.25}, {opacity:0.5, offset:0.6}, {opacity:0}
+  ], {duration, easing:'ease-out', fill:'both'}));
+  return anims;
+}
+
+// Narrow-screen fallback only: the half-open book drawn by the overlay and
+// the real (stacked) spread have different sizes, so both follow the same
+// outline while they cross-fade.
+function settleTransforms(bookObject, stage, g){
+  const sr = bookObject.getBoundingClientRect();
+  const st = stage.getBoundingClientRect();
+  const scx = st.left + st.width/2, scy = st.top + st.height/2;      // stage centre (its transform origin)
+  const hingeX = scx - g.objW/2 + g.spineW;
+  const ow = g.fits ? 2*g.W : g.W, oh = g.H;
+  const ocx = g.fits ? hingeX : hingeX + g.W/2, ocy = scy;            // overlay footprint centre
+  const rcx = sr.left + sr.width/2, rcy = sr.top + sr.height/2;      // spread centre
+  const kx = ow/sr.width, ky = oh/sr.height;
+  bookObject.style.transformOrigin = 'center center';
+  const base = stage.style.transform;
+  // Scale about the overlay's centre, expressed relative to the stage's
+  // untransformed origin (its slide right isn't applied yet at that point).
+  const cx = ocx-scx+g.shift, cy = ocy-scy;
+  return {
+    bookSmall: `translate(${ocx-rcx}px, ${ocy-rcy}px) rotate(-0.5deg) scale(${kx.toFixed(4)}, ${ky.toFixed(4)})`,
+    bookFull: 'rotate(-0.5deg)',
+    stageSmall: base,
+    stageFull: `translate(${rcx-ocx}px, ${rcy-ocy}px) translate(${cx}px, ${cy}px) scale(${(1/kx).toFixed(4)}, ${(1/ky).toFixed(4)}) translate(${-cx}px, ${-cy}px) ${base}`
+  };
+}
+
+// The reader's bits that aren't printed on the page — bookmark ribbon and
+// page controls — slip in after the book is open and out before it closes.
+function readerExtras(show){
+  const bm=document.getElementById('filter-toggle-btn');
+  const chrome=document.getElementById('book-reader-chrome');
+  const out=[];
+  const hidden={opacity:0, transform:'translateX(-50%) translateY(-14px)'};
+  const shown={opacity:1, transform:'translateX(-50%) translateY(0)'};
+  if(bm) out.push(bm.animate(show ? [hidden, shown] : [shown, hidden],
+    {duration: show ? 380 : 220, easing:'cubic-bezier(0.2,0.8,0.2,1)', fill: show ? 'none' : 'forwards'}));
+  if(chrome) out.push(chrome.animate(show ? [{opacity:0},{opacity:1}] : [{opacity:1},{opacity:0}],
+    {duration: show ? 400 : 220, fill: show ? 'none' : 'forwards'}));
+  return out;
+}
+
+const COVER_SWING_MS = 1400;
+const SETTLE_MS = 750;
+
+async function openRecipeBook(){
+  const cover=document.getElementById('book-cover');
+  const content=document.getElementById('book-content');
+  const bookObject=document.querySelector('.book-object');
+  const scene=document.querySelector('.book-shelf-scene');
+  if(!cover || !bookObject || !scene || cover.dataset.animating==='1') return;
   cover.dataset.animating='1';
   playPageSound('open');
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduceMotion || !Element.prototype.animate){
+    setBookState(true, 0); renderRecipes(); cover.dataset.animating='0'; return;
+  }
 
-  const closedW = content.getBoundingClientRect().width;
-  const openW = measureOpenWidth(content);
-  const shift = Math.max(0, (openW - closedW) / 2);
-  bookObject.dataset.shift = String(shift);
-
-  // Stage 1 — slide the whole closed book to the right, making room on the
-  // left for the pages it's about to reveal.
-  bookObject.classList.add('sliding-solo');
-  bookObject.style.setProperty('--book-shift', shift+'px');
-  await waitForTransitionEnd(bookObject, 'transform', 650);
-  bookObject.classList.remove('sliding-solo');
-
-  // Stage 2 — the cover swings open at its own fixed size, book still
-  // shifted right, so it never stretches mid-turn.
-  cover.classList.add('opening');
-  await waitForTransitionEnd(cover, 'transform', 1100);
-
-  // Stage 3 — swap to the pages (still narrow, clipped by the overflow),
-  // then widen the window leftward while sliding the whole book back to
-  // center at the same time. Because both use the identical duration and
-  // easing, the right edge stays pinned throughout — it reads as one book
-  // unfolding fully into a centered spread, not two separate motions.
-  cover.style.display='none';
-  openView.style.display='block';
-  void content.offsetWidth;
-  bookObject.classList.add('sliding-with-pages');
-  requestAnimationFrame(()=>{
-    content.classList.add('is-open');
-    content.classList.add('content-ready');
-    bookObject.style.setProperty('--book-shift', '0px');
-    openView.classList.add('shown');
-    if(chrome){ chrome.style.display='block'; requestAnimationFrame(()=>chrome.classList.add('shown')); }
-  });
+  // Lay out the open spread for an instant (never painted) to snapshot it.
+  setBookState(true, 0);
   renderRecipes();
-  await waitForTransitionEnd(content, 'width', 950);
-  bookObject.classList.remove('sliding-with-pages');
+  const spread = snapshotSpread();
+  setBookState(false, 0);
+  const g = closedBookGeometry(scene, bookObject, content, cover, spread);
+  bookObject.dataset.shift = String(g.shift);
 
+  // Stage 1 — slide the closed book right until its spine sits at the
+  // centre, where the binding of the open spread will be.
+  if(g.shift){
+    bookObject.classList.add('sliding-solo');
+    bookObject.style.setProperty('--book-shift', g.shift+'px');
+    await waitForTransitionEnd(bookObject, 'transform', 650);
+    bookObject.classList.remove('sliding-solo');
+  }
+
+  // Stage 2 — the cover lifts from the spine, curls, and lays open to the
+  // left, revealing the pages.
+  const c = buildCoverStage(scene, g);
+  cover.style.visibility='hidden';
+  const swing = coverSwingAnimations(c, g, COVER_SWING_MS);
+  await swing[0].finished.catch(()=>{});
+
+  if(g.spreadMode){
+    // The overlay now shows exactly the open spread, in exactly its place:
+    // swap in the real one underneath it — nothing visibly changes.
+    setBookState(true, 0);
+    cover.style.visibility='';
+    c.stage.remove();
+    readerExtras(true);
+  } else {
+    // Narrow screens: the real (stacked) spread grows out of the overlay's
+    // footprint as the overlay fades.
+    setBookState(true, 0);
+    cover.style.visibility='';
+    const t = settleTransforms(bookObject, c.stage, g);
+    const ease = 'cubic-bezier(0.35,0,0.15,1)';
+    const grow = bookObject.animate([
+      {transform:t.bookSmall, opacity:0},
+      {opacity:0, offset:0.1},
+      {opacity:1, offset:0.6},
+      {transform:t.bookFull, opacity:1}
+    ], {duration:SETTLE_MS, easing:ease});
+    c.stage.animate([
+      {transform:t.stageSmall, opacity:1},
+      {opacity:1, offset:0.1},
+      {opacity:0, offset:0.6},
+      {transform:t.stageFull, opacity:0}
+    ], {duration:SETTLE_MS, easing:ease, fill:'forwards'});
+    await grow.finished.catch(()=>{});
+    bookObject.style.transformOrigin='';
+    c.stage.remove();
+  }
   cover.dataset.animating='0';
 }
 
 async function closeRecipeBook(){
   const cover=document.getElementById('book-cover');
-  const openView=document.getElementById('book-open-view');
   const content=document.getElementById('book-content');
   const chrome=document.getElementById('book-reader-chrome');
   const bookObject=document.querySelector('.book-object');
-  if(!cover || !bookObject || cover.dataset.animating==='1') return;
+  const scene=document.querySelector('.book-shelf-scene');
+  if(!cover || !bookObject || !scene || cover.dataset.animating==='1') return;
   cover.dataset.animating='1';
   playPageSound('close');
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduceMotion || !Element.prototype.animate){
+    closeFilterDrawer(); setBookState(false, 0); cover.dataset.animating='0'; return;
+  }
+
+  // Tuck away the bookmark and page controls first.
+  const extras = readerExtras(false);
+  await Promise.all(extras.map(a=>a.finished.catch(()=>{})));
   closeFilterDrawer();
-  const shift = parseFloat(bookObject.dataset.shift || '0');
+  setBookState(true, 0); // snaps the drawer shut without its slide
 
-  if(chrome) chrome.classList.remove('shown');
-  openView.classList.remove('shown');
+  // Snapshot the spread as it is now, and measure the closed book.
+  const spread = snapshotSpread();
+  setBookState(false, 0);
+  const g = closedBookGeometry(scene, bookObject, content, cover, spread);
+  setBookState(true, 0);
+  bookObject.dataset.shift = String(g.shift);
 
-  // Stage 1 (mirrors opening's Stage 3, reversed) — fold the pages shut,
-  // narrowing the window while sliding the whole book toward the right at
-  // the exact same pace, so the right edge stays pinned exactly as it did
-  // opening up.
-  bookObject.classList.add('sliding-with-pages');
-  bookObject.style.setProperty('--book-shift', shift+'px');
-  content.classList.remove('content-ready');
-  content.classList.remove('is-open');
-  await waitForTransitionEnd(content, 'width', 950);
-  bookObject.classList.remove('sliding-with-pages');
+  const c = buildCoverStage(scene, g);
+  const swing = coverSwingAnimations(c, g, COVER_SWING_MS);
+  swing.forEach(a=>{ a.pause(); a.currentTime = COVER_SWING_MS; }); // cover lying open
 
-  // Stage 2 (mirrors opening's Stage 2, reversed) — pages are gone, the
-  // cover is back (already turned away, so nothing jumps) and swings shut
-  // at its own fixed size, book still shifted right the whole time.
-  openView.style.display='none';
-  if(chrome) chrome.style.display='none';
-  cover.style.display='';
-  void cover.offsetHeight;
-  requestAnimationFrame(()=>{ cover.classList.remove('opening'); });
-  await waitForTransitionEnd(cover, 'transform', 1100);
+  if(g.spreadMode){
+    // The overlay is a pixel match for the open spread: swap to the closed
+    // book (cover hidden beneath the overlay) with no visible change.
+    cover.style.visibility='hidden';
+    setBookState(false, g.shift);
+  } else {
+    // Narrow screens: the stacked spread shrinks into the half-open book.
+    c.stage.style.opacity='0';
+    const t = settleTransforms(bookObject, c.stage, g);
+    const ease = 'cubic-bezier(0.65,0,0.85,1)';
+    const shrink = bookObject.animate([
+      {transform:t.bookFull, opacity:1},
+      {opacity:1, offset:0.4},
+      {opacity:0, offset:0.9},
+      {transform:t.bookSmall, opacity:0}
+    ], {duration:SETTLE_MS, easing:ease, fill:'forwards'});
+    c.stage.animate([
+      {transform:t.stageFull, opacity:0},
+      {opacity:0, offset:0.4},
+      {opacity:1, offset:0.9},
+      {transform:t.stageSmall, opacity:1}
+    ], {duration:SETTLE_MS, easing:ease, fill:'forwards'});
+    await shrink.finished.catch(()=>{});
+    cover.style.visibility='hidden';
+    setBookState(false, g.shift);
+    shrink.cancel();
+    bookObject.style.transformOrigin='';
+    c.stage.getAnimations().forEach(a=>a.cancel());
+    c.stage.style.opacity='1';
+  }
+  extras.forEach(a=>a.cancel());
 
-  // Stage 3 (mirrors opening's Stage 1, reversed) — the closed book slides
-  // back from the right to its resting, centered position.
-  bookObject.classList.add('sliding-solo');
-  bookObject.style.setProperty('--book-shift', '0px');
-  await waitForTransitionEnd(bookObject, 'transform', 650);
-  bookObject.classList.remove('sliding-solo');
+  // The cover lifts off the table and swings shut over the pages.
+  swing.forEach(a=>{ a.playbackRate = -1; a.play(); });
+  await swing[0].finished.catch(()=>{});
+  cover.style.visibility='';
+  c.stage.remove();
 
+  // The closed book slides back to centre.
+  if(g.shift){
+    bookObject.classList.add('sliding-solo');
+    bookObject.style.setProperty('--book-shift', '0px');
+    await waitForTransitionEnd(bookObject, 'transform', 650);
+    bookObject.classList.remove('sliding-solo');
+  }
   cover.dataset.animating='0';
 }
 
@@ -908,10 +1105,11 @@ const FLIP_STRIPS=5;
 // into strips without reflowing.
 function paperClone(card, w, h, left){
   const c=card.cloneNode(true);
-  c.removeAttribute('onclick');
+  ['id','onclick','onkeydown','tabindex','role'].forEach(a=>c.removeAttribute(a));
   c.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
   Object.assign(c.style,{position:'absolute', top:'0', left:(left||0)+'px', width:w+'px', height:h+'px',
-    minHeight:'0', margin:'0', transform:'none', transition:'none', boxSizing:'border-box'});
+    minHeight:'0', margin:'0', transform:'none', transition:'none', boxSizing:'border-box',
+    display:'', visibility:'', filter:'none', transformStyle:'flat'});
   return c;
 }
 function placeEl(el, x, y, w, h){
@@ -919,6 +1117,96 @@ function placeEl(el, x, y, w, h){
   return el;
 }
 function makeDiv(cls){ const d=document.createElement('div'); d.className=cls; return d; }
+
+// Builds a turnable leaf hinged at x = hinge, made of nested vertical strips
+// so it can bend. dir>0 turns right-to-left (hinge on the leaf's left edge),
+// dir<0 turns left-to-right. `gap` is the space between the two pages at the
+// spine; the leaf spans half of it so the page lands exactly in place.
+// A point d px from the spine on the front lands d px from the spine on the
+// other side, so the back face shows its page mirrored across the spine.
+function buildCurlLeaf({hinge, y, W, H, gap=0, dir, front, back, frontW=W, backW=W}){
+  const leafW = W + gap/2;
+  const s = leafW / FLIP_STRIPS;
+  const leaf = placeEl(makeDiv('flip-leaf'), dir>0 ? hinge : hinge-leafW, y, leafW, H);
+  leaf.style.transformOrigin = dir>0 ? 'left center' : 'right center';
+
+  const offNear = i => gap/2 - i*s;            // page lying beside the spine on the leaf's own side
+  const offFar  = i => -(leafW - (i+1)*s);     // page mirrored across the spine
+  const frontOff = dir>0 ? offNear : offFar;
+  const backOff  = dir>0 ? offFar  : offNear;
+
+  const strips=[], shades=[];
+  let parent = leaf;
+  for(let i=0;i<FLIP_STRIPS;i++){
+    const strip = makeDiv('flip-strip');
+    strip.style.width = (s+0.6)+'px'; // hair of overlap hides seams between strips
+    if(dir>0){ strip.style.left = (i===0 ? 0 : s)+'px'; strip.style.transformOrigin='left center'; }
+    else     { strip.style.left = (i===0 ? leafW-s : -s)+'px'; strip.style.transformOrigin='right center'; }
+
+    const frontFace = makeDiv('flip-face');
+    frontFace.appendChild(paperClone(front, frontW, H, frontOff(i)));
+    const backFace = makeDiv('flip-face flip-face-back');
+    backFace.appendChild(paperClone(back, backW, H, backOff(i)));
+
+    // Shading deepens smoothly toward the outer edge, where the paper curls
+    // most. Each face gets a gradient spanning its own slice so neighbouring
+    // strips blend without visible bands. d0/d1 = distance from the spine at
+    // the face's local left/right edge (back faces are mirrored).
+    const near=i*s, far=(i+1)*s;
+    const faces = [[frontFace, dir>0 ? [near,far] : [far,near]], [backFace, dir>0 ? [far,near] : [near,far]]];
+    faces.forEach(([face,[d0,d1]])=>{
+      const shade = makeDiv('flip-shade');
+      const a = d => (0.5 + 0.5*d/leafW).toFixed(3);
+      shade.style.background = `linear-gradient(to right, rgba(42,22,10,${a(d0)}), rgba(42,22,10,${a(d1)}))`;
+      face.appendChild(shade);
+      shades.push(shade);
+    });
+    strip.append(frontFace, backFace);
+    parent.appendChild(strip);
+    strips.push(strip);
+    parent = strip;
+  }
+  return {leaf, strips, shades};
+}
+
+// Animates a curl leaf through its turn. Returns every animation, the main
+// rotation first. `angle` < 180 with `fadeEl` lets a leaf swing partway and
+// fade out (used where there's no room for it to lie flat). The fade must go
+// on a wrapper, never the leaf: animating opacity on a preserve-3d element
+// flattens it in Chrome, and the back faces stop rendering.
+function animateCurl({leaf, strips, shades}, {dir, duration, angle=180, fadeEl=null, lift=28}){
+  const anims=[];
+  anims.push(leaf.animate([
+    {transform:'rotateY(0deg)'},
+    {transform:`rotateY(${-dir*lift}deg)`, offset:0.22, easing:'cubic-bezier(0.4,0,0.6,1)'},
+    {transform:`rotateY(${-dir*angle}deg)`}
+  ], {duration, easing:'cubic-bezier(0.55,0.06,0.3,1)', fill:'both'}));
+  if(fadeEl) anims.push(fadeEl.animate([{opacity:1},{opacity:1, offset:0.7},{opacity:0}], {duration, fill:'both'}));
+
+  // Curl: the outer edge leads while lifting, then trails as it falls flat.
+  strips.forEach((strip,i)=>{
+    if(i===0) return;
+    const b = 7 + i*1.5;
+    anims.push(strip.animate([
+      {transform:'rotateY(0deg)'},
+      {transform:`rotateY(${-dir*b}deg)`, offset:0.25},
+      {transform:`rotateY(${-dir*b*0.35}deg)`, offset:0.5},
+      {transform:`rotateY(${dir*b*0.8}deg)`, offset:0.78},
+      {transform:'rotateY(0deg)'}
+    ], {duration, easing:'ease-in-out', fill:'both'}));
+  });
+
+  // Paper darkens as it turns edge-on to the light, brightens as it lies flat.
+  shades.forEach(el=>{
+    anims.push(el.animate([
+      {opacity:0},
+      {opacity:0.42, offset:0.5},
+      {opacity:0.08, offset:0.85},
+      {opacity:0}
+    ], {duration, easing:'linear', fill:'both'}));
+  });
+  return anims;
+}
 
 function changeRecipePage(delta){
   if(flippingPage) return;
@@ -965,8 +1253,6 @@ function flipSpreadLeaf(shell, oldCards, newCards, oldRects, newRects, dir){
   const top = Math.min(L.y, R.y);
   const gap = Math.max(0, R.x - (L.x + L.w));
   const hinge = L.x + L.w + gap/2;
-  const leafW = W + gap/2;
-  const s = leafW / FLIP_STRIPS;
 
   const stage = makeDiv('page-flip-stage');
   stage.style.perspectiveOrigin = `${hinge}px ${top + H/2}px`;
@@ -989,83 +1275,12 @@ function flipSpreadLeaf(shell, oldCards, newCards, oldRects, newRects, dir){
   stage.appendChild(landShadow);
 
   // The leaf: hinged at the spine, built from nested strips so it can bend.
-  const leaf = placeEl(makeDiv('flip-leaf'), dir>0 ? hinge : hinge-leafW, top, leafW, H);
-  leaf.style.transformOrigin = dir>0 ? 'left center' : 'right center';
-
-  const frontCard = oldCards[dir>0?1:0];
-  const backCard  = newCards[dir>0?0:1];
-  // Where each strip's slice of the page sits. A point d px from the spine
-  // on the turning page lands d px from the spine on the other side, so the
-  // back face shows the destination page mirrored across the spine.
-  const offNear = i => gap/2 - i*s;            // page that starts/ends beside the spine on the far side
-  const offFar  = i => -(leafW - (i+1)*s);     // page mirrored across the spine
-  const frontOff = dir>0 ? offNear : offFar;
-  const backOff  = dir>0 ? offFar  : offNear;
-
-  const strips=[], shades=[];
-  let parent = leaf;
-  for(let i=0;i<FLIP_STRIPS;i++){
-    const strip = makeDiv('flip-strip');
-    strip.style.width = (s+0.6)+'px'; // hair of overlap hides seams between strips
-    if(dir>0){ strip.style.left = (i===0 ? 0 : s)+'px'; strip.style.transformOrigin='left center'; }
-    else     { strip.style.left = (i===0 ? leafW-s : -s)+'px'; strip.style.transformOrigin='right center'; }
-
-    const front = makeDiv('flip-face');
-    front.appendChild(paperClone(frontCard, W, H, frontOff(i)));
-    const back = makeDiv('flip-face flip-face-back');
-    back.appendChild(paperClone(backCard, W, H, backOff(i)));
-
-    // Shading deepens smoothly toward the outer edge, where the paper curls
-    // most. Each face gets a gradient spanning its own slice so neighbouring
-    // strips blend without visible bands. d0/d1 = distance from the spine at
-    // the face's local left/right edge (back faces are mirrored).
-    const near=i*s, far=(i+1)*s;
-    const faces = [[front, dir>0 ? [near,far] : [far,near]], [back, dir>0 ? [far,near] : [near,far]]];
-    faces.forEach(([face,[d0,d1]])=>{
-      const shade = makeDiv('flip-shade');
-      const a = d => (0.5 + 0.5*d/leafW).toFixed(3);
-      shade.style.background = `linear-gradient(to right, rgba(42,22,10,${a(d0)}), rgba(42,22,10,${a(d1)}))`;
-      face.appendChild(shade);
-      shades.push(shade);
-    });
-    strip.append(front, back);
-    parent.appendChild(strip);
-    strips.push(strip);
-    parent = strip;
-  }
-  stage.appendChild(leaf);
+  const parts = buildCurlLeaf({hinge, y:top, W, H, gap, dir,
+    front: oldCards[dir>0?1:0], back: newCards[dir>0?0:1]});
+  stage.appendChild(parts.leaf);
   shell.appendChild(stage);
 
-  const ease='cubic-bezier(0.55,0.06,0.3,1)';
-  const anims=[];
-  anims.push(leaf.animate([
-    {transform:'rotateY(0deg)'},
-    {transform:`rotateY(${-dir*28}deg)`, offset:0.22, easing:'cubic-bezier(0.4,0,0.6,1)'},
-    {transform:`rotateY(${-dir*180}deg)`}
-  ], {duration:FLIP_MS, easing:ease, fill:'forwards'}));
-
-  // Curl: the outer edge leads while lifting, then trails as it falls flat.
-  strips.forEach((strip,i)=>{
-    if(i===0) return;
-    const b = 7 + i*1.5;
-    strip.animate([
-      {transform:'rotateY(0deg)'},
-      {transform:`rotateY(${-dir*b}deg)`, offset:0.25},
-      {transform:`rotateY(${-dir*b*0.35}deg)`, offset:0.5},
-      {transform:`rotateY(${dir*b*0.8}deg)`, offset:0.78},
-      {transform:'rotateY(0deg)'}
-    ], {duration:FLIP_MS, easing:'ease-in-out', fill:'forwards'});
-  });
-
-  // Paper darkens as it turns edge-on to the light, brightens as it lies flat.
-  shades.forEach(el=>{
-    el.animate([
-      {opacity:0},
-      {opacity:0.42, offset:0.5},
-      {opacity:0.08, offset:0.85},
-      {opacity:0}
-    ], {duration:FLIP_MS, easing:'linear', fill:'forwards'});
-  });
+  const anims = animateCurl(parts, {dir, duration:FLIP_MS});
   castShadow.animate([
     {opacity:0}, {opacity:1, offset:0.2}, {opacity:0.55, offset:0.5}, {opacity:0}
   ], {duration:FLIP_MS*0.8, easing:'ease-out', fill:'forwards'});
