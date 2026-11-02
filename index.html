@@ -195,46 +195,48 @@
 
 <!-- ═══════ STUDY CAFÉ ════════════════════════════════════════════════════ -->
 <div id="page-cafe" class="page">
-  <div class="cafe-header">
-    <h2>Study Café</h2>
-    <p>brew together, focus together</p>
-  </div>
+  <header class="brew-head">
+    <p class="brew-eyebrow">The Reading Room</p>
+    <h2 class="sec-title">Study Café</h2>
+    <div class="brew-rule" aria-hidden="true"><span></span></div>
+    <p class="sec-sub">brew together, focus together</p>
+  </header>
   <div class="cafe-wrap">
 
-    <!-- Create room -->
-    <div class="room-create-card">
-      <h3>Open a new table</h3>
-      <div class="room-fields">
-        <div>
-          <label class="room-f-label">Table name</label>
-          <input class="room-f-in" id="room-name" placeholder="e.g. Midnight Study Hall…">
-        </div>
-        <div>
-          <label class="room-f-label">Your name</label>
-          <input class="room-f-in" id="room-username" placeholder="e.g. Yuki…">
-        </div>
+    <!-- Open a table -->
+    <section class="reserve-card" aria-label="Open a new table">
+      <div class="reserve-head">
+        <h3>Reserve a table</h3>
+        <p>Open a table and invite friends to study alongside you.</p>
       </div>
-      <button class="btn-p" onclick="createRoom()">Open Table</button>
-    </div>
+      <div class="reserve-fields">
+        <div class="slip-field">
+          <label class="slip-label" for="room-name">Table name</label>
+          <input class="slip-in" id="room-name" placeholder="Midnight Study Hall…">
+        </div>
+        <div class="slip-field">
+          <label class="slip-label" for="room-username">Your name</label>
+          <input class="slip-in" id="room-username" placeholder="Yuki…">
+        </div>
+        <button class="btn-p reserve-btn" onclick="createRoom()">Open table</button>
+      </div>
+    </section>
 
-    <!-- Rooms list -->
+    <h3 class="cafe-section-h"><span>Tables open now</span></h3>
     <div class="rooms-grid" id="rooms-grid"></div>
 
-    <!-- Join & brew together -->
-    <div style="text-align:center;margin-top:1rem;">
-      <p style="font-family:'Caveat',cursive;font-size:1rem;color:var(--warm-brown);opacity:0.6;">
-        Join a table to brew and study alongside friends. Each person's drink sits on the shared table.
-      </p>
-    </div>
+    <p class="cafe-foot">Join a table to brew and study alongside friends. Each person's drink sits on the shared table.</p>
   </div>
 </div>
 
 <!-- ═══════ RECIPE BOOK ════════════════════════════════════════════════════ -->
 <div id="page-recipes" class="page">
-  <div class="recipes-hdr">
-    <h2>Recipe Book</h2>
-    <p>every session, a memory preserved</p>
-  </div>
+  <header class="brew-head">
+    <p class="brew-eyebrow">From the Shelf</p>
+    <h2 class="sec-title">Recipe Book</h2>
+    <div class="brew-rule" aria-hidden="true"><span></span></div>
+    <p class="sec-sub">every session, a memory preserved</p>
+  </header>
 
   <div class="book-shelf-scene">
     <!-- One continuous book: a fixed spine on the left, and a content area
@@ -250,6 +252,7 @@
              aria-label="Open your recipe book">
           <div class="cover-face">
             <div class="cover-pages-edge"></div>
+            <div class="cover-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
             <h2 class="cover-title">RECIPE<br>BOOK</h2>
             <div class="cover-subtitle">A JOURNAL</div>
             <div class="cover-illustrations">
@@ -260,7 +263,7 @@
             <div class="cover-tagline">every cup, a little <span>memory</span></div>
             <div class="cover-byline">brewed by <span id="cover-byline-name">You</span></div>
           </div>
-          <div class="cover-hint">tap to open ☕</div>
+          <div class="cover-hint">tap to open</div>
         </div>
 
         <!-- Opened pages — hidden until the cover is tapped -->
@@ -270,7 +273,7 @@
                  to slide the tabs/search/filters out from under it. -->
             <button class="bookmark-tab" id="filter-toggle-btn" onclick="toggleFilterDrawer()"
                     aria-expanded="false" aria-controls="filter-drawer" title="Search & browse your recipes">
-              <span>🔍</span>
+              <span><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12.6 12.6l4.4 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
             </button>
             <div class="filter-drawer" id="filter-drawer">
               <div class="rtabs-pill">
@@ -280,7 +283,7 @@
               </div>
               <div class="toolbar-row">
                 <div class="search-wrap">
-                  <span class="search-icon">🔍</span>
+                  <span class="search-icon"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12.6 12.6l4.4 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
                   <input id="recipe-search" placeholder="Search your recipes…" oninput="updateRecipeFilters()">
                 </div>
                 <select id="filter-subject" onchange="updateRecipeFilters()"><option value="">All subjects</option></select>
@@ -322,24 +325,24 @@
 
 <!-- Join room modal -->
 <div class="modal-bg" id="join-modal" onclick="closeJoinModal(event)">
-  <div class="modal" style="position:relative;">
-    <button class="modal-close" onclick="closeJoinModalDirect()">×</button>
+  <div class="modal">
+    <button class="modal-close" onclick="closeJoinModalDirect()" aria-label="Close">×</button>
     <h3 id="modal-room-name">Join Table</h3>
     <p id="modal-room-sub">Brew a drink together</p>
-    <div class="f-row" style="margin-bottom:0.9rem;">
-      <label class="f-label" style="color:var(--warm-brown);">Your name</label>
-      <input class="room-f-in" id="modal-username" placeholder="e.g. Amélie…" style="width:100%;">
+    <div class="f-row">
+      <label class="room-f-label" for="modal-username">Your name</label>
+      <input class="room-f-in" id="modal-username" placeholder="Amélie…">
     </div>
-    <div style="margin-bottom:1.2rem;">
-      <div class="opt-label" style="color:var(--warm-brown);font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:0.6rem;">Your base drink</div>
-      <div class="chips" id="modal-base-chips">
-        <div class="chip sel" data-group="modal-base" data-val="coffee" style="border-color:rgba(107,79,58,0.35);color:var(--ink);">Coffee</div>
-        <div class="chip" data-group="modal-base" data-val="matcha" style="border-color:rgba(107,79,58,0.25);color:var(--ink);">Matcha</div>
-        <div class="chip" data-group="modal-base" data-val="tea" style="border-color:rgba(107,79,58,0.25);color:var(--ink);">Tea</div>
-        <div class="chip" data-group="modal-base" data-val="chocolate" style="border-color:rgba(107,79,58,0.25);color:var(--ink);">Hot Chocolate</div>
+    <div class="modal-group">
+      <div class="room-f-label">Your base drink</div>
+      <div class="modal-tags" id="modal-base-chips">
+        <button type="button" class="chip modal-tag sel" data-group="modal-base" data-val="coffee">Coffee</button>
+        <button type="button" class="chip modal-tag" data-group="modal-base" data-val="matcha">Matcha</button>
+        <button type="button" class="chip modal-tag" data-group="modal-base" data-val="tea">Tea</button>
+        <button type="button" class="chip modal-tag" data-group="modal-base" data-val="chocolate">Hot Chocolate</button>
       </div>
     </div>
-    <button class="btn-p" style="width:100%;" onclick="joinRoom()">Take a seat →</button>
+    <button class="btn-p" style="width:100%;" onclick="joinRoom()">Take a seat</button>
   </div>
 </div>
 
