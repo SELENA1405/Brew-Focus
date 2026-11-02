@@ -224,6 +224,8 @@ body::after {
   border-radius:1px; cursor:pointer; text-transform:uppercase; transition:all 0.25s;
 }
 .btn-s:hover { border-color:var(--gold); color:var(--gold); transform:translateY(-2px); }
+/* on parchment, gold hover text is too faint — use burgundy */
+.modal .btn-s:hover, .leave-modal .btn-s:hover, .reserve-card .btn-s:hover, .invite-card .btn-s:hover { color:var(--burgundy); border-color:var(--burgundy); }
 
 /* ── BREW PAGE ── */
 #page-brew {
@@ -676,6 +678,303 @@ body::after {
   .rooms-grid { grid-template-columns:1fr; }
 }
 
+[hidden] { display:none !important; }
+
+/* ── Café list: sign-in card, vibe picker, invitations ── */
+.signin-card { text-align:center; padding:2.4rem 2rem 2.2rem; margin-bottom:2.5rem; }
+.signin-card h3 { font-family:'Playfair Display',serif; font-style:italic; font-weight:400; font-size:1.6rem; color:var(--ink); }
+.signin-card p { font-family:'Caveat',cursive; font-size:1.2rem; color:var(--warm-brown); margin:0.4rem auto 1.3rem; max-width:420px; }
+.signin-actions { display:flex; justify-content:center; gap:0.8rem; flex-wrap:wrap; }
+.signin-join { color:var(--ink); border-color:rgba(74,52,40,0.35); }
+
+.vibe-label { margin-top:1.3rem; margin-bottom:0.6rem; }
+.vibe-picker { display:grid; grid-template-columns:repeat(3, 1fr); gap:0.7rem; }
+.vibe-tile {
+  display:grid; grid-template-columns:44px 1fr; grid-template-rows:auto auto; column-gap:0.7rem; align-items:center;
+  text-align:left; background:rgba(255,250,240,0.35); border:1px solid rgba(58,34,18,0.25); border-radius:2px;
+  padding:0.6rem 0.7rem; cursor:pointer; transition:border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.vibe-tile:hover { border-color:rgba(58,34,18,0.55); }
+.vibe-tile.sel { border-color:var(--burgundy); background:rgba(255,250,240,0.7); box-shadow:inset 0 0 0 1px var(--burgundy); }
+.vibe-tile:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.vibe-tile .vibe-swatch { grid-row:1 / 3; width:44px; height:44px; }
+.vibe-name { font-family:'Playfair Display',serif; font-style:italic; font-size:0.98rem; color:var(--ink); line-height:1.2; }
+.vibe-tag { font-family:'Caveat',cursive; font-size:0.92rem; color:var(--warm-brown); line-height:1.15; }
+/* tiny arched windows that preview each café */
+.vibe-swatch { display:inline-block; flex:none; width:18px; height:18px; border-radius:50% 50% 2px 2px; border:1px solid rgba(58,34,18,0.45); box-shadow:inset 0 0 0 2px rgba(255,250,240,0.35); }
+.vibe-swatch.vibe-parisian  { background:repeating-linear-gradient(90deg,#8e2f3c 0 5px,#f3e6d0 5px 10px) top/100% 30% no-repeat, linear-gradient(180deg,#f2b27a,#9a5a6a); }
+.vibe-swatch.vibe-bookstore { background:repeating-linear-gradient(100deg, rgba(255,255,255,0.35) 0 1px, transparent 1px 6px), linear-gradient(180deg,#7d93a0,#3d4e58); }
+.vibe-swatch.vibe-kyoto     { background:linear-gradient(90deg, transparent 47%, #6b4f3a 47% 53%, transparent 53%), linear-gradient(0deg, transparent 47%, #6b4f3a 47% 53%, transparent 53%), #f4ecd8; }
+.vibe-swatch.vibe-midnight  { background:radial-gradient(circle at 68% 32%, #f5e6b8 0 14%, transparent 16%), radial-gradient(circle at 25% 60%, #fff 0 4%, transparent 6%), linear-gradient(180deg,#1b2350,#0b0e1f); }
+.vibe-swatch.vibe-library   { background:radial-gradient(ellipse at 50% 80%, rgba(255,214,140,0.75), transparent 60%), linear-gradient(180deg,#2e5040,#173025); }
+.vibe-swatch.vibe-cabin     { background:radial-gradient(circle at 30% 30%, #fff 0 6%, transparent 8%), radial-gradient(circle at 70% 60%, #fff 0 6%, transparent 8%), linear-gradient(180deg,#9fb2c4,#5a6d80); }
+.room-card-vibe { display:flex; align-items:center; justify-content:center; gap:0.45rem; font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--burgundy); margin-bottom:0.35rem; }
+.seat-empty-mini { width:40px; height:54px; margin:18px 12px 14px; border:1px dashed rgba(245,232,211,0.35); border-radius:4px 4px 10px 10px; }
+
+.reserve-foot { display:flex; align-items:flex-end; justify-content:space-between; gap:1.4rem; flex-wrap:wrap; margin-top:1.4rem; }
+.join-code { min-width:230px; }
+.join-code-row { display:flex; gap:0.6rem; align-items:flex-end; }
+.join-code-row .slip-in { text-transform:uppercase; letter-spacing:0.18em; }
+.join-code-btn { color:var(--ink); border-color:rgba(74,52,40,0.35); padding:0.55rem 1.2rem; }
+
+#cafe-invites { margin-bottom:2.4rem; }
+.invite-card {
+  display:flex; align-items:center; gap:1rem; padding:1rem 1.3rem; margin-bottom:0.8rem;
+  background:linear-gradient(172deg, #f5ead5, #e8d5b2); border-radius:3px; color:var(--ink);
+  box-shadow:0 14px 30px rgba(0,0,0,0.35);
+}
+.invite-card .vibe-swatch { width:34px; height:34px; }
+.invite-text { flex:1; font-family:'Lora',serif; font-size:0.95rem; line-height:1.4; }
+.invite-text em { font-family:'Playfair Display',serif; }
+.invite-vibe { display:block; font-family:'Caveat',cursive; font-size:1rem; color:var(--warm-brown); }
+.invite-actions { display:flex; gap:0.5rem; }
+.invite-actions .btn-p, .invite-actions .btn-s { padding:0.6rem 1.2rem; }
+.invite-decline { color:var(--ink); border-color:rgba(74,52,40,0.35); }
+
+/* ── Brewing for a café ── */
+.brew-cafe-banner {
+  max-width:1060px; margin:-1.2rem auto 2rem; position:relative; z-index:2;
+  display:flex; justify-content:center; align-items:center; gap:0.6rem; flex-wrap:wrap;
+  font-family:'Lora',serif; font-size:0.85rem; color:var(--beige);
+}
+.brew-cafe-banner strong { font-family:'Playfair Display',serif; font-style:italic; font-weight:400; color:var(--gold); font-size:1.05rem; }
+.brew-cafe-banner button {
+  background:none; border:1px solid rgba(199,168,109,0.45); color:var(--gold); cursor:pointer;
+  font-family:'Lora',serif; font-size:0.66rem; letter-spacing:0.18em; text-transform:uppercase; padding:0.4rem 0.8rem;
+}
+
+/* ── Invite & menu pop-ups ── */
+.invite-link-row { display:flex; gap:0.5rem; }
+.invite-link-row .room-f-in { flex:1; min-width:0; }
+.invite-link-row .btn-p, .invite-link-row .btn-s { padding:0.55rem 1.1rem; }
+.invite-send { color:var(--ink); border-color:rgba(74,52,40,0.35); }
+.invite-code-line { font-family:'Caveat',cursive; font-size:1.05rem; color:var(--warm-brown); margin-top:0.4rem; }
+.invite-code-line strong { font-family:'Lora',serif; font-size:0.9rem; letter-spacing:0.22em; color:var(--ink); }
+#invite-modal .f-row { margin-bottom:1.2rem; }
+.order-modal { max-width:460px; }
+.order-list { display:flex; flex-direction:column; }
+.order-item {
+  display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; align-items:baseline; column-gap:0.6rem;
+  text-align:left; background:none; border:none; border-bottom:1px dotted rgba(58,34,18,0.3);
+  padding:0.75rem 0.3rem; cursor:pointer; color:var(--ink); transition:background 0.15s;
+}
+.order-item:hover { background:rgba(122,46,58,0.06); }
+.order-item:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.order-name { font-family:'Playfair Display',serif; font-style:italic; font-size:1.12rem; }
+.order-leader { border-bottom:1px dotted rgba(58,34,18,0.35); align-self:center; }
+.order-note { grid-column:1 / -1; font-family:'Caveat',cursive; font-size:1rem; color:var(--warm-brown); }
+
+/* ── Inside a café ── */
+#page-caferoom { min-height:100vh; padding:5.6rem 1.5rem 3rem; background:#1a0f08; }
+.cr {
+  --wall:#e9d6bf; --wall-2:#d8b99a; --wall-pattern:none; --ink-on-wall:var(--ink); --accent:var(--burgundy);
+  --table:#7a5638; --table-2:#4a301d; --page-bg:#24140a; --sign-bg:var(--burgundy); --sign-ink:#e8cf95;
+  max-width:1040px; margin:0 auto; color:var(--cream);
+}
+.cr-bar { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:1rem; margin-bottom:1.2rem; }
+.cr-back {
+  justify-self:start; background:none; border:none; cursor:pointer; color:var(--gold);
+  font-family:'Lora',serif; font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase; opacity:0.8;
+}
+.cr-back:hover { opacity:1; }
+.cr-title { text-align:center; }
+.cr-vibe { font-family:'Lora',serif; font-size:0.64rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--gold); }
+.cr-title h2 { font-family:'Playfair Display',serif; font-style:italic; font-weight:400; font-size:2.1rem; color:var(--cream); line-height:1.15; }
+.cr-tagline { font-family:'Caveat',cursive; font-size:1.05rem; color:var(--beige); opacity:0.7; }
+.cr-invite { justify-self:end; padding:0.65rem 1.2rem; }
+
+/* The room: back wall with a window and decorations, then the table */
+.cr-scene { position:relative; border-radius:4px 4px 0 0; overflow:hidden; box-shadow:0 30px 70px rgba(0,0,0,0.5); }
+.cr-wall {
+  position:relative; height:300px; display:flex; align-items:flex-end; justify-content:center; gap:3rem;
+  background:var(--wall-pattern), linear-gradient(180deg, var(--wall), var(--wall-2));
+}
+.cr-wall::after { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 50% 0%, rgba(255,235,200,0.18), transparent 60%), radial-gradient(ellipse at 50% 100%, transparent 50%, rgba(0,0,0,0.25)); pointer-events:none; }
+.cr-window {
+  position:relative; width:260px; height:230px; margin-bottom:22px; border-radius:130px 130px 4px 4px; overflow:hidden;
+  box-shadow:0 0 0 10px var(--trim, #5a3c25), 0 0 0 12px rgba(0,0,0,0.25), 0 18px 30px rgba(0,0,0,0.35);
+}
+.cr-sky { position:absolute; inset:0; background:linear-gradient(180deg, var(--sky-1, #f2b27a), var(--sky-2, #7a4a6a)); }
+.cr-weather { position:absolute; inset:0; }
+.cr-frame { position:absolute; inset:0; background:
+  linear-gradient(90deg, transparent calc(50% - 3px), var(--trim, #5a3c25) calc(50% - 3px) calc(50% + 3px), transparent calc(50% + 3px)),
+  linear-gradient(0deg, transparent 54%, var(--trim, #5a3c25) 54% calc(54% + 6px), transparent calc(54% + 6px)); }
+.cr-deco { position:relative; width:150px; height:220px; margin-bottom:22px; }
+.cr-sign {
+  position:absolute; top:22px; left:50%; transform:translateX(-50%); z-index:2; white-space:nowrap; max-width:80%; overflow:hidden; text-overflow:ellipsis;
+  font-family:'Playfair Display',serif; font-style:italic; font-size:1.05rem; color:var(--sign-ink);
+  background:var(--sign-bg); padding:0.35rem 1.2rem; border-radius:2px;
+  box-shadow:0 8px 16px rgba(0,0,0,0.35), inset 0 0 0 3px var(--sign-bg), inset 0 0 0 4px rgba(217,182,106,0.6);
+}
+.cr-sign:empty { display:none; }
+.cr-table {
+  position:relative; padding:1.6rem 1.5rem 1.4rem;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.10), transparent 18px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 60px),
+    linear-gradient(180deg, var(--table), var(--table-2));
+  box-shadow:inset 0 10px 18px rgba(0,0,0,0.25);
+}
+.cr-table::after { content:''; position:absolute; left:0; right:0; bottom:-14px; height:14px; background:linear-gradient(180deg, var(--table-2), rgba(0,0,0,0.6)); }
+.cr-seats { display:flex; flex-wrap:wrap; justify-content:center; gap:1.2rem 1.8rem; }
+.cr-seat { display:flex; flex-direction:column; align-items:center; width:116px; }
+.cr-cup { height:140px; display:flex; align-items:flex-end; justify-content:center; }
+.cr-cup svg { display:block; filter:drop-shadow(0 12px 18px rgba(0,0,0,0.45)); }
+.seat-empty { width:64px; height:84px; margin-bottom:22px; border:1px dashed rgba(245,232,211,0.4); border-radius:6px 6px 16px 16px; }
+.seat-chair { width:70px; height:70px; margin-bottom:24px; border-radius:50%; border:1px dashed rgba(245,232,211,0.22); }
+.cr-card {
+  display:flex; align-items:center; gap:0.4rem; max-width:100%; margin-top:-6px; padding:0.2rem 0.6rem;
+  font-family:'Caveat',cursive; font-size:1.05rem; color:var(--ink); line-height:1.2;
+  background:linear-gradient(172deg, #f6ecd8, #e6d3b0); box-shadow:0 4px 8px rgba(0,0,0,0.35);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.cr-seat.open .cr-card { background:none; box-shadow:none; color:rgba(245,232,211,0.4); font-size:0.95rem; }
+.cr-dot { flex:none; width:7px; height:7px; border-radius:50%; background:#8a9b78; box-shadow:0 0 0 2px rgba(138,155,120,0.25); }
+.cr-seat.away .cr-dot { background:transparent; box-shadow:inset 0 0 0 1px rgba(58,34,18,0.45); }
+.cr-seat.away .cr-cup { opacity:0.72; }
+.cr-host { font-family:'Lora',serif; font-size:0.52rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--burgundy); border:1px solid rgba(122,46,58,0.5); padding:0 4px; }
+.cr-seat.me .cr-card { box-shadow:0 4px 8px rgba(0,0,0,0.35), inset 0 0 0 1px var(--burgundy); }
+.cr-drinkname { margin-top:0.3rem; font-family:'Playfair Display',serif; font-style:italic; font-size:0.8rem; color:rgba(245,232,211,0.75); text-align:center; line-height:1.2; }
+
+/* Below the table: your drink and the shared timer */
+.cr-panel { display:grid; grid-template-columns:1fr 1fr; gap:1.6rem; margin-top:2rem; }
+.cr-mine, .cr-timer {
+  position:relative; padding:1.5rem 1.6rem; text-align:center;
+  border:1px solid rgba(199,168,109,0.34); background:rgba(245,232,211,0.03);
+}
+.cr-mine::before, .cr-timer::before { content:''; position:absolute; inset:6px; border:1px solid rgba(199,168,109,0.12); pointer-events:none; }
+.cr-mine-label { font-family:'Lora',serif; font-size:0.62rem; letter-spacing:0.28em; text-transform:uppercase; color:var(--gold); }
+.cr-mine-name { font-family:'Playfair Display',serif; font-style:italic; font-size:1.6rem; color:var(--cream); margin:0.3rem 0 0.1rem; }
+.cr-mine-how { font-family:'Caveat',cursive; font-size:1.05rem; color:var(--beige); opacity:0.7; }
+.cr-mine-actions { display:flex; justify-content:center; gap:0.7rem; flex-wrap:wrap; margin-top:1rem; position:relative; }
+.cr-mine-actions .btn-p, .cr-mine-actions .btn-s { padding:0.7rem 1.3rem; }
+.cr-timer { display:flex; flex-direction:column; align-items:center; }
+.cr-timer .study-clock { margin-bottom:0.7rem; }
+.cr-timer-status { font-family:'Caveat',cursive; font-size:1.1rem; color:rgba(245,232,211,0.7); min-height:1.5em; }
+.cr-timer-ctrl { display:flex; align-items:center; gap:0.7rem; margin-top:0.8rem; position:relative; }
+.cr-timer-ctrl:empty { display:none; }
+.cr-duration {
+  font-family:'Lora',serif; font-size:0.8rem; color:var(--cream); background:rgba(30,16,8,0.7);
+  border:1px solid rgba(199,168,109,0.42); border-radius:2px; padding:0.55rem 0.7rem; cursor:pointer;
+}
+.cr-foot { text-align:center; margin-top:1.6rem; }
+.cr-leave { background:none; border:none; cursor:pointer; color:var(--beige); opacity:0.5; font-family:'Lora',serif; font-size:0.64rem; letter-spacing:0.2em; text-transform:uppercase; }
+.cr-leave:hover { opacity:0.9; text-decoration:underline; text-underline-offset:4px; }
+
+/* ── The six atmospheres ── */
+/* Parisian café: striped wallpaper, dusk street, red-and-cream awning */
+.cr.vibe-parisian { --wall:#ecdcc4; --wall-2:#d9bc98; --wall-pattern:repeating-linear-gradient(90deg, rgba(122,46,58,0.09) 0 22px, transparent 22px 44px);
+  --trim:#5a2420; --sky-1:#f6c48a; --sky-2:#8a4e66; --table:#7a5638; --table-2:#4a301d; --cr-page:#21110c; }
+.vibe-parisian .cr-window::before { content:''; position:absolute; left:-10px; right:-10px; top:-6px; height:58px; z-index:2;
+  background:radial-gradient(circle at 11px 0, transparent 10px, #f3e6d0 10.5px) 0 46px/22px 14px repeat-x,
+             repeating-linear-gradient(90deg, #8e2f3c 0 22px, #f3e6d0 22px 44px) 0 0/100% 48px no-repeat; }
+.vibe-parisian .cr-weather { background:
+  linear-gradient(0deg, #3a2a3a 0 22%, transparent 22%),
+  linear-gradient(90deg, transparent 12%, #4a3446 12% 30%, transparent 30% 62%, #3e2c3c 62% 84%, transparent 84%) bottom/100% 46% no-repeat,
+  radial-gradient(circle at 22% 62%, rgba(255,214,140,0.95) 0 3px, transparent 4px), radial-gradient(circle at 74% 58%, rgba(255,214,140,0.95) 0 3px, transparent 4px); }
+.vibe-parisian .cr-deco-l, .vibe-parisian .cr-deco-r { background:
+  radial-gradient(ellipse at 50% 30%, #5f7a4a 0 34%, transparent 36%), radial-gradient(ellipse at 30% 42%, #6f8a56 0 26%, transparent 28%), radial-gradient(ellipse at 70% 44%, #56703f 0 26%, transparent 28%),
+  linear-gradient(180deg, transparent 62%, #a85a38 62% 64%, #8e4a2c 64% 100%) 50% 100%/60px 100% no-repeat; }
+
+/* Rainy bookstore: deep teal walls lined with books, rain on the glass */
+.cr.vibe-bookstore { --wall:#33454a; --wall-2:#1f2b2e; --trim:#2a1d14; --sky-1:#8297a4; --sky-2:#3d4e58; --table:#5c4330; --table-2:#35251a; --cr-page:#0f1517;
+  --sign-bg:#2a1d14; --sign-ink:#e8cf95; }
+.vibe-bookstore .cr-weather { background:repeating-linear-gradient(100deg, rgba(255,255,255,0.32) 0 1px, transparent 1px 9px); background-size:120px 120px; animation:crRain 0.6s linear infinite; }
+.vibe-bookstore .cr-deco-l, .vibe-bookstore .cr-deco-r { width:170px; height:250px; margin-bottom:0; background:
+  repeating-linear-gradient(180deg, transparent 0 52px, #2a1d14 52px 60px),
+  repeating-linear-gradient(90deg, #7a2e3a 0 9px, #c7a86d 9px 16px, #2f5a4a 16px 26px, #8a5a2e 26px 33px, #4a3a6a 33px 42px, #b67c87 42px 48px, #1f3a52 48px 58px);
+  box-shadow:inset 0 0 0 8px #2a1d14; }
+@keyframes crRain { from { background-position:0 0; } to { background-position:-20px 120px; } }
+
+/* Kyoto tea house: sand walls, paper shoji window, red lantern */
+.cr.vibe-kyoto { --wall:#e8dcc2; --wall-2:#cdbb98; --wall-pattern:linear-gradient(90deg, #6b4f3a 0 10px, transparent 10px calc(100% - 10px), #6b4f3a calc(100% - 10px));
+  --trim:#4a3424; --sky-1:#f5ecd8; --sky-2:#e2d4b6; --table:#5a4030; --table-2:#38261a; --cr-page:#1d150e; --sign-bg:#4a3424; --sign-ink:#f5ecd8; }
+.vibe-kyoto .cr-window { border-radius:4px; }
+.vibe-kyoto .cr-weather { background:
+  repeating-linear-gradient(90deg, transparent 0 40px, #4a3424 40px 44px), repeating-linear-gradient(0deg, transparent 0 52px, #4a3424 52px 56px),
+  radial-gradient(ellipse at 70% 40%, rgba(138,155,120,0.35), transparent 40%); }
+.vibe-kyoto .cr-frame { display:none; }
+.vibe-kyoto .cr-deco-l { background:
+  linear-gradient(90deg, transparent calc(50% - 1px), #3a2a1e calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0/100% 70px no-repeat,
+  radial-gradient(ellipse at 50% 50%, #c8453a 0 58%, transparent 60%) 50% 70px/90px 110px no-repeat,
+  repeating-linear-gradient(180deg, transparent 0 16px, rgba(0,0,0,0.18) 16px 18px) 50% 78px/70px 94px no-repeat; }
+.vibe-kyoto .cr-deco-r { background:
+  linear-gradient(180deg, transparent 58%, #6b4f3a 58% 60%, transparent 60%),
+  radial-gradient(ellipse at 50% 46%, #7d9468 0 22%, transparent 24%), radial-gradient(ellipse at 35% 38%, #8a9b78 0 16%, transparent 18%), radial-gradient(ellipse at 65% 36%, #6d8458 0 16%, transparent 18%),
+  linear-gradient(180deg, transparent 58%, #3a2a1e 58% 100%) 50% 100%/70px 100% no-repeat; }
+
+/* Midnight jazz café: inky blue walls, stars and moon, glowing sign */
+.cr.vibe-midnight { --wall:#1c2246; --wall-2:#0c0f22; --trim:#0a0c18; --sky-1:#1b2350; --sky-2:#06081a; --table:#3a2a3a; --table-2:#1a121c; --cr-page:#06070f;
+  --sign-bg:#0a0c18; --sign-ink:#f3d58a; }
+.vibe-midnight .cr-sign { text-shadow:0 0 8px rgba(243,213,138,0.8), 0 0 18px rgba(243,213,138,0.4); box-shadow:0 0 22px rgba(243,213,138,0.2), inset 0 0 0 1px rgba(243,213,138,0.6); }
+.vibe-midnight .cr-weather { background:
+  radial-gradient(circle at 70% 26%, #f5e6b8 0 18px, transparent 19px),
+  radial-gradient(circle at 15% 20%, #fff 0 1.5px, transparent 2px), radial-gradient(circle at 36% 40%, #fff 0 1px, transparent 1.5px), radial-gradient(circle at 52% 14%, #fff 0 1.5px, transparent 2px),
+  radial-gradient(circle at 84% 52%, #fff 0 1px, transparent 1.5px), radial-gradient(circle at 26% 64%, #fff 0 1px, transparent 1.5px), radial-gradient(circle at 60% 58%, #fff 0 1.2px, transparent 1.7px);
+  animation:crTwinkle 4s ease-in-out infinite; }
+.vibe-midnight .cr-deco-l, .vibe-midnight .cr-deco-r { background:
+  radial-gradient(ellipse at 50% 18%, rgba(243,213,138,0.55), transparent 40%),
+  linear-gradient(180deg, transparent 6%, #f3d58a 6% 8%, transparent 8%) 50% 0/2px 100% no-repeat,
+  linear-gradient(180deg, #b48a3a, #6a4a1c) 50% 38px/56px 26px no-repeat; }
+@keyframes crTwinkle { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+
+/* Library reading room: green panelled walls, warm lamps */
+.cr.vibe-library { --wall:#2c4a3c; --wall-2:#16291f; --wall-pattern:repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 70px);
+  --trim:#3a2414; --sky-1:#f2d49a; --sky-2:#b07a3a; --table:#5a2e1c; --table-2:#2e160c; --cr-page:#0c140f; --sign-bg:#3a2414; --sign-ink:#e8cf95; }
+.vibe-library .cr-weather { background:radial-gradient(ellipse at 50% 100%, rgba(255,240,200,0.6), transparent 70%); }
+.vibe-library .cr-deco-l, .vibe-library .cr-deco-r { background:
+  radial-gradient(ellipse at 50% 74%, rgba(255,214,140,0.45), transparent 46%),
+  linear-gradient(180deg, #2f6a4a, #1d4a32) 50% 120px/90px 34px no-repeat,
+  linear-gradient(90deg, transparent calc(50% - 2px), #b48a3a calc(50% - 2px) calc(50% + 2px), transparent calc(50% + 2px)) 50% 154px/100% 46px no-repeat,
+  linear-gradient(180deg, #b48a3a, #7a5a24) 50% 198px/60px 8px no-repeat; }
+
+/* Fireside cabin: log walls, snow outside, firelight */
+.cr.vibe-cabin { --wall:#6b4226; --wall-2:#3e2414; --wall-pattern:repeating-linear-gradient(180deg, transparent 0 30px, rgba(0,0,0,0.35) 30px 33px);
+  --trim:#2e1a0c; --sky-1:#a9bccc; --sky-2:#5a6d80; --table:#6a4024; --table-2:#3a2010; --cr-page:#140a05; --sign-bg:#2e1a0c; --sign-ink:#f0c890; }
+.vibe-cabin .cr-weather { background:
+  radial-gradient(circle, #fff 0 1.6px, transparent 2px) 0 0/34px 34px, radial-gradient(circle, rgba(255,255,255,0.8) 0 1.2px, transparent 1.6px) 17px 11px/34px 34px,
+  linear-gradient(0deg, #e8eef3 0 14%, transparent 14%);
+  animation:crSnow 6s linear infinite; }
+.vibe-cabin .cr-deco-l { width:170px; background:
+  radial-gradient(ellipse at 50% 92%, rgba(255,160,60,0.95) 0 16%, rgba(255,90,30,0.6) 26%, transparent 46%),
+  linear-gradient(180deg, #2a1a10, #120a05) 50% 100%/110px 110px no-repeat,
+  linear-gradient(180deg, #6a6058, #3e3630) 50% 100%/150px 150px no-repeat;
+  animation:crFire 1.8s ease-in-out infinite alternate; }
+.vibe-cabin .cr-deco-r { background:
+  linear-gradient(180deg, transparent 70%, #4a2a14 70% 76%, transparent 76%),
+  radial-gradient(circle at 30% 84%, #8a5a2e 0 12px, #6a4022 13px 15px, transparent 16px), radial-gradient(circle at 62% 84%, #8a5a2e 0 12px, #6a4022 13px 15px, transparent 16px), radial-gradient(circle at 46% 72%, #8a5a2e 0 12px, #6a4022 13px 15px, transparent 16px); }
+.vibe-cabin .cr-wall::after { background:radial-gradient(ellipse at 18% 100%, rgba(255,140,50,0.35), transparent 45%), radial-gradient(ellipse at 50% 100%, transparent 50%, rgba(0,0,0,0.3)); }
+@keyframes crSnow { from { background-position:0 0, 17px 11px, 0 0; } to { background-position:10px 170px, 7px 181px, 0 0; } }
+@keyframes crFire { from { filter:brightness(0.92); } to { filter:brightness(1.12); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cr-weather, .cr-deco { animation:none !important; }
+}
+@media (max-width:900px){
+  .vibe-picker { grid-template-columns:repeat(2, 1fr); }
+  .cr-panel { grid-template-columns:1fr; }
+}
+@media (max-width:700px){
+  #page-caferoom { padding:5rem 0.8rem 2.5rem; }
+  .cr-bar { grid-template-columns:1fr auto; grid-template-areas:"back invite" "title title"; }
+  .cr-back { grid-area:back; } .cr-invite { grid-area:invite; padding:0.55rem 0.9rem; } .cr-title { grid-area:title; }
+  .cr-title h2 { font-size:1.7rem; }
+  .cr-wall { height:220px; gap:0; }
+  .cr-window { width:180px; height:170px; margin-bottom:16px; }
+  .cr-deco { display:none; }
+  .cr-sign { top:14px; font-size:0.9rem; }
+  .cr-table { padding:1.2rem 0.6rem 1rem; }
+  .cr-seats { gap:0.8rem 0.6rem; }
+  .cr-seat { width:96px; }
+  .cr-cup { height:118px; }
+  .cr-cup svg { width:86px; height:auto; }
+  .vibe-picker { grid-template-columns:1fr; }
+  .reserve-foot { flex-direction:column; align-items:stretch; }
+  .invite-card { flex-wrap:wrap; }
+  .invite-actions { width:100%; }
+  .invite-actions button { flex:1; }
+}
+
 /* ── RECIPE BOOK PAGE ── */
 #page-recipes {
   background:
@@ -1087,6 +1386,7 @@ body::after {
   transform:translateX(-50%) translateY(100px);
   background:var(--caramel); color:var(--cream);
   font-family:'Caveat',cursive; font-size:1.1rem; padding:0.75rem 2rem;
+  width:max-content; max-width:calc(100vw - 2rem); text-align:center;
   border-radius:40px; letter-spacing:0.06em; z-index:9998; pointer-events:none;
   transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
 }

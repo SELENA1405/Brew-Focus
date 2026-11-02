@@ -1,8 +1,8 @@
 // ── Supabase setup ───────────────────────────────────────────────────────
 // 1. Go to your Supabase project → Settings → API
 // 2. Paste your Project URL and anon/public key below
-// 3. Run the SQL in supabase-setup.sql (included alongside this file) once,
-//    in the Supabase SQL editor, to create the "profiles" table + policies.
+// 3. For the Study Café, run supabase/cafes.sql once in the Supabase SQL
+//    editor (creates the café tables, functions and security rules).
 const SUPABASE_URL = 'https://vigjumdpadyslbcvjeel.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_qkYURGAEv7vAgFXwFzgsdQ_VU0g6dZr';
 
@@ -26,12 +26,11 @@ const S = {
   timerRunning:false, timerIv:null, focusActive:false, pendingPage:null,
   recipes: JSON.parse(localStorage.getItem('bf_recipes')||'[]'),
   sharedRecipes: JSON.parse(localStorage.getItem('bf_shared')||'[]'),
-  rooms: JSON.parse(localStorage.getItem('bf_rooms')||'[]'),
   recipeTab:'mine',
   recipePage:0, recipeSearch:'', recipeSubject:'', recipeSort:'newest', quickTab:'all',
   ambience: localStorage.getItem('bf_ambience') || 'cozy-cafe',
   soundOn: localStorage.getItem('bf_sound') !== 'off',
-  joinRoomId:null, modalBase:'coffee',
+  
   authTab:'signin', user:null
 };
 
@@ -331,14 +330,16 @@ function showPage(name) {
     playPageSound('close');
     return;
   }
+  if(name!=='caferoom') leaveRoomRealtime();
+  if(name!=='brew') S.cafeBrew=null;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   document.querySelectorAll('.nav-links a').forEach(a=>a.classList.remove('active'));
-  const nl = document.getElementById('nl-'+name);
+  const nl = document.getElementById('nl-'+(name==='caferoom'?'cafe':name));
   if(nl) nl.classList.add('active');
-  if(name==='brew') renderCupPreview();
+  if(name==='brew'){ renderCupPreview(); updateBrewCafeBanner(); }
   if(name==='recipes'){ resetRecipeBookCover(); renderRecipes(); }
-  if(name==='cafe') renderRooms();
+  if(name==='cafe') renderCafeList();
   if(name==='home') renderHeroCup();
 }
 
@@ -444,20 +445,18 @@ document.querySelectorAll('.chip').forEach(chip=>{
       S.addons = chip.classList.contains('sel')
         ? [...new Set([...S.addons,v])]
         : S.addons.filter(x=>x!==v);
-    } else if(g==='modal-base'){
-      document.querySelectorAll('[data-group="modal-base"]').forEach(c=>c.classList.remove('sel'));
-      chip.classList.add('sel'); S.modalBase=v;
     } else {
       document.querySelectorAll(`[data-group="${g}"]`).forEach(c=>c.classList.remove('sel'));
       chip.classList.add('sel'); S[g]=v;
     }
-    if(g!=='modal-base' && g!=='drink') renderCupPreview();
+    if(g!=='drink') renderCupPreview();
   });
 });
 
 // ── Session ───────────────────────────────────────────────────────────────
 const ICON_PLAY='<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M7 4.6v10.8l8.6-5.4z" fill="currentColor"/></svg>';
 const ICON_PAUSE='<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><rect x="5.6" y="4.6" width="2.8" height="10.8" rx="0.5" fill="currentColor"/><rect x="11.6" y="4.6" width="2.8" height="10.8" rx="0.5" fill="currentColor"/></svg>';
+const ICON_RESTART='<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10a5.4 5.4 0 1 0 1.7-3.95" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.6 2.9v3.6h3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function setPlayIcon(running){
   const btn=document.getElementById('play-btn');
   if(!btn) return;
@@ -466,6 +465,7 @@ function setPlayIcon(running){
   btn.title = running ? 'Pause' : 'Start';
 }
 function startSession(){
+  if(S.cafeBrew){ bringBrewToTable(); return; }
   initAudio();
   setAmbience(document.getElementById('field-ambience').value || S.ambience);
   S.recipeName = document.getElementById('recipe-name').value || 'Unnamed Brew';
@@ -561,80 +561,545 @@ function confirmEndSession(){
   if(target) setTimeout(()=>showPage(target),300);
 }
 
-// ── Study Café / Rooms ────────────────────────────────────────────────────
-function saveRooms(){ localStorage.setItem('bf_rooms',JSON.stringify(S.rooms)); }
+// ── Study Café ────────────────────────────────────────────────────────────
+// Cafés are shared through Supabase (see supabase/cafes.sql): everyone at a
+// table sees each other's drinks, who is here right now, and one shared
+// timer run by the café's owner.
 
-function createRoom(){
-  const name = document.getElementById('room-name').value.trim();
-  const user = document.getElementById('room-username').value.trim();
-  if(!name){ showToast('Give your table a name'); return; }
-  if(!user){ showToast('Tell us your name first!'); return; }
-  const base = S.modalBase||'coffee';
-  const room = {
-    id:Date.now(), name, members:[{username:user,base,cup:'mug',addons:[]}],
-    created:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'}),
-    recipes:[]
-  };
-  S.rooms.unshift(room); saveRooms(); renderRooms();
-  document.getElementById('room-name').value='';
-  showToast(`Table "${name}" is open!`);
+// Plain text for anything a person typed (café names, usernames), so it can
+// never be read as HTML when it's shown on someone else's screen.
+function esc(v){
+  return String(v ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 
-function renderRooms(){
-  const grid = document.getElementById('rooms-grid');
-  if(!S.rooms.length){
-    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1;"><p>No tables open yet — be the first to brew together.</p></div>`;
-    return;
-  }
-  grid.innerHTML = S.rooms.map(room=>{
-    const memberCups = room.members.map(m=>`
-      <div class="member-slot">
-        ${buildCupSVG({size:64,fillFraction:1,steam:false,cup:m.cup||'mug',base:m.base||'coffee',addons:m.addons||[]})}
-        <span class="member-name">${m.username}</span>
-      </div>`).join('');
-    const sharedCount = room.recipes?room.recipes.length:0;
-    return `<div class="room-card">
-      <div class="room-card-name">${room.name}</div>
-      <div class="room-card-meta">
-        <span>${room.members.length} seated</span><i></i>
-        <span>${sharedCount} shared recipe${sharedCount!==1?'s':''}</span>
-      </div>
-      <div class="room-card-date">opened ${room.created}</div>
-      <div class="room-table"><div class="room-cups">${memberCups}</div></div>
-      <button class="room-join-btn" onclick="openJoinModal(${room.id})">Take a seat</button>
-    </div>`;
+// Café types: the look of the room, its ambience, and what's on the menu.
+const CAFE_VIBES = {
+  parisian: { label:'Parisian Café', tagline:'striped awnings and warm croissants', ambience:'cozy-cafe',
+    menu:[
+      {key:'cappuccino',    name:'Café Crème',        note:'velvet foam, slow mornings'},
+      {key:'hot-chocolate', name:'Chocolat Chaud',    note:'thick, dark and comforting'},
+      {key:'vanilla-latte', name:'Latte à la Vanille', note:'soft and sweet'},
+      {key:'black-coffee',  name:'Petit Noir',         note:'short, strong, no fuss'},
+    ]},
+  bookstore: { label:'Rainy Bookstore', tagline:'rain on the glass, pages turning', ambience:'rainy-bookstore',
+    menu:[
+      {key:'caramel-latte', name:'Chapter One Caramel', note:'for long first pages'},
+      {key:'milk-tea',      name:'Storm Milk Tea',      note:'with chewy pearls'},
+      {key:'mocha',         name:'Inkwell Mocha',       note:'dark chocolate and espresso'},
+      {key:'black-coffee',  name:'Paperback Brew',      note:'plain and dependable'},
+    ]},
+  kyoto: { label:'Kyoto Tea House', tagline:'paper screens and quiet steam', ambience:'kyoto-tea',
+    menu:[
+      {key:'matcha-latte', name:'Ceremonial Matcha', note:'whisked bright and green'},
+      {key:'honey-tea',    name:'Honey Hōjicha',     note:'roasted, mellow, golden'},
+      {key:'milk-tea',     name:'Royal Milk Tea',    note:'creamy black tea'},
+      {key:'black-coffee', name:'Kissaten Pour-Over', note:'slow-dripped, clean'},
+    ]},
+  midnight: { label:'Midnight Jazz Café', tagline:'low lamps and a slow saxophone', ambience:'midnight-cafe',
+    menu:[
+      {key:'black-coffee',   name:'Blue Note Espresso', note:'for the late set'},
+      {key:'mocha',          name:'Midnight Mocha',     note:'chocolate after dark'},
+      {key:'iced-americano', name:'Moonlit Americano',  note:'over ice'},
+      {key:'vanilla-latte',  name:'Velvet Vanilla',     note:'smooth as a ballad'},
+    ]},
+  library: { label:'Library Reading Room', tagline:'green lamps and leather chairs', ambience:'vintage-library',
+    menu:[
+      {key:'honey-tea',    name:"Scholar's Honey Tea", note:'gentle, for long reading'},
+      {key:'cappuccino',   name:'Reading Room Cappuccino', note:'a quiet classic'},
+      {key:'black-coffee', name:'Archive Roast',       note:'deep and steady'},
+      {key:'matcha-latte', name:'Margin Notes Matcha', note:'calm focus'},
+    ]},
+  cabin: { label:'Fireside Cabin', tagline:'crackling logs and snow outside', ambience:'fireplace',
+    menu:[
+      {key:'hot-chocolate', name:'Snowfall Cocoa',   note:'marshmallows and cream'},
+      {key:'caramel-latte', name:'Ember Caramel',    note:'toasty and sweet'},
+      {key:'mocha',         name:'Lodge Mocha',      note:'warm to the fingertips'},
+      {key:'honey-tea',     name:'Hearth Honey Tea', note:'soothing by the fire'},
+    ]},
+};
+const VIBE_KEYS = Object.keys(CAFE_VIBES);
+const vibeOf = key => CAFE_VIBES[key] || CAFE_VIBES.parisian;
+const myCafeName = () => S.user?.username || (S.user?.email||'').split('@')[0] || 'Friend';
+
+// ── Data layer: every Supabase call the café makes ──
+const CafeDB = {
+  get sb(){ if(!supabaseClient) throw new Error('The café is offline right now'); return supabaseClient; },
+  check({data, error}){ if(error) throw new Error(error.message || 'Something went wrong'); return data; },
+
+  async listMine(){
+    const mine = this.check(await this.sb.from('cafe_members').select('cafe_id').eq('user_id', S.user.id));
+    const ids = mine.map(m=>m.cafe_id);
+    if(!ids.length) return [];
+    const cafes = this.check(await this.sb.from('cafes').select('*').in('id', ids).order('created_at', {ascending:false}));
+    const members = this.check(await this.sb.from('cafe_members').select('*').in('cafe_id', ids).order('joined_at'));
+    return cafes.map(c=>({...c, members: members.filter(m=>m.cafe_id===c.id)}));
+  },
+  async listInvites(){
+    return this.check(await this.sb.from('cafe_invites')
+      .select('id, cafe_id, from_username, created_at, cafes(name, vibe, invite_code)')
+      .eq('to_user', S.user.id).order('created_at', {ascending:false}));
+  },
+  async create(name, vibe){ return this.check(await this.sb.rpc('create_cafe', {p_name:name, p_vibe:vibe, p_username:myCafeName()})); },
+  async joinByCode(code){ return this.check(await this.sb.rpc('join_cafe', {p_code:code, p_username:myCafeName()})); },
+  async declineInvite(id){ this.check(await this.sb.from('cafe_invites').delete().eq('id', id)); },
+  async getCafe(id){
+    const cafe = this.check(await this.sb.from('cafes').select('*').eq('id', id).maybeSingle());
+    if(!cafe) return null;
+    const members = this.check(await this.sb.from('cafe_members').select('*').eq('cafe_id', id).order('joined_at'));
+    return {...cafe, members};
+  },
+  async setDrink(cafeId, drink){
+    this.check(await this.sb.from('cafe_members').update({drink}).eq('cafe_id', cafeId).eq('user_id', S.user.id));
+  },
+  async invite(cafeId, username){ return this.check(await this.sb.rpc('invite_to_cafe', {p_cafe:cafeId, p_username:username})); },
+  async timer(cafeId, action, secs){ return this.check(await this.sb.rpc('cafe_timer', {p_cafe:cafeId, p_action:action, p_secs:secs ?? null})); },
+  async serverNow(){ return this.check(await this.sb.rpc('server_now')); },
+  async leave(cafeId){ this.check(await this.sb.from('cafe_members').delete().eq('cafe_id', cafeId).eq('user_id', S.user.id)); },
+  async close(cafeId){ this.check(await this.sb.from('cafes').delete().eq('id', cafeId)); },
+
+  // Live updates for one café: seats/drinks/timer changes, and who is here now.
+  subscribeCafe(cafeId, {onChange, onPresence}){
+    const ch = this.sb.channel('cafe:'+cafeId, {config:{presence:{key:S.user.id}}});
+    ch.on('postgres_changes', {event:'*', schema:'public', table:'cafe_members', filter:`cafe_id=eq.${cafeId}`}, ()=>onChange())
+      .on('postgres_changes', {event:'*', schema:'public', table:'cafes', filter:`id=eq.${cafeId}`}, ()=>onChange())
+      .on('presence', {event:'sync'}, ()=>onPresence(Object.keys(ch.presenceState())))
+      .subscribe(async status=>{ if(status==='SUBSCRIBED') await ch.track({username:myCafeName()}); });
+    return ()=>{ try{ this.sb.removeChannel(ch); }catch(e){} };
+  },
+  subscribeInvites(onChange){
+    const ch = this.sb.channel('invites:'+S.user.id)
+      .on('postgres_changes', {event:'*', schema:'public', table:'cafe_invites', filter:`to_user=eq.${S.user.id}`}, ()=>onChange())
+      .subscribe();
+    return ()=>{ try{ this.sb.removeChannel(ch); }catch(e){} };
+  },
+};
+
+// ── The café list (Study Café page) ──
+let selectedVibe = 'parisian';
+let unsubInvites = null;
+
+function renderVibePicker(){
+  const el=document.getElementById('vibe-picker');
+  if(!el) return;
+  el.innerHTML = VIBE_KEYS.map(k=>{
+    const v=CAFE_VIBES[k];
+    return `<button type="button" class="vibe-tile ${k===selectedVibe?'sel':''}" onclick="pickVibe('${k}')" aria-pressed="${k===selectedVibe}">
+      <span class="vibe-swatch vibe-${k}" aria-hidden="true"></span>
+      <span class="vibe-name">${v.label}</span>
+      <span class="vibe-tag">${v.tagline}</span>
+    </button>`;
   }).join('');
 }
+function pickVibe(k){ selectedVibe=k; renderVibePicker(); }
 
-// ── Join modal ────────────────────────────────────────────────────────────
-function openJoinModal(roomId){
-  S.joinRoomId=roomId;
-  const room=S.rooms.find(r=>r.id===roomId);
-  if(!room) return;
-  document.getElementById('modal-room-name').textContent=room.name;
-  document.getElementById('modal-room-sub').textContent=`${room.members.length} friend${room.members.length!==1?'s':''} brewing at this table`;
-  document.getElementById('modal-username').value=S.user?.username||'';
-  document.getElementById('join-modal').classList.add('open');
-}
-function closeJoinModal(e){ if(e.target===document.getElementById('join-modal')) closeJoinModalDirect(); }
-function closeJoinModalDirect(){ document.getElementById('join-modal').classList.remove('open'); }
-
-function joinRoom(){
-  const room=S.rooms.find(r=>r.id===S.joinRoomId);
-  if(!room) return;
-  const user=document.getElementById('modal-username').value.trim();
-  if(!user){ showToast('Please enter your name'); return; }
-  const base=S.modalBase||'coffee';
-  // prevent duplicate names
-  if(!room.members.find(m=>m.username===user)){
-    room.members.push({username:user,base,cup:'mug',addons:[]});
+async function renderCafeList(){
+  const signedIn = !!S.user;
+  document.getElementById('cafe-signed-out').hidden = signedIn;
+  document.getElementById('cafe-signed-in').hidden = !signedIn;
+  if(!signedIn){ if(unsubInvites){ unsubInvites(); unsubInvites=null; } return; }
+  renderVibePicker();
+  if(!unsubInvites){ try{ unsubInvites = CafeDB.subscribeInvites(()=>renderCafeList()); }catch(e){} }
+  const grid=document.getElementById('rooms-grid');
+  const invitesEl=document.getElementById('cafe-invites');
+  try{
+    const [cafes, invites] = await Promise.all([CafeDB.listMine(), CafeDB.listInvites()]);
+    S.cafes = cafes;
+    invitesEl.hidden = !invites.length;
+    invitesEl.innerHTML = invites.length ? `<h3 class="cafe-section-h"><span>Invitations</span></h3>` + invites.map(inv=>{
+      const v=vibeOf(inv.cafes?.vibe);
+      return `<div class="invite-card">
+        <span class="vibe-swatch vibe-${esc(inv.cafes?.vibe)}" aria-hidden="true"></span>
+        <div class="invite-text"><strong>${esc(inv.from_username)}</strong> invited you to <em>${esc(inv.cafes?.name||'a café')}</em>
+          <span class="invite-vibe">${v.label}</span></div>
+        <div class="invite-actions">
+          <button class="btn-p" onclick="acceptInvite('${esc(inv.cafes?.invite_code||'')}')">Join</button>
+          <button class="btn-s invite-decline" onclick="declineInvite('${esc(inv.id)}')">Decline</button>
+        </div>
+      </div>`;
+    }).join('') : '';
+    grid.innerHTML = cafes.length ? cafes.map(cafeCardHTML).join('')
+      : `<div class="empty-state" style="grid-column:1/-1;"><p>No cafés yet — open one above, or join a friend's with their code.</p></div>`;
+  } catch(e){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><p>${esc(cafeErrorText(e))}</p></div>`;
   }
-  saveRooms(); closeJoinModalDirect();
-  renderRooms();
-  // Pre-fill brew page for this session
-  document.getElementById('field-username').value=user;
-  showToast(`You joined "${room.name}"! Now brew your drink.`);
+}
+function cafeCardHTML(c){
+  const v=vibeOf(c.vibe);
+  const cups=c.members.map(m=>`
+    <div class="member-slot">
+      ${m.drink ? buildCupSVG({size:64,fillFraction:1,steam:false,cup:m.drink.cup||'mug',base:m.drink.base||'coffee',drink:m.drink.drink,addons:m.drink.addons||[]})
+                : `<div class="seat-empty-mini" aria-hidden="true"></div>`}
+      <span class="member-name">${esc(m.username)}</span>
+    </div>`).join('');
+  return `<div class="room-card">
+    <div class="room-card-vibe"><span class="vibe-swatch vibe-${esc(c.vibe)}" aria-hidden="true"></span>${v.label}</div>
+    <div class="room-card-name">${esc(c.name)}</div>
+    <div class="room-card-meta"><span>${c.members.length} seated</span><i></i><span>${c.owner_id===S.user.id?'you host':'guest'}</span></div>
+    <div class="room-card-date">${v.tagline}</div>
+    <div class="room-table"><div class="room-cups">${cups}</div></div>
+    <button class="room-join-btn" onclick="enterCafe('${esc(c.id)}')">Enter café</button>
+  </div>`;
+}
+function cafeErrorText(e){
+  const m=String(e?.message||e);
+  if(/schema cache|does not exist|Could not find the (table|function)/i.test(m))
+    return 'The café tables aren’t set up in Supabase yet — run supabase/cafes.sql in the Supabase SQL editor.';
+  return m;
+}
+
+async function createCafe(){
+  const nameEl=document.getElementById('room-name');
+  const name=nameEl.value.trim();
+  if(!name){ showToast('Give your café a name'); nameEl.focus(); return; }
+  try{
+    const cafe = await CafeDB.create(name, selectedVibe);
+    nameEl.value='';
+    showToast(`"${name}" is open`);
+    enterCafe(cafe.id);
+  } catch(e){ showToast(cafeErrorText(e)); }
+}
+async function joinWithCode(){
+  const el=document.getElementById('join-code');
+  const code=el.value.trim();
+  if(!code){ el.focus(); return; }
+  try{ const id=await CafeDB.joinByCode(code); el.value=''; enterCafe(id); }
+  catch(e){ showToast(cafeErrorText(e)); }
+}
+async function acceptInvite(code){
+  try{ const id=await CafeDB.joinByCode(code); enterCafe(id); }
+  catch(e){ showToast(cafeErrorText(e)); }
+}
+async function declineInvite(id){
+  try{ await CafeDB.declineInvite(id); renderCafeList(); } catch(e){ showToast(cafeErrorText(e)); }
+}
+
+// Invite links look like …/Brew-Focus/?cafe=AB12CD. Opening one joins that
+// café (after signing in, if needed).
+function inviteLinkFor(code){ return `${location.origin}${location.pathname}?cafe=${encodeURIComponent(code)}`; }
+S.pendingCafeCode = new URLSearchParams(location.search).get('cafe');
+async function processPendingInvite(authChecked){
+  const code=S.pendingCafeCode;
+  if(!code) return;
+  if(!S.user){
+    if(authChecked){
+      showPage('cafe');
+      openAuthModal('signin');
+      setAuthMsg('Sign in (or join) to take your seat at your friend’s café.', '');
+    }
+    return;
+  }
+  S.pendingCafeCode=null;
+  history.replaceState(null, '', location.pathname);
+  try{ const id=await CafeDB.joinByCode(code); closeAuthModalDirect(); enterCafe(id); }
+  catch(e){ showToast(cafeErrorText(e)); showPage('cafe'); }
+}
+
+// ── Inside a café ──
+S.room = null; // { id, cafe, presence:Set, unsub, tick, offset, lastFrac }
+
+async function enterCafe(id){
+  if(!S.user){ openAuthModal('signin'); return; }
+  leaveRoomRealtime();
+  S.room = { id, cafe:null, presence:new Set([S.user.id]), unsub:null, tick:null, offset:0, lastFrac:null };
+  showPage('caferoom');
+  try{
+    const cafe = await CafeDB.getCafe(id);
+    if(!S.room || S.room.id!==id) return;
+    if(!cafe){ showToast('That café is no longer open'); showPage('cafe'); return; }
+    S.room.offset = await measureClockOffset();
+    if(!S.room || S.room.id!==id) return;
+    S.room.cafe = cafe;
+    renderCafeRoom();
+    const vibe=vibeOf(cafe.vibe);
+    try{ setAmbience(vibe.ambience); document.getElementById('field-ambience').value=vibe.ambience; }catch(e){}
+    S.room.unsub = CafeDB.subscribeCafe(id, {
+      onChange: ()=>refreshCafeRoom(),
+      onPresence: ids=>{ if(S.room){ S.room.presence=new Set([S.user.id, ...ids]); renderSeats(true); } },
+    });
+    S.room.tick = setInterval(tickCafeTimer, 250);   // keeps everyone's clocks turning over together
+  } catch(e){ showToast(cafeErrorText(e)); showPage('cafe'); }
+}
+// How far this device's clock is from the server's, so the shared timer reads
+// the same on every screen. Takes a few quick readings and trusts the one
+// with the shortest round trip (the least room for delay to skew it).
+async function measureClockOffset(){
+  let best=null;
+  for(let i=0;i<3;i++){
+    try{
+      const t0=performance.now(), w0=Date.now();
+      const server=await CafeDB.serverNow();
+      const rtt=performance.now()-t0;
+      const offset=Date.parse(server) - (w0 + rtt/2);
+      if(!best || rtt<best.rtt) best={rtt, offset};
+    }catch(e){ break; }
+  }
+  return best ? best.offset : 0;
+}
+
+// Several changes often land together (a seat and the timer, say), so live
+// updates are gathered into one refresh, and a reply that has been
+// overtaken by a newer one is ignored rather than overwriting fresher data.
+function refreshCafeRoom(){
+  if(!S.room) return;
+  clearTimeout(S.room.refreshTimer);
+  S.room.refreshTimer = setTimeout(loadCafeRoom, 120);
+}
+async function loadCafeRoom(){
+  if(!S.room) return;
+  const seq = S.room.seq = (S.room.seq||0) + 1;
+  const roomId = S.room.id;
+  try{
+    const cafe=await CafeDB.getCafe(roomId);
+    if(!S.room || S.room.id!==roomId || seq!==S.room.seq) return;
+    if(!cafe || !cafe.members.some(m=>m.user_id===S.user.id)){
+      showToast('This café has closed its doors'); leaveRoomRealtime(); S.room=null; showPage('cafe'); return;
+    }
+    S.room.cafe=cafe; S.room.lastFrac=null;
+    renderCafeRoom();
+  } catch(e){ console.warn(e); }
+}
+function leaveRoomRealtime(){
+  if(!S.room) return;
+  if(S.room.unsub) S.room.unsub();
+  if(S.room.tick) clearInterval(S.room.tick);
+  clearTimeout(S.room.refreshTimer);
+  S.room.unsub=null; S.room.tick=null;
+}
+function backToCafeList(){ leaveRoomRealtime(); S.room=null; showPage('cafe'); }
+function returnToCafeRoom(){ const id=S.cafeBrew || S.room?.id; S.cafeBrew=null; if(id) enterCafe(id); else showPage('cafe'); }
+
+const isHost = ()=> S.room?.cafe?.owner_id===S.user?.id;
+const myMember = ()=> S.room?.cafe?.members.find(m=>m.user_id===S.user?.id);
+
+function renderCafeRoom(){
+  const c=S.room?.cafe; if(!c) return;
+  const v=vibeOf(c.vibe);
+  const room=document.getElementById('cafe-room');
+  room.className = 'cr vibe-'+(CAFE_VIBES[c.vibe]?c.vibe:'parisian');
+  // the floor around the room takes on the café's colour too
+  document.getElementById('page-caferoom').style.background = getComputedStyle(room).getPropertyValue('--cr-page').trim() || '#1a0f08';
+  document.getElementById('cr-vibe').textContent = v.label;
+  document.getElementById('cr-name').textContent = c.name;
+  document.getElementById('cr-sign').textContent = c.name;
+  document.getElementById('cr-tagline').textContent = v.tagline;
+  document.getElementById('cr-leave').textContent = isHost() ? 'Close this café' : 'Leave this café';
+  renderSeats(true);
+  renderMyDrinkPanel();
+  renderCafeTimer();
+}
+
+// Seats around the table: each person's drink, name card, and whether
+// they're here right now. Drinks empty together as the shared timer runs.
+function timerState(){
+  const c=S.room?.cafe; if(!c) return {remaining:0, total:1, running:false};
+  let remaining=c.timer_remaining_secs;
+  if(c.timer_started_at){
+    const elapsed=Math.floor((Date.now()+S.room.offset - Date.parse(c.timer_started_at))/1000);
+    remaining=Math.max(0, c.timer_remaining_secs - elapsed);
+  }
+  return {remaining, total:c.timer_duration_secs||1, running:!!c.timer_started_at};
+}
+function renderSeats(force){
+  const c=S.room?.cafe; if(!c) return;
+  const {remaining,total,running}=timerState();
+  const frac = (running || remaining<total) ? remaining/total : 1;
+  const key=Math.round(frac*50);
+  if(!force && key===S.room.lastFrac) return;
+  S.room.lastFrac=key;
+  const seats=c.members.map(m=>{
+    const here=S.room.presence.has(m.user_id);
+    const cup = m.drink
+      ? buildCupSVG({size:104, fillFraction:frac, steam: frac>0.08, cup:m.drink.cup||'mug', base:m.drink.base||'coffee', drink:m.drink.drink, addons:m.drink.addons||[]})
+      : `<div class="seat-empty" aria-hidden="true"></div>`;
+    return `<div class="cr-seat ${here?'here':'away'} ${m.user_id===S.user.id?'me':''}">
+      <div class="cr-cup">${cup}</div>
+      <div class="cr-card">
+        <span class="cr-dot" title="${here?'Here now':'Away'}"></span>${esc(m.username)}${m.user_id===c.owner_id?'<span class="cr-host">host</span>':''}
+      </div>
+      <div class="cr-drinkname">${m.drink ? esc(m.drink.label||'') : 'no drink yet'}</div>
+    </div>`;
+  });
+  const open = Math.max(0, Math.min(2, 8 - c.members.length));
+  for(let i=0;i<open;i++) seats.push(`<div class="cr-seat open"><div class="cr-cup"><div class="seat-chair" aria-hidden="true"></div></div><div class="cr-card">open seat</div></div>`);
+  document.getElementById('cr-seats').innerHTML = seats.join('');
+}
+
+function renderMyDrinkPanel(){
+  const me=myMember(); const el=document.getElementById('cr-mine');
+  if(!me){ el.innerHTML=''; return; }
+  el.innerHTML = me.drink
+    ? `<div class="cr-mine-label">Your drink</div>
+       <div class="cr-mine-name">${esc(me.drink.label||'')}</div>
+       <div class="cr-mine-how">${me.drink.how==='brewed'?'brewed by you':'ordered from the menu'}</div>
+       <div class="cr-mine-actions"><button class="btn-s" onclick="openOrderMenu()">Order something else</button><button class="btn-s" onclick="brewForCafe()">Brew another</button></div>`
+    : `<div class="cr-mine-label">You've taken a seat</div>
+       <div class="cr-mine-name">What will you have?</div>
+       <div class="cr-mine-actions"><button class="btn-p" onclick="brewForCafe()">Brew your own</button><button class="btn-s" onclick="openOrderMenu()">Order from the menu</button></div>`;
+}
+
+// ── Ordering & brewing ──
+function openOrderMenu(){
+  const c=S.room?.cafe; if(!c) return;
+  const v=vibeOf(c.vibe);
+  document.getElementById('order-title').textContent = `${v.label} Menu`;
+  document.getElementById('order-sub').textContent = v.tagline;
+  document.getElementById('order-list').innerHTML = v.menu.map((item,i)=>`
+    <button type="button" class="order-item" onclick="orderDrink(${i})">
+      <span class="order-name">${item.name}</span>
+      <span class="order-leader" aria-hidden="true"></span>
+      <span class="order-note">${item.note}</span>
+    </button>`).join('');
+  document.getElementById('order-modal').classList.add('open');
+}
+function closeOrderMenu(e){ if(!e || e.target===document.getElementById('order-modal')) document.getElementById('order-modal').classList.remove('open'); }
+async function orderDrink(i){
+  const item=vibeOf(S.room?.cafe?.vibe).menu[i]; if(!item) return;
+  const d=DRINKS[item.key]||DRINKS.cappuccino;
+  closeOrderMenu();
+  await placeMyDrink({drink:item.key, base:d.base, cup:d.cup, addons:[...d.addons], label:item.name, how:'ordered'});
+  showToast(`${item.name} is on its way to the table`);
+}
+async function placeMyDrink(drink){
+  try{
+    await CafeDB.setDrink(S.room.id, drink);
+    const me=myMember(); if(me) me.drink=drink;
+    S.room.lastFrac=null; renderSeats(true); renderMyDrinkPanel();
+  } catch(e){ showToast(cafeErrorText(e)); }
+}
+function brewForCafe(){
+  if(!S.room) return;
+  S.cafeBrew = S.room.id;
+  S.cafeBrewName = S.room.cafe?.name || 'your café';
   showPage('brew');
+}
+async function bringBrewToTable(){
+  const id=S.cafeBrew; if(!id) return;
+  const name=document.getElementById('recipe-name').value.trim() || DRINKS[S.drink]?.label || 'House Brew';
+  const drink={drink:S.drink, base:S.base, cup:S.cup, addons:[...S.addons], label:name, how:'brewed'};
+  try{
+    await CafeDB.setDrink(id, drink);
+    S.cafeBrew=null;
+    showToast('Your brew is on the table');
+    enterCafe(id);
+  } catch(e){ showToast(cafeErrorText(e)); }
+}
+function updateBrewCafeBanner(){
+  const banner=document.getElementById('brew-cafe-banner');
+  const begin=document.querySelector('.brew-begin');
+  const on=!!S.cafeBrew;
+  if(banner){ banner.hidden=!on; document.getElementById('brew-cafe-name').textContent = S.cafeBrewName||''; }
+  if(begin) begin.textContent = on ? 'Take it to the table' : 'Begin session';
+}
+
+// ── The shared timer ──
+function fmtClock(secs){ return String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0'); }
+function renderCafeTimer(){
+  const c=S.room?.cafe; if(!c) return;
+  const {remaining,total,running}=timerState();
+  document.getElementById('cr-time').textContent = fmtClock(remaining);
+  document.getElementById('cr-steep').style.width = ((1-remaining/total)*100)+'%';
+  const host=c.members.find(m=>m.user_id===c.owner_id)?.username || 'the host';
+  const status=document.getElementById('cr-timer-status');
+  const ctrl=document.getElementById('cr-timer-ctrl');
+  if(isHost()){
+    const mins=Math.round(total/60);
+    ctrl.innerHTML = `
+      <select class="cr-duration" onchange="setCafeDuration(this.value)" ${running?'disabled':''} aria-label="Session length">
+        ${[15,25,40,50,60,90].map(m=>`<option value="${m}" ${m===mins?'selected':''}>${m} min</option>`).join('')}
+        ${[15,25,40,50,60,90].includes(mins)?'':`<option value="${mins}" selected>${mins} min</option>`}
+      </select>
+      <button class="btn-ic" onclick="cafeTimer('reset')" title="Restart" aria-label="Restart">${ICON_RESTART}</button>
+      <button class="btn-ic play" onclick="cafeTimer('${running?'pause':'start'}')" aria-label="${running?'Pause':'Start'}" title="${running?'Pause':'Start'}">${running?ICON_PAUSE:ICON_PLAY}</button>`;
+    status.textContent = running ? 'Everyone is studying — you’re keeping time.' : (remaining<total ? 'Paused. Start again when everyone is ready.' : 'Start the timer when everyone has a drink.');
+  } else {
+    ctrl.innerHTML='';
+    status.textContent = running ? `Studying together — ${host} is keeping time.` : (remaining<total ? `Paused by ${host}.` : `Waiting for ${host} to start the timer.`);
+  }
+}
+async function cafeTimer(action, secs){
+  try{
+    const c=await CafeDB.timer(S.room.id, action, secs);
+    S.room.seq=(S.room.seq||0)+1;   // anything fetched before this is now stale
+    Object.assign(S.room.cafe, c); S.room.lastFrac=null; renderCafeRoom();
+  }
+  catch(e){ showToast(cafeErrorText(e)); }
+}
+function setCafeDuration(mins){ cafeTimer('set', parseInt(mins,10)*60); }
+function tickCafeTimer(){
+  const c=S.room?.cafe; if(!c) return;
+  const {remaining,running}=timerState();
+  renderSeats(false);
+  document.getElementById('cr-time').textContent = fmtClock(remaining);
+  document.getElementById('cr-steep').style.width = ((1-remaining/(c.timer_duration_secs||1))*100)+'%';
+  if(running && remaining<=0) finishCafeSession();
+}
+// When the shared timer runs out, everyone with a drink gets the session in
+// their recipe book (once), and the host's browser resets the clock.
+function finishCafeSession(){
+  const c=S.room.cafe;
+  const key=`bf_cafe_done_${c.id}_${c.timer_started_at}`;
+  if(!localStorage.getItem(key)){
+    localStorage.setItem(key,'1');
+    const me=myMember();
+    if(me?.drink){
+      const mins=Math.max(1, Math.round(c.timer_duration_secs/60));
+      const d=me.drink;
+      const recipe={id:Date.now(), _ts:Date.now(), name:d.label||'Café Brew', cup:d.cup, base:d.base, drink:d.drink, addons:[...(d.addons||[])],
+        subject:c.name, task:`Studied together at ${c.name}`, duration:mins,
+        date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
+        username:me.username, favorite:false, shared:true};
+      S.sharedRecipes.unshift(recipe); saveRecipeLists();
+      showToast('Session complete — saved to Shared Brews in your recipe book');
+    } else {
+      showToast('Session complete');
+    }
+    playPageSound('close');
+  }
+  if(isHost()) setTimeout(()=>{ if(S.room?.cafe?.timer_started_at===c.timer_started_at) cafeTimer('reset'); }, 2500);
+}
+
+// ── Invites ──
+function openInviteModal(){
+  const c=S.room?.cafe; if(!c) return;
+  document.getElementById('invite-cafe-name').textContent = c.name;
+  document.getElementById('invite-link').value = inviteLinkFor(c.invite_code);
+  document.getElementById('invite-code').textContent = c.invite_code;
+  document.getElementById('invite-username').value='';
+  setInviteMsg('');
+  document.getElementById('invite-modal').classList.add('open');
+}
+function closeInviteModal(e){ if(!e || e.target===document.getElementById('invite-modal')) document.getElementById('invite-modal').classList.remove('open'); }
+function setInviteMsg(msg, type){ const el=document.getElementById('invite-msg'); el.textContent=msg; el.className='auth-msg'+(type?' '+type:''); }
+async function copyInviteLink(){
+  const input=document.getElementById('invite-link');
+  try{ await navigator.clipboard.writeText(input.value); setInviteMsg('Link copied — send it to a friend.', 'success'); }
+  catch(e){ input.select(); document.execCommand && document.execCommand('copy'); setInviteMsg('Link selected — copy it and send it to a friend.', 'success'); }
+}
+async function sendInvite(){
+  const el=document.getElementById('invite-username');
+  const name=el.value.trim();
+  if(!name){ el.focus(); return; }
+  try{
+    const res=await CafeDB.invite(S.room.id, name);
+    const msgs={sent:[`Invitation sent to ${name}.`,'success'], not_found:[`No one called "${name}" has joined Brew & Focus yet — send them the link instead.`,'error'],
+      already_member:[`${name} already has a seat here.`,''], yourself:['That’s you!','']};
+    const [m,t]=msgs[res]||[String(res),''];
+    setInviteMsg(m,t);
+    if(res==='sent') el.value='';
+  } catch(e){ setInviteMsg(cafeErrorText(e),'error'); }
+}
+
+// ── Leaving / closing ──
+async function leaveCafePermanently(){
+  const c=S.room?.cafe; if(!c) return;
+  const host=isHost();
+  const ok=confirm(host ? `Close "${c.name}" for everyone? This can't be undone.` : `Leave "${c.name}"? You can come back with the invite code.`);
+  if(!ok) return;
+  try{
+    if(host) await CafeDB.close(c.id); else await CafeDB.leave(c.id);
+    showToast(host ? 'Café closed' : 'You left the café');
+    backToCafeList();
+  } catch(e){ showToast(cafeErrorText(e)); }
 }
 
 // ── Recipe Book ───────────────────────────────────────────────────────────
@@ -1071,7 +1536,7 @@ function refreshRecipeTools(list){
   if(subjectSel){
     const current=subjectSel.value;
     const subjects=[...new Set(raw.map(r=>r.subject).filter(Boolean))].sort();
-    subjectSel.innerHTML='<option value="">All subjects</option>'+subjects.map(s=>`<option value="${s}">${s}</option>`).join('');
+    subjectSel.innerHTML='<option value="">All subjects</option>'+subjects.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
     subjectSel.value=subjects.includes(current)?current:'';
   }
   if(sortBtn) sortBtn.textContent = sortLabels[S.recipeSort];
@@ -1127,12 +1592,12 @@ function renderRecipes(){
       ${r.shared?'<div class="rc-badge">shared brew</div>':''}
       <div class="rc-top">
         <div class="rc-headline">
-          <div class="rc-name">${r.name}</div>
+          <div class="rc-name">${esc(r.name)}</div>
           <dl class="rc-meta">
-            <div><dt>Subject</dt><dd>${r.subject}</dd></div>
-            <div><dt>Task</dt><dd>${r.task}</dd></div>
+            <div><dt>Subject</dt><dd>${esc(r.subject)}</dd></div>
+            <div><dt>Task</dt><dd>${esc(r.task)}</dd></div>
             <div><dt>Steeped</dt><dd>${r.duration} min · ${r.date}</dd></div>
-            ${r.username?`<div><dt>Brewed by</dt><dd>${r.username}</dd></div>`:''}
+            ${r.username?`<div><dt>Brewed by</dt><dd>${esc(r.username)}</dd></div>`:''}
           </dl>
         </div>
         <div class="rc-cup-frame">
@@ -1141,7 +1606,7 @@ function renderRecipes(){
         </div>
       </div>
       <div class="rc-ingredients">${ings}</div>
-      <div class="rc-note">I brewed this while studying ${r.subject}. The cup kept time, and the page kept the feeling.</div>
+      <div class="rc-note">I brewed this while studying ${esc(r.subject)}. The cup kept time, and the page kept the feeling.</div>
       <div class="rc-foot">
         <span class="rc-folio">No. ${pageNo}</span>
         <button class="fav-btn ${r.favorite?'':'off'}" onclick="toggleFavorite('${r.id}',event)" title="Favorite recipe" aria-label="Favorite recipe">★</button>
@@ -1654,6 +2119,8 @@ async function handleSessionChange(session){
     if(justSignedIn) localStorage.setItem('bf_recipes_guest', JSON.stringify(guestSnapshot));
     S.user = { id:session.user.id, email:session.user.email, username };
     renderAuthUI();
+    if(document.getElementById('page-cafe').classList.contains('active')) renderCafeList();
+    processPendingInvite(true);
     await loadCloudRecipes(guestSnapshot || []);
   } else {
     if(S.user){
@@ -1663,10 +2130,13 @@ async function handleSessionChange(session){
     }
     S.user = null;
     renderAuthUI();
+    if(S.room){ backToCafeList(); }
+    else if(document.getElementById('page-cafe').classList.contains('active')) renderCafeList();
+    processPendingInvite(true);
   }
 }
 async function initAuthState(){
-  if(!supabaseClient) return;
+  if(!supabaseClient){ processPendingInvite(true); return; }
   const { data:{ session } } = await supabaseClient.auth.getSession();
   await handleSessionChange(session);
   supabaseClient.auth.onAuthStateChange((_event, session)=>{ handleSessionChange(session); });
