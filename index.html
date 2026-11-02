@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611022208" />
+<link rel="stylesheet" href="style.css?v=202611022256" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -250,12 +250,12 @@
         <div class="slip-label vibe-label">Atmosphere</div>
         <div class="vibe-picker" id="vibe-picker"></div>
         <div class="reserve-foot">
-          <button class="btn-p reserve-btn" onclick="createCafe()">Open café</button>
+          <button class="btn-p reserve-btn vbtn" onclick="createCafe()"><svg class="vicon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M4.5 7.5h9v3.6a4.5 4.5 0 0 1-9 0z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M13.5 8.6h1.2a2 2 0 0 1 0 4h-1.4M3.5 16h11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M7.5 5.4c.4-.6.4-1.2 0-1.8M10.5 5.4c.4-.6.4-1.2 0-1.8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/></svg>Open café</button>
           <div class="join-code">
             <label class="slip-label" for="join-code">Have a code?</label>
             <div class="join-code-row">
               <input class="slip-in" id="join-code" maxlength="12" placeholder="AB12CD" autocomplete="off" onkeydown="if(event.key==='Enter')joinWithCode()">
-              <button class="btn-s join-code-btn" onclick="joinWithCode()">Join</button>
+              <button class="btn-s join-code-btn vbtn" onclick="joinWithCode()"><svg class="vicon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="6.5" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9.9 10H17M14.2 10v2.6M16.2 10v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Join</button>
             </div>
           </div>
         </div>
@@ -273,13 +273,13 @@
 <div id="page-caferoom" class="page">
   <div class="cr vibe-parisian" id="cafe-room">
     <div class="cr-bar">
-      <button class="cr-back" onclick="backToCafeList()">‹ All cafés</button>
+      <button class="cr-back vbtn-text" onclick="backToCafeList()"><svg class="vicon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>All cafés</button>
       <div class="cr-title">
         <div class="cr-vibe" id="cr-vibe">Parisian Café</div>
         <h2 id="cr-name">…</h2>
         <div class="cr-tagline" id="cr-tagline"></div>
       </div>
-      <button class="btn-s cr-invite" onclick="openInviteModal()">Invite a friend</button>
+      <button class="btn-s cr-invite vbtn" onclick="openInviteModal()"><svg class="vicon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="2.8" y="5" width="14.4" height="10" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.2 5.6L10 11l6.8-5.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="12.6" r="1.5" fill="currentColor" opacity="0.55"/></svg>Invite a friend</button>
     </div>
 
     <div class="cr-scene">
@@ -289,7 +289,10 @@
         <div class="cr-deco cr-deco-r"></div>
         <div class="cr-sign" id="cr-sign"></div>
       </div>
-      <div class="cr-table">
+      <div class="cr-floor" aria-hidden="true"></div>
+      <!-- The round table: chairs and table are drawn in, drinks sit on top -->
+      <div class="cr-tablewrap" id="cr-tablewrap">
+        <div class="cr-furniture-slot"></div>
         <div class="cr-seats" id="cr-seats"></div>
       </div>
     </div>
@@ -307,7 +310,7 @@
       </div>
     </div>
 
-    <div class="cr-foot"><button class="cr-leave" id="cr-leave" onclick="leaveCafePermanently()">Leave this café</button></div>
+    <div class="cr-foot"><button class="cr-leave vbtn-text" onclick="leaveCafePermanently()"><svg class="vicon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M5 17V3.6h8.4V17M3.4 17h13.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11.2" cy="10.6" r="0.9" fill="currentColor"/><path d="M5 3.6l4 1.4V17" fill="none" stroke="currentColor" stroke-width="1.1" opacity="0.6"/></svg><span id="cr-leave">Leave this café</span></button></div>
   </div>
 </div>
 
@@ -415,7 +418,7 @@
       <label class="room-f-label" for="invite-link">Share this link</label>
       <div class="invite-link-row">
         <input class="room-f-in" id="invite-link" readonly onclick="this.select()">
-        <button class="btn-p invite-copy" onclick="copyInviteLink()">Copy</button>
+        <button class="btn-p invite-copy vbtn" onclick="copyInviteLink()"><svg class="vicon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="6.5" y="6.5" width="9.5" height="10" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4 13.5V4.2c0-.5.4-.8.8-.8H12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Copy</button>
       </div>
       <div class="invite-code-line">or tell them the code <strong id="invite-code"></strong></div>
     </div>
@@ -423,7 +426,7 @@
       <label class="room-f-label" for="invite-username">Or invite by username</label>
       <div class="invite-link-row">
         <input class="room-f-in" id="invite-username" placeholder="Yuki…" autocomplete="off" onkeydown="if(event.key==='Enter')sendInvite()">
-        <button class="btn-s invite-send" onclick="sendInvite()">Send</button>
+        <button class="btn-s invite-send vbtn" onclick="sendInvite()"><svg class="vicon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M3 10l13.5-6-4.5 13-2.6-5.4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.4 11.6L16.5 4" stroke="currentColor" stroke-width="1.2"/></svg>Send</button>
       </div>
     </div>
     <div class="auth-msg" id="invite-msg"></div>
@@ -494,6 +497,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611022208"></script>
+<script src="script.js?v=202611022256"></script>
 </body>
 </html>

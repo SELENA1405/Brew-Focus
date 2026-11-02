@@ -727,7 +727,7 @@ async function renderCafeList(){
         <div class="invite-text"><strong>${esc(inv.from_username)}</strong> invited you to <em>${esc(inv.cafes?.name||'a café')}</em>
           <span class="invite-vibe">${v.label}</span></div>
         <div class="invite-actions">
-          <button class="btn-p" onclick="acceptInvite('${esc(inv.cafes?.invite_code||'')}')">Join</button>
+          <button class="btn-p vbtn" onclick="acceptInvite('${esc(inv.cafes?.invite_code||'')}')">${vicon('door')}Join</button>
           <button class="btn-s invite-decline" onclick="declineInvite('${esc(inv.id)}')">Decline</button>
         </div>
       </div>`;
@@ -752,7 +752,7 @@ function cafeCardHTML(c){
     <div class="room-card-meta"><span>${c.members.length} seated</span><i></i><span>${c.owner_id===S.user.id?'you host':'guest'}</span></div>
     <div class="room-card-date">${v.tagline}</div>
     <div class="room-table"><div class="room-cups">${cups}</div></div>
-    <button class="room-join-btn" onclick="enterCafe('${esc(c.id)}')">Enter café</button>
+    <button class="room-join-btn vbtn" onclick="enterCafe('${esc(c.id)}')">${vicon('door')}Enter café</button>
   </div>`;
 }
 function cafeErrorText(e){
@@ -914,29 +914,145 @@ function timerState(){
   }
   return {remaining, total:c.timer_duration_secs||1, running:!!c.timer_started_at};
 }
+// ── Vintage line icons (engraving style) ──
+const VICON = {
+  back:    '<path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  letter:  '<rect x="2.8" y="5" width="14.4" height="10" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.2 5.6L10 11l6.8-5.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="12.6" r="1.5" fill="currentColor" opacity="0.55"/>',
+  kettle:  '<path d="M5 15.5h10M6 15.5c-.9-1.6-1.2-3.4-.6-5.6.6-2.2 2.4-3.4 4.6-3.4s4 1.2 4.6 3.4c.6 2.2.3 4-.6 5.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M14.7 9.4l2.6-1.8M8.6 6.5c0-1 .6-1.8 1.4-1.8s1.4.8 1.4 1.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 3.2c.4-.6.4-1.1 0-1.7M11.2 3.2c.4-.6.4-1.1 0-1.7" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>',
+  menu:    '<path d="M5 3.5h10v13H5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7.5 7h5M7.5 9.6h5M7.5 12.2h3.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M5 3.5c-1 0-1.6.7-1.6 1.6M15 16.5c1 0 1.6-.7 1.6-1.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>',
+  door:    '<path d="M5 17V3.6h8.4V17M3.4 17h13.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11.2" cy="10.6" r="0.9" fill="currentColor"/><path d="M5 3.6l4 1.4V17" fill="none" stroke="currentColor" stroke-width="1.1" opacity="0.6"/>',
+  cup:     '<path d="M4.5 7.5h9v3.6a4.5 4.5 0 0 1-9 0z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M13.5 8.6h1.2a2 2 0 0 1 0 4h-1.4M3.5 16h11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M7.5 5.4c.4-.6.4-1.2 0-1.8M10.5 5.4c.4-.6.4-1.2 0-1.8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>',
+  copy:    '<rect x="6.5" y="6.5" width="9.5" height="10" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4 13.5V4.2c0-.5.4-.8.8-.8H12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+  send:    '<path d="M3 10l13.5-6-4.5 13-2.6-5.4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.4 11.6L16.5 4" stroke="currentColor" stroke-width="1.2"/>',
+  key:     '<circle cx="6.5" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9.9 10H17M14.2 10v2.6M16.2 10v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+};
+const vicon = (name, size=16) => `<svg class="vicon" viewBox="0 0 20 20" width="${size}" height="${size}" aria-hidden="true">${VICON[name]||''}</svg>`;
+
+// ── The round table and its chairs ──
+// Drawn in a 1000 × 440 box; seats sit around an ellipse so the table reads
+// as round, seen from a little above. You always sit at the front.
+const TABLE = { cx:500, cy:236, rx:270, ry:90, chairRx:372, chairRy:142, cupRx:178, cupRy:62, w:1000, h:440 };
+const TABLE_STYLE = {   // tabletop finish and centrepiece for each café type
+  parisian:'marble', bookstore:'wood', kyoto:'wood', midnight:'lacquer', library:'leather', cabin:'wood' };
+const CENTREPIECE = { parisian:'flowers', bookstore:'books', kyoto:'ikebana', midnight:'candle', library:'lamp', cabin:'lantern' };
+
+function seatAngles(n){ return Array.from({length:n}, (_,i)=> Math.PI/2 + i*2*Math.PI/n); }
+function seatPoint(a, rx, ry){ return { x:TABLE.cx + rx*Math.cos(a), y:TABLE.cy + ry*Math.sin(a) }; }
+function depthScale(y){ return 0.78 + 0.34*(y - (TABLE.cy-TABLE.chairRy))/(2*TABLE.chairRy); }
+
+// A bentwood bistro chair. "near" chairs face away from us (we see the
+// back hoop in front of the seat); "far" chairs face us across the table.
+function chairSVG(x, y, s, near){
+  const legs = `<path d="M-22,6 L-27,60 M22,6 L27,60 M-14,-4 L-17,52 M14,-4 L17,52" />`;
+  const hoop = `<ellipse cx="0" cy="38" rx="22" ry="6" fill="none"/>`;
+  const seat = `<ellipse class="ch-seat" cx="0" cy="0" rx="29" ry="9.5"/>`;
+  const backFar  = `<path d="M-19,-3 C-24,-40 -21,-80 0,-82 C21,-80 24,-40 19,-3"/><path d="M-11,-7 C-15,-36 -12,-64 0,-65 C12,-64 15,-36 11,-7"/>`;
+  const backNear = `<path d="M-19,6 C-24,-32 -21,-74 0,-76 C21,-74 24,-32 19,6"/><path d="M-11,3 C-15,-28 -12,-58 0,-59 C12,-58 15,-28 11,3"/>`;
+  const shadow = `<ellipse class="ch-shadow" cx="0" cy="60" rx="34" ry="7"/>`;
+  const body = shadow + (near ? legs+hoop+seat+backNear : backFar+legs+seat+hoop);
+  return `<g class="cr-chair ${near?'near':'far'}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(3)})">${body}</g>`;
+}
+
+// The centrepiece goes in the gap between the two seats furthest back, so
+// nobody's drink stands in front of it.
+function centrepieceSpot(seatCount){
+  const a=seatAngles(seatCount);
+  let best=null;
+  for(let i=0;i<a.length;i++){
+    const mid=(a[i] + (a[(i+1)%a.length] + (i+1===a.length ? 2*Math.PI : 0)))/2;
+    if(!best || Math.sin(mid) < Math.sin(best)) best=mid;
+  }
+  return { x:TABLE.cx + TABLE.rx*0.5*Math.cos(best), y:TABLE.cy + TABLE.ry*0.42*Math.sin(best) + 8 };
+}
+function centrepieceSVG(kind, at){
+  const x=at.x, y=at.y;
+  const glow = `<ellipse cx="${x}" cy="${y-30}" rx="70" ry="44" fill="url(#cp-glow)"/>`;
+  switch(kind){
+    case 'candle': return glow+`<rect x="${x-7}" y="${y-38}" width="14" height="34" rx="2" fill="#efe3c6"/><path d="M${x},${y-50} C${x+6},${y-42} ${x+4},${y-38} ${x},${y-37} C${x-4},${y-38} ${x-6},${y-42} ${x},${y-50}z" fill="#f6c45a"/><ellipse cx="${x}" cy="${y-3}" rx="20" ry="6" fill="#b48a3a"/>`;
+    case 'lantern': return glow+`<path d="M${x-14},${y-6} h28 l-3,-34 h-22z" fill="rgba(255,200,110,0.55)" stroke="#2e1a0c" stroke-width="3"/><path d="M${x-10},${y-40} h20 M${x},${y-40} v-10" stroke="#2e1a0c" stroke-width="3" fill="none"/><ellipse cx="${x}" cy="${y-22}" rx="5" ry="8" fill="#ffd27a"/>`;
+    case 'lamp': return glow+`<path d="M${x-26},${y-44} h52 l-8,-14 h-36z" fill="#2f6a4a" stroke="#173025" stroke-width="2"/><path d="M${x},${y-44} v38" stroke="#b48a3a" stroke-width="4"/><ellipse cx="${x}" cy="${y-4}" rx="22" ry="6" fill="#b48a3a"/>`;
+    case 'books': return `<rect x="${x-34}" y="${y-14}" width="68" height="12" rx="2" fill="#7a2e3a"/><rect x="${x-28}" y="${y-25}" width="58" height="11" rx="2" fill="#2f5a4a"/><rect x="${x-31}" y="${y-35}" width="54" height="10" rx="2" fill="#c7a86d"/><path d="M${x-22},${y-8} h50" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>`;
+    case 'ikebana': return `<path d="M${x},${y-10} C${x-6},${y-40} ${x-26},${y-58} ${x-34},${y-66} M${x},${y-10} C${x+4},${y-36} ${x+18},${y-54} ${x+30},${y-60}" stroke="#4a3a24" stroke-width="2.5" fill="none"/><circle cx="${x-34}" cy="${y-66}" r="7" fill="#e6a0a8"/><circle cx="${x+30}" cy="${y-60}" r="6" fill="#f0c4c8"/><circle cx="${x-14}" cy="${y-44}" r="5" fill="#e6a0a8"/><path d="M${x-22},${y-2} h44 l-6,-14 h-32z" fill="#3a2a1e"/>`;
+    default: return `<path d="M${x-12},${y-4} C${x-16},${y-24} ${x-8},${y-34} ${x},${y-34} C${x+8},${y-34} ${x+16},${y-24} ${x+12},${y-4}z" fill="#e8dcc2" stroke="#8a6a4a" stroke-width="1.5"/>
+      <path d="M${x},${y-34} C${x-6},${y-52} ${x-16},${y-60} ${x-22},${y-66} M${x},${y-34} C${x+2},${y-54} ${x+10},${y-62} ${x+18},${y-70} M${x},${y-34} v-36" stroke="#5f7a4a" stroke-width="2" fill="none"/>
+      <circle cx="${x-22}" cy="${y-68}" r="7" fill="#c8453a"/><circle cx="${x+18}" cy="${y-72}" r="6" fill="#e6a0a8"/><circle cx="${x}" cy="${y-74}" r="7" fill="#f3d58a"/>`;
+  }
+}
+
+function tableSVG(seatCount, vibe){
+  const {cx,cy,rx,ry} = TABLE;
+  const angles = seatAngles(seatCount);
+  // your own chair (the first seat, at the front) is left out, as if you're
+  // sitting in it looking across the table
+  const chairs = angles.slice(1).map(a=>{ const p=seatPoint(a, TABLE.chairRx, TABLE.chairRy); return {...p, near: Math.sin(a) > 0.05}; });
+  const farChairs  = chairs.filter(c=>!c.near).sort((a,b)=>a.y-b.y).map(c=>chairSVG(c.x, c.y, depthScale(c.y), false)).join('');
+  const nearChairs = chairs.filter(c=> c.near).sort((a,b)=>a.y-b.y).map(c=>chairSVG(c.x, c.y, depthScale(c.y), true)).join('');
+  const finish = TABLE_STYLE[vibe] || 'wood';
+  return `<svg class="cr-furniture" viewBox="0 0 ${TABLE.w} ${TABLE.h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs>
+      <radialGradient id="top-sheen" cx="42%" cy="34%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity="0.28"/><stop offset="0.55" stop-color="#fff" stop-opacity="0.04"/><stop offset="1" stop-color="#000" stop-opacity="0.18"/></radialGradient>
+      <radialGradient id="cp-glow"><stop offset="0" stop-color="#ffd890" stop-opacity="0.55"/><stop offset="1" stop-color="#ffd890" stop-opacity="0"/></radialGradient>
+      <pattern id="top-wood" width="140" height="22" patternUnits="userSpaceOnUse"><rect width="140" height="22" fill="var(--table)"/><path d="M0 6 C35 2 70 10 140 5 M0 15 C40 19 90 11 140 17" stroke="var(--table-2)" stroke-opacity="0.45" stroke-width="1.4" fill="none"/></pattern>
+      <pattern id="top-marble" width="260" height="120" patternUnits="userSpaceOnUse"><rect width="260" height="120" fill="#efe9df"/><path d="M-10 30 C40 10 70 60 130 40 S220 70 270 30 M20 100 C70 80 120 110 170 85 S240 90 270 110" stroke="#b9ada0" stroke-width="1.6" fill="none" opacity="0.7"/><path d="M60 0 C80 30 60 60 90 120" stroke="#cfc4b6" stroke-width="1" fill="none"/></pattern>
+      <pattern id="top-lacquer" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#1a1420"/></pattern>
+      <pattern id="top-leather" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#2f5a40"/><circle cx="2" cy="2" r="0.7" fill="#244834"/><circle cx="6" cy="6" r="0.7" fill="#3a6a4c"/></pattern>
+    </defs>
+    <ellipse cx="${cx}" cy="${cy+196}" rx="250" ry="26" fill="rgba(0,0,0,0.32)"/>
+    ${farChairs}
+    <path d="M${cx-26},${cy+20} C${cx-20},${cy+90} ${cx-30},${cy+150} ${cx-40},${cy+186} L${cx+40},${cy+186} C${cx+30},${cy+150} ${cx+20},${cy+90} ${cx+26},${cy+20}z" fill="var(--table-2)"/>
+    <path d="M${cx-8},${cy+30} C${cx-6},${cy+90} ${cx-10},${cy+150} ${cx-14},${cy+184}" stroke="rgba(255,255,255,0.12)" stroke-width="5" fill="none"/>
+    <ellipse cx="${cx}" cy="${cy+190}" rx="92" ry="16" fill="var(--table-2)"/>
+    <ellipse cx="${cx}" cy="${cy+16}" rx="${rx}" ry="${ry}" fill="var(--table-2)"/>
+    <ellipse class="cr-tabletop" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#top-${finish})"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#top-sheen)"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="var(--table-rim)" stroke-width="4"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="${rx-16}" ry="${ry-6}" fill="none" stroke="var(--table-rim)" stroke-opacity="0.35" stroke-width="1.2"/>
+    ${centrepieceSVG(CENTREPIECE[vibe], centrepieceSpot(seatCount))}
+    ${nearChairs}
+  </svg>`;
+}
+
+// Everyone seated around the table: you at the front, then the others; any
+// spare chairs stay empty (always at least four chairs, at most eight).
 function renderSeats(force){
   const c=S.room?.cafe; if(!c) return;
   const {remaining,total,running}=timerState();
   const frac = (running || remaining<total) ? remaining/total : 1;
   const key=Math.round(frac*50);
+  const seatCount = Math.min(8, Math.max(4, c.members.length + (c.members.length<8 ? 1 : 0)));
+  const layoutKey = `${c.vibe}|${seatCount}`;
+  const wrap=document.getElementById('cr-tablewrap');
+  if(force || wrap.dataset.layout!==layoutKey){ wrap.querySelector('.cr-furniture-slot').innerHTML = tableSVG(seatCount, c.vibe); wrap.dataset.layout=layoutKey; }
   if(!force && key===S.room.lastFrac) return;
   S.room.lastFrac=key;
-  const seats=c.members.map(m=>{
+  const me=c.members.find(m=>m.user_id===S.user.id);
+  const others=c.members.filter(m=>m!==me);
+  const angles=seatAngles(seatCount);
+  // You take the front chair; friends fill the chairs nearest you and at the
+  // sides first, and the far side of the table only once it gets busy.
+  const fillOrder=angles.slice(1).map((a,i)=>({a, i:i+1})).sort((p,q)=>Math.sin(q.a)-Math.sin(p.a)).map(p=>p.i);
+  const who=new Array(seatCount).fill(null);
+  if(me) who[0]=me;
+  others.forEach((m,k)=>{ if(fillOrder[k]!=null) who[fillOrder[k]]=m; });
+  const html = angles.map((a,i)=>{
+    const m=who[i];
+    const p=seatPoint(a, TABLE.cupRx, TABLE.cupRy + (Math.sin(a)<0 ? 12 : 0));
+    const s=depthScale(seatPoint(a, TABLE.chairRx, TABLE.chairRy).y);
+    const pos=`left:${(p.x/TABLE.w*100).toFixed(2)}%; top:${(p.y/TABLE.h*100).toFixed(2)}%; --s:${s.toFixed(3)}; z-index:${Math.round(p.y)};`;
+    if(!m) return `<div class="cr-seat open" style="${pos}" title="An empty chair — invite a friend"></div>`;
     const here=S.room.presence.has(m.user_id);
     const cup = m.drink
       ? buildCupSVG({size:104, fillFraction:frac, steam: frac>0.08, cup:m.drink.cup||'mug', base:m.drink.base||'coffee', drink:m.drink.drink, addons:m.drink.addons||[]})
       : `<div class="seat-empty" aria-hidden="true"></div>`;
-    return `<div class="cr-seat ${here?'here':'away'} ${m.user_id===S.user.id?'me':''}">
+    return `<div class="cr-seat ${here?'here':'away'} ${m.user_id===S.user.id?'me':''}" style="${pos}">
       <div class="cr-cup">${cup}</div>
       <div class="cr-card">
-        <span class="cr-dot" title="${here?'Here now':'Away'}"></span>${esc(m.username)}${m.user_id===c.owner_id?'<span class="cr-host">host</span>':''}
+        <span class="cr-dot" title="${here?'Here now':'Away'}"></span><span class="cr-who">${esc(m.username)}</span>${m.user_id===c.owner_id?'<span class="cr-host">host</span>':''}
       </div>
       <div class="cr-drinkname">${m.drink ? esc(m.drink.label||'') : 'no drink yet'}</div>
     </div>`;
-  });
-  const open = Math.max(0, Math.min(2, 8 - c.members.length));
-  for(let i=0;i<open;i++) seats.push(`<div class="cr-seat open"><div class="cr-cup"><div class="seat-chair" aria-hidden="true"></div></div><div class="cr-card">open seat</div></div>`);
-  document.getElementById('cr-seats').innerHTML = seats.join('');
+  }).join('');
+  document.getElementById('cr-seats').innerHTML = html;
 }
 
 function renderMyDrinkPanel(){
@@ -946,10 +1062,10 @@ function renderMyDrinkPanel(){
     ? `<div class="cr-mine-label">Your drink</div>
        <div class="cr-mine-name">${esc(me.drink.label||'')}</div>
        <div class="cr-mine-how">${me.drink.how==='brewed'?'brewed by you':'ordered from the menu'}</div>
-       <div class="cr-mine-actions"><button class="btn-s" onclick="openOrderMenu()">Order something else</button><button class="btn-s" onclick="brewForCafe()">Brew another</button></div>`
+       <div class="cr-mine-actions"><button class="btn-s vbtn" onclick="openOrderMenu()">${vicon('menu')}Order something else</button><button class="btn-s vbtn" onclick="brewForCafe()">${vicon('kettle')}Brew another</button></div>`
     : `<div class="cr-mine-label">You've taken a seat</div>
        <div class="cr-mine-name">What will you have?</div>
-       <div class="cr-mine-actions"><button class="btn-p" onclick="brewForCafe()">Brew your own</button><button class="btn-s" onclick="openOrderMenu()">Order from the menu</button></div>`;
+       <div class="cr-mine-actions"><button class="btn-p vbtn" onclick="brewForCafe()">${vicon('kettle')}Brew your own</button><button class="btn-s vbtn" onclick="openOrderMenu()">${vicon('menu')}Order from the menu</button></div>`;
 }
 
 // ── Ordering & brewing ──

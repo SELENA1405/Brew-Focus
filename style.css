@@ -807,35 +807,6 @@ body::after {
   box-shadow:0 8px 16px rgba(0,0,0,0.35), inset 0 0 0 3px var(--sign-bg), inset 0 0 0 4px rgba(217,182,106,0.6);
 }
 .cr-sign:empty { display:none; }
-.cr-table {
-  position:relative; padding:1.6rem 1.5rem 1.4rem;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.10), transparent 18px),
-    repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 60px),
-    linear-gradient(180deg, var(--table), var(--table-2));
-  box-shadow:inset 0 10px 18px rgba(0,0,0,0.25);
-}
-.cr-table::after { content:''; position:absolute; left:0; right:0; bottom:-14px; height:14px; background:linear-gradient(180deg, var(--table-2), rgba(0,0,0,0.6)); }
-.cr-seats { display:flex; flex-wrap:wrap; justify-content:center; gap:1.2rem 1.8rem; }
-.cr-seat { display:flex; flex-direction:column; align-items:center; width:116px; }
-.cr-cup { height:140px; display:flex; align-items:flex-end; justify-content:center; }
-.cr-cup svg { display:block; filter:drop-shadow(0 12px 18px rgba(0,0,0,0.45)); }
-.seat-empty { width:64px; height:84px; margin-bottom:22px; border:1px dashed rgba(245,232,211,0.4); border-radius:6px 6px 16px 16px; }
-.seat-chair { width:70px; height:70px; margin-bottom:24px; border-radius:50%; border:1px dashed rgba(245,232,211,0.22); }
-.cr-card {
-  display:flex; align-items:center; gap:0.4rem; max-width:100%; margin-top:-6px; padding:0.2rem 0.6rem;
-  font-family:'Caveat',cursive; font-size:1.05rem; color:var(--ink); line-height:1.2;
-  background:linear-gradient(172deg, #f6ecd8, #e6d3b0); box-shadow:0 4px 8px rgba(0,0,0,0.35);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.cr-seat.open .cr-card { background:none; box-shadow:none; color:rgba(245,232,211,0.4); font-size:0.95rem; }
-.cr-dot { flex:none; width:7px; height:7px; border-radius:50%; background:#8a9b78; box-shadow:0 0 0 2px rgba(138,155,120,0.25); }
-.cr-seat.away .cr-dot { background:transparent; box-shadow:inset 0 0 0 1px rgba(58,34,18,0.45); }
-.cr-seat.away .cr-cup { opacity:0.72; }
-.cr-host { font-family:'Lora',serif; font-size:0.52rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--burgundy); border:1px solid rgba(122,46,58,0.5); padding:0 4px; }
-.cr-seat.me .cr-card { box-shadow:0 4px 8px rgba(0,0,0,0.35), inset 0 0 0 1px var(--burgundy); }
-.cr-drinkname { margin-top:0.3rem; font-family:'Playfair Display',serif; font-style:italic; font-size:0.8rem; color:rgba(245,232,211,0.75); text-align:center; line-height:1.2; }
-
 /* Below the table: your drink and the shared timer */
 .cr-panel { display:grid; grid-template-columns:1fr 1fr; gap:1.6rem; margin-top:2rem; }
 .cr-mine, .cr-timer {
@@ -860,6 +831,107 @@ body::after {
 .cr-foot { text-align:center; margin-top:1.6rem; }
 .cr-leave { background:none; border:none; cursor:pointer; color:var(--beige); opacity:0.5; font-family:'Lora',serif; font-size:0.64rem; letter-spacing:0.2em; text-transform:uppercase; }
 .cr-leave:hover { opacity:0.9; text-decoration:underline; text-underline-offset:4px; }
+
+
+/* ── Inside a café: the round table ── */
+.cr-scene { position:relative; border-radius:6px; overflow:hidden; isolation:isolate;
+  box-shadow:0 30px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(199,168,109,0.35), 0 0 0 7px rgba(20,10,4,0.55), 0 0 0 8px rgba(199,168,109,0.22); }
+/* an old-photograph finish over the whole room: warm tint, soft vignette, grain */
+.cr-scene::after { content:''; position:absolute; inset:0; z-index:5000; pointer-events:none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(30,14,4,0.38) 100%),
+    repeating-linear-gradient(0deg, rgba(255,240,210,0.025) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, rgba(255,214,150,0.05), rgba(120,70,20,0.06));
+  mix-blend-mode:multiply; }
+.cr-wall { height:250px; }
+.cr-floor { position:absolute; left:0; right:0; top:250px; bottom:0; overflow:hidden; background:var(--floor-base, #2c1a0e); }
+/* the floor pattern laid out in perspective, receding towards the back wall */
+.cr-floor::after { content:''; position:absolute; left:-60%; right:-60%; top:0; height:260%;
+  background:var(--floor); transform:perspective(420px) rotateX(58deg); transform-origin:50% 0; }
+.cr-floor > i { display:none; }
+.cr-floor::before { z-index:1; }
+.cr-scene .cr-floor { box-shadow:inset 0 40px 50px -20px rgba(0,0,0,0.45); }
+.cr-floor::before { content:''; position:absolute; left:0; right:0; top:0; height:10px; background:linear-gradient(180deg, var(--skirting, #3a2414), transparent); opacity:0.9; }
+.cr-tablewrap { position:relative; z-index:1; width:100%; aspect-ratio:1000/440; margin-top:-7%; container-type:inline-size; }
+.cr-furniture-slot, .cr-furniture { position:absolute; inset:0; width:100%; height:100%; }
+.cr-chair { fill:none; stroke:var(--chair, #2a1a10); stroke-width:4.2; stroke-linecap:round; stroke-linejoin:round; }
+.cr-chair .ch-seat { fill:var(--chair-seat, #5a3a24); stroke:var(--chair, #2a1a10); }
+.cr-chair.far { opacity:0.92; }
+.cr-chair .ch-shadow { fill:rgba(0,0,0,0.28); stroke:none; }
+.cr-seats { position:absolute; inset:0; }
+.cr-seat { position:absolute; display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -88%) scale(var(--s)); transform-origin:50% 88%; width:14cqw; }
+.cr-seat .cr-cup { height:auto; display:flex; align-items:flex-end; justify-content:center; }
+.cr-seat .cr-cup svg { display:block; width:9.2cqw; height:auto; filter:drop-shadow(0 8px 10px rgba(0,0,0,0.4)); }
+.cr-seat .seat-empty { width:4.4cqw; height:5.6cqw; margin-bottom:1.4cqw; border:1px dashed rgba(58,34,18,0.45); border-radius:4px 4px 10px 10px; }
+.cr-seat.open { width:0; height:0; }
+.cr-seat .cr-card { margin-top:-0.6cqw; font-size:clamp(0.7rem, 1.7cqw, 1.05rem); padding:0.1em 0.55em; max-width:15cqw; }
+.cr-card {
+  display:flex; align-items:center; gap:0.4em; position:relative; z-index:1;
+  font-family:'Caveat',cursive; color:var(--ink); line-height:1.2; white-space:nowrap; overflow:hidden;
+  background:linear-gradient(172deg, #f6ecd8, #e6d3b0); box-shadow:0 3px 6px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(107,79,58,0.25);
+}
+.cr-dot { flex:none; width:0.5em; height:0.5em; border-radius:50%; background:#7d9468; box-shadow:0 0 0 2px rgba(125,148,104,0.25); }
+.cr-seat.away .cr-dot { background:transparent; box-shadow:inset 0 0 0 1px rgba(58,34,18,0.45); }
+.cr-host { font-family:'Lora',serif; font-size:0.62em; letter-spacing:0.14em; text-transform:uppercase; color:var(--burgundy); border:1px solid rgba(122,46,58,0.5); padding:0 0.3em; }
+.cr-seat.me .cr-card { box-shadow:0 3px 6px rgba(0,0,0,0.35), inset 0 0 0 1px var(--burgundy); }
+.cr-drinkname { margin-top:0.25em; font-family:'Playfair Display',serif; font-style:italic; text-align:center; line-height:1.2; }
+.cr-who { overflow:hidden; text-overflow:ellipsis; }
+.cr-seat .cr-drinkname { font-size:clamp(0.62rem, 1.25cqw, 0.82rem); color:var(--drinkname, rgba(245,232,211,0.88)); text-shadow:var(--drinkname-shadow, 0 1px 2px rgba(0,0,0,0.65)); white-space:nowrap; }
+.cr-seat.away .cr-cup { opacity:0.7; }
+
+/* Tabletop finish, chairs and floor for each café type */
+.cr { --table-rim:#c7a86d; --floor:linear-gradient(180deg,#4a301d,#2c1a0e); }
+.cr.vibe-parisian { --table:#efe9df; --table-2:#3a2a24; --table-rim:#c9a24a; --chair:#1e1410; --chair-seat:#6b3a28; --skirting:#5a2420;
+  --floor:repeating-conic-gradient(#ddd0ba 0 25%, #5e4c42 0 50%) 0 0/80px 80px; --floor-base:#5e4c42; --drinkname:#4a2e22; --drinkname-shadow:none; }
+.cr.vibe-bookstore { --table:#6a4a30; --table-2:#3a2618; --table-rim:#8a6a42; --chair:#2a1d14; --chair-seat:#7a5636; --skirting:#1a1310;
+  --floor:repeating-linear-gradient(45deg, #5c4330 0 18px, #4e3826 18px 36px), #4e3826; }
+.cr.vibe-kyoto { --table:#5a4030; --table-2:#2e2016; --table-rim:#3a2a1e; --chair:#3a2a1e; --chair-seat:#8a9b78; --skirting:#4a3424;
+  --floor:linear-gradient(90deg, #3a2a1e 0 3px, transparent 3px) 0 0/180px 100%, linear-gradient(0deg, #3a2a1e 0 3px, transparent 3px) 0 0/100% 90px, repeating-linear-gradient(90deg, #b8b07a 0 2px, #c4bc86 2px 4px); }
+.cr.vibe-midnight { --table-2:#0e0a12; --table-rim:#d9b66a; --chair:#0a0810; --chair-seat:#3a2a3a; --skirting:#06070f;
+  --floor:linear-gradient(45deg, rgba(217,182,106,0.12) 25%, transparent 25% 75%, rgba(217,182,106,0.12) 75%) 0 0/60px 60px, #15121e; }
+.cr.vibe-library { --table:#5a2e1c; --table-2:#2e160c; --table-rim:#b48a3a; --chair:#2e160c; --chair-seat:#7a2e2a; --skirting:#1a0c06;
+  --floor:radial-gradient(circle at 50% 50%, #c7a86d 0 2px, transparent 3px) 0 0/34px 34px, repeating-linear-gradient(45deg, #6a1f22 0 17px, #5a181c 17px 34px); }
+.cr.vibe-cabin { --table:#7a4a28; --table-2:#3a2010; --table-rim:#5a3418; --chair:#2e1a0c; --chair-seat:#8a5a2e; --skirting:#2e1a0c;
+  --floor:radial-gradient(ellipse at 50% 70%, #8a2e24 0 34%, #6a2018 34.5% 38%, #a8803e 38.5% 40%, transparent 40.5%), repeating-linear-gradient(90deg, #6a4224 0 70px, #5a361c 70px 72px); }
+
+/* ── Vintage buttons with engraved icons ── */
+.vicon { flex:none; display:block; }
+.vbtn { display:inline-flex; align-items:center; justify-content:center; gap:0.55rem; }
+.cr .btn-p.vbtn, .cafe-wrap .btn-p.vbtn, #invite-modal .btn-p.vbtn {
+  background:linear-gradient(180deg, #8a3442, var(--burgundy) 55%, #5e2230);
+  box-shadow:inset 0 0 0 1px rgba(217,182,106,0.55), inset 0 0 0 3px var(--burgundy), inset 0 0 0 4px rgba(217,182,106,0.3), 0 8px 18px rgba(0,0,0,0.3);
+  border:none; letter-spacing:0.14em;
+}
+.cr .btn-p.vbtn:hover, .cafe-wrap .btn-p.vbtn:hover, #invite-modal .btn-p.vbtn:hover { background:linear-gradient(180deg, #a5463c, var(--rust) 55%, #6a2e1c); }
+.cr .btn-s.vbtn { border:1px solid rgba(199,168,109,0.55); color:var(--cream); background:rgba(30,16,8,0.35);
+  box-shadow:inset 0 0 0 3px rgba(30,16,8,0.35), inset 0 0 0 4px rgba(199,168,109,0.18); letter-spacing:0.14em; }
+.cr .btn-s.vbtn:hover { border-color:var(--gold); color:var(--gold); }
+.room-join-btn.vbtn { display:flex; box-shadow:inset 0 0 0 1px rgba(217,182,106,0.5), inset 0 0 0 3px var(--burgundy), inset 0 0 0 4px rgba(217,182,106,0.25); }
+.vbtn-text { display:inline-flex; align-items:center; gap:0.45rem; }
+.cr-back.vbtn-text .vicon { width:14px; height:14px; }
+
+/* Shared-timer controls as round brass dials */
+.cr-timer-ctrl .btn-ic {
+  width:46px; height:46px; border-radius:50%; color:#3a2410; border:none;
+  background:radial-gradient(circle at 35% 30%, #f6e2a8, #d6ae5c 45%, #9a7428 85%);
+  box-shadow:inset 0 0 0 2px rgba(255,240,200,0.55), inset 0 0 0 5px rgba(122,86,30,0.35), 0 4px 10px rgba(0,0,0,0.45);
+}
+.cr-timer-ctrl .btn-ic:hover { background:radial-gradient(circle at 35% 30%, #fff0c4, #e2bc6a 45%, #a67e30 85%); }
+.cr-timer-ctrl .btn-ic.play { width:58px; height:58px; color:#f5e8d3; background:radial-gradient(circle at 35% 30%, #b04a58, var(--burgundy) 55%, #4a1622);
+  box-shadow:inset 0 0 0 2px rgba(217,182,106,0.7), inset 0 0 0 5px rgba(122,46,58,0.6), inset 0 0 0 6px rgba(217,182,106,0.35), 0 6px 14px rgba(0,0,0,0.45); }
+.cr-timer-ctrl .btn-ic.play:hover { background:radial-gradient(circle at 35% 30%, #c45a46, var(--rust) 55%, #5a2414); }
+.cr-duration { border-radius:14px; padding:0.5rem 0.9rem; background:rgba(30,16,8,0.6); }
+
+@media (max-width:700px){
+  .cr-wall { height:200px; }
+  .cr-floor { top:200px; }
+  .cr-tablewrap { margin-top:-10%; }
+  .cr-seat { width:18cqw; }
+  .cr-seat .cr-cup svg { width:12cqw; }
+  .cr-seat .cr-card { font-size:0.72rem; max-width:30cqw; }
+  .cr-seat .cr-host { display:none; }   /* the timer already says who's keeping time */
+  .cr-seat .cr-drinkname { display:none; }
+}
 
 /* ── The six atmospheres ── */
 /* Parisian café: striped wallpaper, dusk street, red-and-cream awning */
@@ -963,11 +1035,6 @@ body::after {
   .cr-window { width:180px; height:170px; margin-bottom:16px; }
   .cr-deco { display:none; }
   .cr-sign { top:14px; font-size:0.9rem; }
-  .cr-table { padding:1.2rem 0.6rem 1rem; }
-  .cr-seats { gap:0.8rem 0.6rem; }
-  .cr-seat { width:96px; }
-  .cr-cup { height:118px; }
-  .cr-cup svg { width:86px; height:auto; }
   .vibe-picker { grid-template-columns:1fr; }
   .reserve-foot { flex-direction:column; align-items:stretch; }
   .invite-card { flex-wrap:wrap; }
