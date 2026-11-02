@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611022311" />
+<link rel="stylesheet" href="style.css?v=202611022326" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -269,6 +269,92 @@
   </div>
 </div>
 
+<!-- ═══════ PROFILE (The Brew & Focus Gazette) ═════════════════════════ -->
+<div id="page-profile" class="page">
+  <article class="gazette" aria-labelledby="gz-title">
+    <header class="gz-mast">
+      <div class="gz-ears"><span>Est. <b id="gz-est">2026</b></span><span>Price: one warm cup</span></div>
+      <h1 class="gz-title" id="gz-title">The Brew &amp; Focus Gazette</h1>
+      <svg class="gz-flourish" viewBox="0 0 520 26" aria-hidden="true">
+        <path d="M0 13h196M324 13h196" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M0 18h190M330 18h190" stroke="currentColor" stroke-width="0.8"/>
+        <path d="M260 4c-8 0-14 4-18 9 4 5 10 9 18 9s14-4 18-9c-4-5-10-9-18-9z" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <circle cx="260" cy="13" r="3" fill="currentColor"/>
+        <path d="M242 13c-10-8-22-9-36-2M278 13c10-8 22-9 36-2M242 13c-10 8-22 9-36 2M278 13c10 8 22 9 36 2" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      </svg>
+      <div class="gz-dateline"><span id="gz-date"></span><span class="gz-dot">◆</span><span>Member Edition</span><span class="gz-dot">◆</span><span id="gz-volume">Vol. I</span></div>
+    </header>
+
+    <section class="gz-box gz-signedout" id="gz-signedout" hidden>
+      <h2 class="gz-headline">Extra! Extra!</h2>
+      <p>Your own edition of the Gazette is printed for members only. Sign in to read about your study year and change your name or portrait.</p>
+      <div class="gz-actions"><button class="gz-press" onclick="openAuthModal('signin')">Log in</button><button class="gz-press ghost" onclick="openAuthModal('signup')">Sign up</button></div>
+    </section>
+
+    <div class="gz-grid" id="gz-grid" hidden>
+      <section class="gz-box gz-since">
+        <h3 class="gz-kicker">Member Since</h3>
+        <div class="gz-big" id="gz-since-year">2026</div>
+        <p class="gz-text" id="gz-since-text"></p>
+      </section>
+
+      <section class="gz-box gz-portrait">
+        <h2 class="gz-headline">Portrait of a Studious Mind</h2>
+        <figure class="gz-photo" id="gz-photo">
+          <img id="gz-avatar" alt="Your profile picture" hidden>
+          <div class="gz-photo-empty" id="gz-avatar-empty">
+            <svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="46" r="22" fill="currentColor" opacity="0.55"/><path d="M18 116c4-26 22-40 42-40s38 14 42 40z" fill="currentColor" opacity="0.55"/></svg>
+            <span>Portrait to follow</span>
+          </div>
+        </figure>
+        <p class="gz-caption"><b id="gz-name"></b>, known about the café as <i>@<span id="gz-handle"></span></i>.</p>
+        <div class="gz-photo-actions">
+          <label class="gz-press">
+            <input type="file" accept="image/jpeg,image/png,image/webp" onchange="uploadAvatar(this.files[0]); this.value=''">
+            Submit a new portrait
+          </label>
+          <button type="button" class="gz-link" id="gz-remove-photo" onclick="removeAvatar()" hidden>remove</button>
+        </div>
+      </section>
+
+      <section class="gz-box gz-edit">
+        <h3 class="gz-kicker gz-fancy">Classifieds</h3>
+        <p class="gz-text gz-notice">NOTICE OF CHANGE OF NAME. The undersigned wishes it known that henceforth they shall be called:</p>
+        <form class="gz-form" onsubmit="event.preventDefault(); saveProfile();" novalidate>
+          <label class="gz-label" for="gz-in-name">Name</label>
+          <input class="gz-in" id="gz-in-name" maxlength="40" autocomplete="name">
+          <label class="gz-label" for="gz-in-username">Username</label>
+          <div class="gz-handle-in"><span>@</span><input class="gz-in" id="gz-in-username" maxlength="24" autocomplete="username" spellcheck="false"></div>
+          <p class="gz-hint">2–24 letters or numbers, no spaces. Friends use it to invite you.</p>
+          <div class="gz-msg" id="gz-msg" role="status" aria-live="polite"></div>
+          <button type="submit" class="gz-press" id="gz-save">Send to press</button>
+        </form>
+      </section>
+
+      <section class="gz-box gz-hours-box">
+        <h3 class="gz-kicker">Time at the Desk</h3>
+        <div class="gz-big"><span id="gz-hours">0</span><small id="gz-hours-unit">minutes</small></div>
+        <p class="gz-text" id="gz-hours-text"></p>
+      </section>
+
+      <section class="gz-box gz-topbrew-box">
+        <h3 class="gz-kicker">Top Brew of the Year</h3>
+        <div id="gz-topbrew"></div>
+      </section>
+
+      <section class="gz-box gz-recent-box">
+        <h3 class="gz-kicker gz-fancy">Recent Entries</h3>
+        <div class="gz-columns" id="gz-recent"></div>
+      </section>
+
+      <section class="gz-box gz-subjects-box">
+        <h3 class="gz-kicker gz-fancy">Favourite Subjects</h3>
+        <ul class="gz-list" id="gz-subjects"></ul>
+      </section>
+    </div>
+  </article>
+</div>
+
 <!-- Paint filters for the café rooms: wobbly, hand-painted edges -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <filter id="cr-paint" x="-5%" y="-5%" width="110%" height="110%">
@@ -515,6 +601,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611022311"></script>
+<script src="script.js?v=202611022326"></script>
 </body>
 </html>

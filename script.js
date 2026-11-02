@@ -356,6 +356,7 @@ function showPage(name) {
   if(name==='recipes'){ resetRecipeBookCover(); renderRecipes(); }
   if(name==='cafe') renderCafeList();
   if(name==='home') renderHeroCup();
+  if(name==='profile') renderProfilePage();
 }
 
 function renderHeroCup(){
@@ -1277,7 +1278,7 @@ function resetRecipeBookCover(){
   if(cover) cover.style.visibility='';
   closeFilterDrawer();
   const byline=document.getElementById('cover-byline-name');
-  if(byline) byline.textContent = S.user?.username || S.username || 'You';
+  if(byline) byline.textContent = S.user ? displayNameOf() : (S.username || 'You');
 }
 
 // Waits for a specific CSS transition to actually finish on an element
@@ -2048,6 +2049,164 @@ function flipStackedPage(shell, oldCards, g, dir){
   return a.finished.then(()=>stage.remove(), ()=>stage.remove());
 }
 
+// ── Profile page (The Brew & Focus Gazette) ─────────────────────────────
+// Your name, username and picture, plus a front page of your study year
+// drawn from your recipe book. Saved through supabase/profiles.sql.
+S.profile = null;   // { username, display_name, avatar_url, joined }
+const USERNAME_RULE = /^[A-Za-z0-9._-]{2,24}$/;
+const displayNameOf = () => S.profile?.display_name || S.user?.username || (S.user?.email||'').split('@')[0] || 'Friend';
+
+function profileErrorText(e){
+  const m=String(e?.message||e);
+  if(/schema cache|does not exist|Could not find the function|get_my_profile|set_my_profile|set_my_avatar|Bucket not found/i.test(m))
+    return 'Profile editing needs a one-time database update (supabase/profiles.sql).';
+  return m;
+}
+
+// Read your profile after signing in; keeps the nav and café name in step.
+async function loadMyProfile(){
+  if(!supabaseClient || !S.user) return;
+  try{
+    const { data, error } = await supabaseClient.rpc('get_my_profile');
+    if(error) throw error;
+    S.profile = data || null;
+    if(S.profile?.username) S.user.username = S.profile.username;
+  } catch(e){ S.profile = null; console.warn('Profile not loaded:', e.message||e); }
+}
+
+function renderProfilePage(){
+  const signedIn=!!S.user;
+  document.getElementById('gz-signedout').hidden = signedIn;
+  document.getElementById('gz-grid').hidden = !signedIn;
+  const now=new Date();
+  document.getElementById('gz-date').textContent = now.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  if(!signedIn) return;
+  const p=S.profile||{};
+  const username=p.username || S.user.username || '';
+  document.getElementById('gz-name').textContent = displayNameOf();
+  document.getElementById('gz-handle').textContent = username;
+  // the portrait
+  const img=document.getElementById('gz-avatar');
+  const empty=document.getElementById('gz-avatar-empty');
+  if(p.avatar_url){ img.src=p.avatar_url; img.hidden=false; empty.hidden=true; } else { img.removeAttribute('src'); img.hidden=true; empty.hidden=false; }
+  document.getElementById('gz-remove-photo').hidden = !p.avatar_url;
+  // member since
+  const joined = p.joined ? new Date(p.joined) : now;
+  document.getElementById('gz-since-year').textContent = joined.getFullYear();
+  document.getElementById('gz-since-text').textContent =
+    `Joined the café on ${joined.toLocaleDateString('en-GB',{day:'numeric', month:'long', year:'numeric'})}, and has been brewing ever since.`;
+  document.getElementById('gz-est').textContent = joined.getFullYear();
+  // the study year, from the recipe book
+  const all=[...(S.recipes||[]), ...(S.sharedRecipes||[])];
+  const minutes=all.reduce((n,r)=>n+(Number(r.duration)||0),0);
+  document.getElementById('gz-hours').textContent = minutes>=60 ? (minutes/60).toFixed(minutes<600?1:0) : minutes;
+  document.getElementById('gz-hours-unit').textContent = minutes>=60 ? 'hours' : 'minutes';
+  document.getElementById('gz-hours-text').textContent = all.length
+    ? `Across ${all.length} session${all.length===1?'':'s'}, ${all.length===1?'one cup':'cup after cup'}, the pages kept turning.`
+    : 'No sessions on record yet — the first cup is still waiting to be brewed.';
+  document.getElementById('gz-volume').textContent = `Vol. I · No. ${all.length+1}`;
+  const tally=(key)=>{ const m=new Map(); all.forEach(r=>{ const k=key(r); if(k) m.set(k,(m.get(k)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]); };
+  const topDrink=tally(r=>r.drink||r.base)[0];
+  const topEl=document.getElementById('gz-topbrew');
+  if(topDrink){
+    const key=topDrink[0], d=DRINKS[key]||{};
+    const sample=all.find(r=>(r.drink||r.base)===key)||{};
+    topEl.innerHTML = `<div class="gz-cup">${buildCupSVG({size:120, fillFraction:1, steam:false, cup:'glass', base:sample.base||d.base||'coffee', drink:key, addons:sample.addons||d.addons||[]})}</div>
+      <div class="gz-topbrew-name">${esc(d.label || baseNames[key] || key)}</div>
+      <div class="gz-small">brewed ${topDrink[1]} time${topDrink[1]===1?'':'s'}</div>`;
+  } else {
+    topEl.innerHTML = `<div class="gz-small gz-center">To be announced — brew your first cup to claim the title.</div>`;
+  }
+  const subjects=tally(r=>r.subject && r.subject!=='General Study' ? r.subject : null).slice(0,5);
+  document.getElementById('gz-subjects').innerHTML = subjects.length
+    ? subjects.map(([s])=>`<li>${esc(s)}</li>`).join('')
+    : `<li class="gz-small">Yet to be written</li>`;
+  const recent=[...all].sort((a,b)=>(b._ts||b.id||0)-(a._ts||a.id||0)).slice(0,3);
+  document.getElementById('gz-recent').innerHTML = recent.length
+    ? recent.map(r=>`<article><h4>${esc(r.name||'Untitled Brew')}</h4><p>${esc(r.subject||'')}${r.task?` — ${esc(r.task)}`:''}. ${Number(r.duration)||0} minutes${r.shared?' at a shared table':''}.</p><span class="gz-dateline-small">${esc(r.date||'')}</span></article>`).join('')
+    : `<p class="gz-small">The presses are quiet. Finish a study session and the first story will run here.</p>`;
+  // the edit form
+  const n=document.getElementById('gz-in-name'), u=document.getElementById('gz-in-username');
+  if(document.activeElement!==n) n.value = p.display_name || '';
+  if(document.activeElement!==u) u.value = username;
+  n.placeholder = username || 'Your name';
+}
+
+function setProfileMsg(msg, type){ const el=document.getElementById('gz-msg'); el.textContent=msg||''; el.className='gz-msg'+(type?' '+type:''); }
+
+async function saveProfile(){
+  if(!supabaseClient || !S.user) return;
+  const name=document.getElementById('gz-in-name').value.trim();
+  const username=document.getElementById('gz-in-username').value.trim().replace(/^@/,'');
+  if(!USERNAME_RULE.test(username)){ setProfileMsg('Usernames are 2–24 letters or numbers (you can also use . _ -), with no spaces.', 'error'); return; }
+  if(name.length>40){ setProfileMsg('Please keep your name under 40 characters.', 'error'); return; }
+  const btn=document.getElementById('gz-save'); const label=btn.textContent;
+  btn.disabled=true; btn.textContent='Printing…';
+  try{
+    const { data, error } = await supabaseClient.rpc('set_my_profile', { p_display_name:name, p_username:username });
+    if(error) throw error;
+    if(data==='taken'){ setProfileMsg(`“${username}” is already taken — try another.`, 'error'); return; }
+    if(data==='invalid'){ setProfileMsg('Usernames are 2–24 letters or numbers (you can also use . _ -), with no spaces.', 'error'); return; }
+    // keep the account's own record in step too
+    try { await supabaseClient.auth.updateUser({ data:{ username, display_name:name||null } }); } catch(e){}
+    S.profile = { ...(S.profile||{}), username, display_name:name||null };
+    S.user.username = username;
+    renderAuthUI(); renderProfilePage();
+    setProfileMsg('Sent to press — your profile is updated.', 'success');
+  } catch(e){ setProfileMsg(profileErrorText(e), 'error'); }
+  finally{ btn.disabled=false; btn.textContent=label; }
+}
+
+// Crop the chosen picture to a square, shrink it, and upload it to your
+// own folder in the avatars bucket.
+function squareImage(file, size=400){
+  return new Promise((resolve, reject)=>{
+    const url=URL.createObjectURL(file); const img=new Image();
+    img.onload=()=>{
+      const s=Math.min(img.naturalWidth, img.naturalHeight);
+      const c=document.createElement('canvas'); c.width=size; c.height=size;
+      const ctx=c.getContext('2d'); ctx.imageSmoothingQuality='high';
+      ctx.drawImage(img, (img.naturalWidth-s)/2, (img.naturalHeight-s)/2, s, s, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      c.toBlob(b=> b ? resolve(b) : reject(new Error('Could not read that picture')), 'image/jpeg', 0.88);
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('That file doesn’t look like a picture')); };
+    img.src=url;
+  });
+}
+async function uploadAvatar(file){
+  if(!file || !supabaseClient || !S.user) return;
+  if(!/^image\//.test(file.type)){ setProfileMsg('Please choose a picture (JPG, PNG or WebP).', 'error'); return; }
+  if(file.size > 15*1024*1024){ setProfileMsg('That picture is very large — please choose one under 15 MB.', 'error'); return; }
+  const fig=document.getElementById('gz-photo'); fig.classList.add('printing');
+  setProfileMsg('Developing your portrait…');
+  try{
+    const blob=await squareImage(file);
+    const path=`${S.user.id}/avatar.jpg`;
+    const { error:upErr } = await supabaseClient.storage.from('avatars').upload(path, blob, { upsert:true, contentType:'image/jpeg', cacheControl:'3600' });
+    if(upErr) throw upErr;
+    const { data:pub } = supabaseClient.storage.from('avatars').getPublicUrl(path);
+    const url = `${pub.publicUrl}?v=${Date.now()}`;
+    const { error } = await supabaseClient.rpc('set_my_avatar', { p_url:url });
+    if(error) throw error;
+    S.profile = { ...(S.profile||{}), avatar_url:url };
+    renderAuthUI(); renderProfilePage();
+    setProfileMsg('Your new portrait is on the front page.', 'success');
+  } catch(e){ setProfileMsg(profileErrorText(e), 'error'); }
+  finally{ fig.classList.remove('printing'); }
+}
+async function removeAvatar(){
+  if(!supabaseClient || !S.user || !S.profile?.avatar_url) return;
+  try{
+    const { error } = await supabaseClient.rpc('set_my_avatar', { p_url:null });
+    if(error) throw error;
+    try { await supabaseClient.storage.from('avatars').remove([`${S.user.id}/avatar.jpg`]); } catch(e){}
+    S.profile.avatar_url=null;
+    renderAuthUI(); renderProfilePage();
+    setProfileMsg('Portrait removed.', 'success');
+  } catch(e){ setProfileMsg(profileErrorText(e), 'error'); }
+}
+
 // ── Auth (Supabase) ──────────────────────────────────────────────────────
 // One pop-up, four screens: Log in, Sign up, Forgot password, and Choose a
 // new password (where the reset email lands). Also: email sign-in links,
@@ -2319,12 +2478,14 @@ async function signOutUser(){
 function renderAuthUI(){
   const nav=document.getElementById('nav-auth');
   if(S.user){
-    const initial=(S.user.username||S.user.email||'?').trim().charAt(0).toUpperCase();
+    const shown=displayNameOf();
+    const initial=(shown||'?').trim().charAt(0).toUpperCase();
+    const pic=S.profile?.avatar_url;
     nav.innerHTML = `
-      <div class="nav-user">
-        <div class="nav-user-avatar">${initial}</div>
-        <span class="nav-user-name">${S.user.username||S.user.email}</span>
-      </div>
+      <button type="button" class="nav-user" onclick="showPage('profile')" title="Your profile">
+        <span class="nav-user-avatar">${pic ? `<img src="${esc(pic)}" alt="">` : esc(initial)}</span>
+        <span class="nav-user-name">${esc(shown)}</span>
+      </button>
       <a class="signout-link" onclick="signOutUser()">Sign Out</a>`;
     const uField=document.getElementById('field-username');
     if(uField && !uField.value) uField.value=S.user.username||'';
@@ -2332,7 +2493,7 @@ function renderAuthUI(){
     nav.innerHTML = `<a onclick="openAuthModal('signin')" id="nl-signin">Sign In</a>`;
   }
   const byline=document.getElementById('cover-byline-name');
-  if(byline) byline.textContent = S.user?.username || S.username || 'You';
+  if(byline) byline.textContent = S.user ? displayNameOf() : (S.username || 'You');
 }
 
 // ── Recipe cloud sync ────────────────────────────────────────────────────
@@ -2420,6 +2581,7 @@ async function loadCloudRecipes(guestSnapshot){
     }
     saveRecipeLists();
     if(document.getElementById('page-recipes').classList.contains('active')) renderRecipes();
+    if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();
   } catch(e){
     console.warn('Could not load recipes from Supabase:', e);
   }
@@ -2441,7 +2603,9 @@ async function handleSessionChange(session){
     const guestSnapshot = justSignedIn ? [...S.recipes] : null;
     if(justSignedIn) localStorage.setItem('bf_recipes_guest', JSON.stringify(guestSnapshot));
     S.user = { id:session.user.id, email:session.user.email, username };
+    await loadMyProfile();
     renderAuthUI();
+    if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();
     if(document.getElementById('page-cafe').classList.contains('active')) renderCafeList();
     processPendingInvite(true);
     await loadCloudRecipes(guestSnapshot || []);
@@ -2451,8 +2615,9 @@ async function handleSessionChange(session){
       saveRecipeLists();
       if(document.getElementById('page-recipes').classList.contains('active')) renderRecipes();
     }
-    S.user = null;
+    S.user = null; S.profile = null;
     renderAuthUI();
+    if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();
     if(S.room){ backToCafeList(); }
     else if(document.getElementById('page-cafe').classList.contains('active')) renderCafeList();
     processPendingInvite(true);
