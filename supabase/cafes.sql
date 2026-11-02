@@ -19,7 +19,7 @@ create table if not exists public.cafes (
   id                   uuid primary key default gen_random_uuid(),
   name                 text not null check (char_length(btrim(name)) between 1 and 60),
   vibe                 text not null default 'parisian'
-                         check (vibe in ('parisian','bookstore','kyoto','midnight','library','cabin')),
+                         check (vibe in ('parisian','bookstore','kyoto','midnight','library','beach')),
   owner_id             uuid not null default auth.uid() references auth.users(id) on delete cascade,
   invite_code          text not null unique
                          default upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6)),
@@ -30,6 +30,16 @@ create table if not exists public.cafes (
   timer_started_at     timestamptz,
   created_at           timestamptz not null default now()
 );
+
+-- Café types change over time (the Fireside Cabin became the Beach Café):
+-- keep the allowed list current on databases created by an earlier version.
+do $$
+begin
+  alter table public.cafes drop constraint if exists cafes_vibe_check;
+  update public.cafes set vibe = 'beach' where vibe = 'cabin';
+  alter table public.cafes add constraint cafes_vibe_check
+    check (vibe in ('parisian','bookstore','kyoto','midnight','library','beach'));
+end $$;
 
 create table if not exists public.cafe_members (
   cafe_id    uuid not null references public.cafes(id) on delete cascade,

@@ -707,7 +707,6 @@ body::after {
 .vibe-swatch.vibe-kyoto     { background:linear-gradient(90deg, transparent 47%, #6b4f3a 47% 53%, transparent 53%), linear-gradient(0deg, transparent 47%, #6b4f3a 47% 53%, transparent 53%), #f4ecd8; }
 .vibe-swatch.vibe-midnight  { background:radial-gradient(circle at 68% 32%, #f5e6b8 0 14%, transparent 16%), radial-gradient(circle at 25% 60%, #fff 0 4%, transparent 6%), linear-gradient(180deg,#1b2350,#0b0e1f); }
 .vibe-swatch.vibe-library   { background:radial-gradient(ellipse at 50% 80%, rgba(255,214,140,0.75), transparent 60%), linear-gradient(180deg,#2e5040,#173025); }
-.vibe-swatch.vibe-cabin     { background:radial-gradient(circle at 30% 30%, #fff 0 6%, transparent 8%), radial-gradient(circle at 70% 60%, #fff 0 6%, transparent 8%), linear-gradient(180deg,#9fb2c4,#5a6d80); }
 .room-card-vibe { display:flex; align-items:center; justify-content:center; gap:0.45rem; font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--burgundy); margin-bottom:0.35rem; }
 .seat-empty-mini { width:40px; height:54px; margin:18px 12px 14px; border:1px dashed rgba(245,232,211,0.35); border-radius:4px 4px 10px 10px; }
 
@@ -891,8 +890,6 @@ body::after {
   --floor:linear-gradient(45deg, rgba(217,182,106,0.12) 25%, transparent 25% 75%, rgba(217,182,106,0.12) 75%) 0 0/60px 60px, #15121e; }
 .cr.vibe-library { --table:#5a2e1c; --table-2:#2e160c; --table-rim:#b48a3a; --chair:#2e160c; --chair-seat:#7a2e2a; --skirting:#1a0c06;
   --floor:radial-gradient(circle at 50% 50%, #c7a86d 0 2px, transparent 3px) 0 0/34px 34px, repeating-linear-gradient(45deg, #6a1f22 0 17px, #5a181c 17px 34px); }
-.cr.vibe-cabin { --table:#7a4a28; --table-2:#3a2010; --table-rim:#5a3418; --chair:#2e1a0c; --chair-seat:#8a5a2e; --skirting:#2e1a0c;
-  --floor:radial-gradient(ellipse at 50% 70%, #8a2e24 0 34%, #6a2018 34.5% 38%, #a8803e 38.5% 40%, transparent 40.5%), repeating-linear-gradient(90deg, #6a4224 0 70px, #5a361c 70px 72px); }
 
 /* ── Vintage buttons with engraved icons ── */
 .vicon { flex:none; display:block; }
@@ -1000,24 +997,153 @@ body::after {
   linear-gradient(90deg, transparent calc(50% - 2px), #b48a3a calc(50% - 2px) calc(50% + 2px), transparent calc(50% + 2px)) 50% 154px/100% 46px no-repeat,
   linear-gradient(180deg, #b48a3a, #7a5a24) 50% 198px/60px 8px no-repeat; }
 
-/* Fireside cabin: log walls, snow outside, firelight */
-.cr.vibe-cabin { --wall:#6b4226; --wall-2:#3e2414; --wall-pattern:repeating-linear-gradient(180deg, transparent 0 30px, rgba(0,0,0,0.35) 30px 33px);
-  --trim:#2e1a0c; --sky-1:#a9bccc; --sky-2:#5a6d80; --table:#6a4024; --table-2:#3a2010; --cr-page:#140a05; --sign-bg:#2e1a0c; --sign-ink:#f0c890; }
-.vibe-cabin .cr-weather { background:
-  radial-gradient(circle, #fff 0 1.6px, transparent 2px) 0 0/34px 34px, radial-gradient(circle, rgba(255,255,255,0.8) 0 1.2px, transparent 1.6px) 17px 11px/34px 34px,
-  linear-gradient(0deg, #e8eef3 0 14%, transparent 14%);
-  animation:crSnow 6s linear infinite; }
-.vibe-cabin .cr-deco-l { width:170px; background:
-  radial-gradient(ellipse at 50% 92%, rgba(255,160,60,0.95) 0 16%, rgba(255,90,30,0.6) 26%, transparent 46%),
-  linear-gradient(180deg, #2a1a10, #120a05) 50% 100%/110px 110px no-repeat,
-  linear-gradient(180deg, #6a6058, #3e3630) 50% 100%/150px 150px no-repeat;
-  animation:crFire 1.8s ease-in-out infinite alternate; }
-.vibe-cabin .cr-deco-r { background:
-  linear-gradient(180deg, transparent 70%, #4a2a14 70% 76%, transparent 76%),
-  radial-gradient(circle at 30% 84%, #8a5a2e 0 12px, #6a4022 13px 15px, transparent 16px), radial-gradient(circle at 62% 84%, #8a5a2e 0 12px, #6a4022 13px 15px, transparent 16px), radial-gradient(circle at 46% 72%, #8a5a2e 0 12px, #6a4022 13px 15px, transparent 16px); }
-.vibe-cabin .cr-wall::after { background:radial-gradient(ellipse at 18% 100%, rgba(255,140,50,0.35), transparent 45%), radial-gradient(ellipse at 50% 100%, transparent 50%, rgba(0,0,0,0.3)); }
-@keyframes crSnow { from { background-position:0 0, 17px 11px, 0 0; } to { background-position:10px 170px, 7px 181px, 0 0; } }
-@keyframes crFire { from { filter:brightness(0.92); } to { filter:brightness(1.12); } }
+
+
+
+/* ══ Painted-illustration finish for the café rooms ══════════════════════ */
+/* hand-painted edges on the drawn things in the room */
+.cr-window, .cr-deco, .cr-art, .cr-curtain, .cr-furniture, .cr-pendants, .cr-sea { filter:url(#cr-paint); }
+/* canvas and brush-stroke texture over the whole room */
+.cr-scene::before { content:''; position:absolute; inset:0; z-index:4999; pointer-events:none; opacity:0.42; mix-blend-mode:soft-light;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.011 0.16' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0.32  0 0 0 0 0.22  0 0 0 0 0.12  0 0 0 0.7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23b)'/%3E%3C/svg%3E"),
+             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 0.9  0 0 0 0 0.85  0 0 0 0 0.75  0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E"); }
+/* light falling into the room (sunbeams by day, lamp pools at night) */
+.cr-light { position:absolute; inset:0; z-index:4000; pointer-events:none; opacity:0; mix-blend-mode:screen; }
+
+/* Architecture shared by the indoor cafés */
+.cr-wall::before { content:''; position:absolute; left:0; right:0; top:0; height:16px; z-index:3;   /* crown moulding */
+  background:linear-gradient(180deg, var(--molding-hi, #8a6a42), var(--molding, #4a301d) 60%, rgba(0,0,0,0.4));
+  box-shadow:0 3px 6px rgba(0,0,0,0.3); }
+.cr-wainscot { position:absolute; left:0; right:0; bottom:0; height:66px; z-index:0;
+  background:
+    linear-gradient(180deg, var(--wainscot-hi, #6a4224) 0 6px, transparent 6px),
+    repeating-linear-gradient(90deg, transparent 0 14px, rgba(0,0,0,0.28) 14px 16px, rgba(255,255,255,0.07) 16px 17px, transparent 17px 118px, rgba(0,0,0,0.28) 118px 120px),
+    linear-gradient(180deg, var(--wainscot, #4a2c18), var(--wainscot-2, #2e1a0e));
+  box-shadow:inset 0 2px 0 rgba(255,255,255,0.08); }
+.cr-windowwrap { position:relative; display:flex; align-items:flex-end; z-index:1; }
+.cr-windowwrap .cr-window { margin-bottom:22px; }
+.cr-curtain { display:none; position:absolute; top:-12px; bottom:10px; width:46px; z-index:2;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.28) 0 3px, transparent 3px 11px, rgba(255,255,255,0.1) 11px 13px, transparent 13px 16px),
+    linear-gradient(180deg, var(--curtain, #2f5a3a), var(--curtain-2, #1d3a24));
+  box-shadow:0 8px 16px rgba(0,0,0,0.35); }
+.cr-curtain-l { left:-30px; border-radius:0 0 40% 0; clip-path:polygon(0 0, 100% 0, 100% 55%, 70% 62%, 100% 100%, 0 100%); }
+.cr-curtain-r { right:-30px; border-radius:0 0 0 40%; clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%, 30% 62%, 0 55%); }
+.cr-curtain::after { content:''; position:absolute; left:0; right:0; top:58%; height:8px; background:#c9a24a; box-shadow:0 2px 3px rgba(0,0,0,0.4); }
+.cr-art { position:absolute; top:58px; width:78px; height:96px; z-index:1; padding:7px;
+  background:linear-gradient(135deg, #e2c27a, #9a7428 45%, #d8b864 70%, #7a5a1e);
+  box-shadow:0 8px 14px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,240,200,0.5); }
+.cr-art i { display:block; width:100%; height:100%; box-shadow:inset 0 0 0 2px rgba(40,20,5,0.55); background:var(--art, linear-gradient(180deg,#9cc0d8,#e8d8b0 55%,#7a9a5a 56%)); }
+.cr-art-l { left:4%; }
+.cr-art-r { right:4%; }
+.cr-art-r i { background:var(--art-2, var(--art)); }
+.cr-pendants { position:absolute; left:0; right:0; top:0; height:0; z-index:4; }
+.cr-pendants i { position:absolute; top:0; width:2px; height:58px; background:#1a120c; }
+.cr-pendants i:nth-child(1) { left:17%; } .cr-pendants i:nth-child(2) { right:17%; }
+.cr-pendants i::after { content:''; position:absolute; left:50%; top:100%; width:26px; height:26px; margin-left:-13px; border-radius:50%;
+  background:radial-gradient(circle at 40% 35%, #fffbe8, var(--bulb, #ffd78a) 45%, #e8a040 80%);
+  box-shadow:0 0 18px 6px rgba(255,205,120,0.55), 0 0 60px 26px rgba(255,190,100,0.22); }
+.cr-pendants i::before { content:''; position:absolute; left:50%; top:calc(100% - 4px); width:10px; height:7px; margin-left:-5px; background:#3a2a18; border-radius:2px; }
+.cr-sea { display:none; }
+
+/* ── Café types ── */
+.cr.vibe-parisian { --curtain:#3f6a44; --curtain-2:#24432a; --wainscot:#4a2a20; --wainscot-2:#2e1a12; --molding:#6a3a2a; --molding-hi:#c9a24a;
+  --art:linear-gradient(180deg,#9cc4e0 0 45%, #f2dcb0 45% 52%, #c46a4a 52% 60%, #e8b878 60% 80%, #7a9a5a 80%);
+  --art-2:radial-gradient(circle at 50% 38%, #3a2a24 0 14%, transparent 15%), radial-gradient(ellipse at 50% 85%, #2a3a4a 0 40%, transparent 42%), linear-gradient(180deg,#e8d4a8,#c9a878); }
+.vibe-parisian .cr-curtain { display:block; }
+.vibe-parisian .cr-light { opacity:0.55; background:repeating-linear-gradient(115deg, transparent 0 60px, rgba(255,226,170,0.16) 60px 120px, transparent 120px 210px), radial-gradient(ellipse at 50% 30%, rgba(255,220,160,0.25), transparent 60%); }
+.cr.vibe-bookstore { --wainscot:#2a1d14; --wainscot-2:#1a120c; --molding:#2a1d14; --molding-hi:#5a4330; --bulb:#ffd9a0; }
+.vibe-bookstore .cr-art { display:none; }
+.cr.vibe-kyoto { }
+.vibe-kyoto .cr-wainscot, .vibe-kyoto .cr-art, .vibe-kyoto .cr-pendants, .vibe-kyoto .cr-wall::before { display:none; }
+.vibe-kyoto .cr-light { opacity:0.4; background:radial-gradient(ellipse at 50% 20%, rgba(255,240,210,0.35), transparent 65%); }
+.cr.vibe-library { --curtain:#2f5a40; --curtain-2:#173025; --wainscot:#4a2416; --wainscot-2:#2a120a; --molding:#3a2414; --molding-hi:#b48a3a;
+  --art:radial-gradient(ellipse at 50% 34%, #e2c09a 0 16%, transparent 17%), radial-gradient(ellipse at 50% 92%, #2a2a3a 0 46%, transparent 47%), linear-gradient(180deg,#4a3a24,#2a1e12);
+  --art-2:linear-gradient(180deg,#c9b48a 0 50%, #6a7a5a 50% 70%, #4a5a3a 70%); }
+.vibe-library .cr-curtain { display:block; }
+.vibe-library .cr-light { opacity:0.45; background:radial-gradient(ellipse at 50% 35%, rgba(255,220,150,0.3), transparent 55%); }
+
+/* Midnight Jazz Café — city lights, velvet, a jazz poster */
+.cr.vibe-midnight { --curtain:#6a1e2e; --curtain-2:#3a0e18; --wainscot:#1e1622; --wainscot-2:#0e0a12; --molding:#151020; --molding-hi:#d9b66a; --bulb:#ffcf7a;
+  --art:radial-gradient(circle at 50% 30%, #f3d58a 0 10%, transparent 11%), linear-gradient(160deg, transparent 0 46%, #f3d58a 46% 50%, transparent 50%), linear-gradient(180deg, #7a1e2e, #2a0a12);
+  --art-2:radial-gradient(circle at 64% 32%, #f5e6b8 0 14%, transparent 15%), linear-gradient(180deg, #1b2350 0 70%, #0b0e1f 70%); }
+.vibe-midnight .cr-curtain { display:block; }
+.vibe-midnight .cr-weather { background:
+  /* a city at night: buildings with lit windows */
+  radial-gradient(circle, rgba(255,214,120,0.95) 0 1.4px, transparent 2px) 3px calc(100% - 6px)/11px 9px repeat-x,
+  radial-gradient(circle, rgba(255,200,110,0.8) 0 1.2px, transparent 1.8px) 8px calc(100% - 18px)/17px 12px repeat-x,
+  radial-gradient(circle, rgba(255,226,150,0.85) 0 1.3px, transparent 1.9px) 1px calc(100% - 31px)/23px 13px repeat-x,
+  radial-gradient(circle, rgba(255,210,120,0.7) 0 1.2px, transparent 1.8px) 12px calc(100% - 46px)/31px 14px repeat-x,
+  linear-gradient(90deg, #0a0c1c 0 9%, transparent 9% 13%, #0d1024 13% 27%, transparent 27% 31%, #090b18 31% 46%, transparent 46% 52%, #0c0f22 52% 70%, transparent 70% 74%, #0a0c1c 74% 92%, transparent 92%) 0 100%/100% 62px no-repeat,
+  linear-gradient(90deg, transparent 0 4%, #0b0d1e 4% 18%, transparent 18% 34%, #0b0d1e 34% 42%, transparent 42% 60%, #0b0d1e 60% 66%, transparent 66% 80%, #0b0d1e 80% 96%, transparent 96%) 0 100%/100% 88px no-repeat,
+  radial-gradient(circle at 70% 24%, #f5e6b8 0 16px, transparent 17px),
+  radial-gradient(circle at 15% 18%, #fff 0 1.5px, transparent 2px), radial-gradient(circle at 36% 30%, #fff 0 1px, transparent 1.5px), radial-gradient(circle at 52% 12%, #fff 0 1.5px, transparent 2px), radial-gradient(circle at 86% 40%, #fff 0 1px, transparent 1.5px);
+  animation:crTwinkle 4s ease-in-out infinite; }
+.vibe-midnight .cr-light { opacity:0.8; background:
+  radial-gradient(ellipse 18% 46% at 17% 30%, rgba(255,200,120,0.28), transparent 70%),
+  radial-gradient(ellipse 18% 46% at 83% 30%, rgba(255,200,120,0.28), transparent 70%),
+  radial-gradient(ellipse 30% 30% at 50% 74%, rgba(255,190,110,0.22), transparent 70%); }
+
+/* Beach Café — a seaside terrace in the sun */
+.cr.vibe-beach { --wall:#8ec6e6; --wall-2:#f3e4c6; --trim:#f5efe2; --table:#f7f2e7; --table-2:#c8bea8; --table-rim:#e6dcc6;
+  --chair:#a8763e; --chair-seat:#d6b277; --skirting:#9a4a24; --sign-bg:#f7f2e7; --sign-ink:#1f5f93; --cr-page:#13212b;
+  --floor:linear-gradient(90deg, rgba(110,40,15,0.45) 0 2px, transparent 2px) 0 0/72px 72px, linear-gradient(0deg, rgba(110,40,15,0.45) 0 2px, transparent 2px) 0 0/72px 72px, repeating-linear-gradient(45deg, #c8683c 0 72px, #c06038 72px 144px);
+  --floor-base:#b85a32; --drinkname:#4a2e22; --drinkname-shadow:none; }
+.vibe-beach .cr-wall { justify-content:space-between; padding:0 6%;
+  background:
+    radial-gradient(ellipse 30% 22% at 22% 64%, #7f9f74 0 96%, transparent 100%),
+    radial-gradient(ellipse 24% 16% at 40% 66%, #95b083 0 96%, transparent 100%),
+    linear-gradient(90deg, transparent 0 8%, #e8a07a 8% 10%, #f2d39a 10% 12.5%, #e07b5a 12.5% 14%, #f6e2b8 14% 16%, #d98a64 16% 17.5%, transparent 17.5%) 0 59%/100% 18px no-repeat,
+    radial-gradient(ellipse at 70% 18%, rgba(255,250,230,0.9) 0 4%, rgba(255,240,200,0.4) 9%, transparent 22%),
+    linear-gradient(180deg, #6fb2df 0%, #a6d4ee 45%, #f3e4c6 64%); }
+.vibe-beach .cr-wall::after { background:radial-gradient(ellipse at 70% 18%, rgba(255,240,200,0.25), transparent 60%); }
+.vibe-beach .cr-windowwrap, .vibe-beach .cr-art, .vibe-beach .cr-pendants, .vibe-beach .cr-wall::before { display:none; }
+.vibe-beach .cr-sea { display:block; position:absolute; left:0; right:0; bottom:0; height:34%; z-index:0;
+  background:
+    radial-gradient(ellipse 9px 1.3px, rgba(255,255,255,0.7), transparent) 0 0/52px 13px,
+    radial-gradient(ellipse 6px 1px, rgba(255,250,220,0.55), transparent) 26px 7px/38px 11px,
+    linear-gradient(180deg, #5aa8d8 0, #2f7fb8 38%, #1f5f93 100%); }
+.vibe-beach .cr-sea i { position:absolute; bottom:46%; width:16px; height:22px; background:#fff; clip-path:polygon(50% 0, 100% 100%, 0 100%); }
+.vibe-beach .cr-sea i::after { content:''; position:absolute; left:-6px; bottom:-5px; width:28px; height:5px; background:#7a3a2a; border-radius:0 0 8px 8px; }
+.vibe-beach .cr-sea i:nth-child(1) { left:30%; } .vibe-beach .cr-sea i:nth-child(2) { left:58%; transform:scale(0.7); bottom:58%; } .vibe-beach .cr-sea i:nth-child(3) { left:76%; transform:scale(0.85); }
+.vibe-beach .cr-wainscot { height:44px; z-index:1;   /* a white balustrade at the terrace edge */
+  background:linear-gradient(180deg, #f7f2e7 0 7px, transparent 7px), repeating-linear-gradient(90deg, transparent 0 22px, #efe7d6 22px 29px, transparent 29px 44px), linear-gradient(0deg, #e8dfcc 0 6px, transparent 6px);
+  box-shadow:none; }
+.vibe-beach .cr-deco { z-index:2; }
+.vibe-beach .cr-deco-l { width:200px; height:240px; margin-bottom:0;   /* a red café umbrella */
+  background:linear-gradient(90deg, transparent calc(50% - 3px), #e8dcc4 calc(50% - 3px) calc(50% + 3px), transparent calc(50% + 3px)) 0 60px/100% 180px no-repeat; }
+.vibe-beach .cr-deco-l::before { content:''; position:absolute; left:0; right:0; top:8px; height:70px;
+  background:repeating-linear-gradient(90deg, #c0392b 0 25px, #a82e22 25px 50px);
+  clip-path:polygon(50% 0, 100% 78%, 92% 100%, 80% 80%, 67% 100%, 55% 80%, 45% 80%, 33% 100%, 20% 80%, 8% 100%, 0 78%); box-shadow:0 10px 18px rgba(0,0,0,0.3); }
+.vibe-beach .cr-deco-r { width:150px; height:190px; margin-bottom:6px;   /* bougainvillea in a terracotta pot */
+  background:
+    radial-gradient(circle at 30% 30%, #e0457a 0 13%, transparent 14%), radial-gradient(circle at 60% 22%, #f06292 0 12%, transparent 13%), radial-gradient(circle at 75% 42%, #d63b6e 0 13%, transparent 14%),
+    radial-gradient(circle at 45% 46%, #f48fb1 0 12%, transparent 13%), radial-gradient(circle at 22% 54%, #5f8a4a 0 12%, transparent 13%), radial-gradient(circle at 62% 60%, #4f7a3c 0 13%, transparent 14%),
+    linear-gradient(180deg, transparent 66%, #c8683c 66% 70%, #b85a32 70% 100%) 50% 100%/80px 100% no-repeat; }
+.vibe-beach .cr-sign { display:none; }
+.vibe-beach .cr-light { opacity:0.5; background:repeating-linear-gradient(120deg, transparent 0 80px, rgba(255,240,200,0.14) 80px 150px, transparent 150px 260px); }
+.vibe-swatch.vibe-beach { background:linear-gradient(180deg, #8ec6e6 0 55%, #2f7fb8 55%); position:relative; }
+.vibe-swatch.vibe-beach::after { content:''; display:block; width:60%; height:30%; margin:12% auto 0; background:repeating-linear-gradient(90deg,#c0392b 0 3px,#f3e6d0 3px 6px); clip-path:polygon(50% 0, 100% 100%, 0 100%); }
+
+/* Your place at the table: a little menu card to tap */
+.seat-order { display:flex; flex-direction:column; align-items:center; gap:0.2em; background:none; border:none; cursor:pointer; padding:0; margin-bottom:0.8cqw; font:inherit; }
+.seat-order-card { display:flex; flex-direction:column; align-items:center; gap:0.15em; padding:0.5em 0.7em 0.45em; color:var(--ink);
+  font-family:'Playfair Display',serif; font-style:italic; font-size:clamp(0.7rem,1.5cqw,0.95rem);
+  background:linear-gradient(172deg, #f8efdc, #e8d6b2); box-shadow:0 6px 10px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(122,46,58,0.45), inset 0 0 0 3px #f3e6cc, inset 0 0 0 4px rgba(122,46,58,0.25);
+  transform:perspective(200px) rotateX(10deg); transition:transform 0.2s; }
+.seat-order:hover .seat-order-card, .seat-order:focus-visible .seat-order-card { transform:perspective(200px) rotateX(0) translateY(-3px); }
+.seat-order:focus-visible { outline:none; }
+.seat-order:focus-visible .seat-order-card { box-shadow:0 0 0 2px var(--gold), 0 6px 10px rgba(0,0,0,0.35); }
+.cr-seat .cr-cup .seat-order svg { width:clamp(14px, 1.8cqw, 22px); height:auto; filter:none; }
+.seat-order-hint { font-family:'Caveat',cursive; font-size:clamp(0.7rem,1.3cqw,0.9rem); color:var(--drinkname, #f5e8d3); text-shadow:var(--drinkname-shadow, 0 1px 2px rgba(0,0,0,0.6)); }
+.cr-mycup { background:none; border:none; padding:0; cursor:pointer; transition:transform 0.2s; }
+.cr-mycup:hover { transform:translateY(-3px); }
+.cr-mycup:focus-visible { outline:2px solid var(--gold); outline-offset:4px; border-radius:6px; }
+
+/* Equal-sized timer controls */
+.cr-timer-ctrl .btn-ic, .cr-timer-ctrl .btn-ic.play { width:52px; height:52px; }
+.cr-duration { height:52px; }
+.sess-ctrl .btn-ic, .sess-ctrl .btn-ic.play { width:56px; height:56px; }
 
 @media (prefers-reduced-motion: reduce) {
   .cr-weather, .cr-deco { animation:none !important; }
