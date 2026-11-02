@@ -774,33 +774,23 @@ body::after {
 .page-btn:hover:not(:disabled) { background:var(--gold); color:var(--dark); transform:translateY(-2px); }
 .page-btn:disabled { opacity:0.35; cursor:not-allowed; }
 
-/* ── Realistic 3D page-flip overlay ── */
-.page-flip-3d {
-  position:absolute; z-index:60;
-  transform-style: preserve-3d;
-  pointer-events:none;
+/* ── Realistic 3D page-flip (built in changeRecipePage) ── */
+.page-flip-stage {
+  position:absolute; inset:0; z-index:60; pointer-events:none;
+  perspective:2200px;
 }
-.page-flip-3d .flip-face {
-  position:absolute; inset:0;
+.page-flip-stage > * { position:absolute; }
+.flip-static { overflow:visible; }
+.flip-cast-shadow { opacity:0; border-radius:10px; mix-blend-mode:multiply; }
+.flip-leaf, .flip-strip { transform-style:preserve-3d; }
+.flip-strip { position:absolute; top:0; height:100%; }
+.flip-face {
+  position:absolute; inset:0; overflow:hidden;
   backface-visibility:hidden; -webkit-backface-visibility:hidden;
-  overflow:hidden; border-radius:10px;
-  box-shadow:0 30px 70px rgba(0,0,0,0.4);
-  transition: transform 0.85s cubic-bezier(0.45,0.05,0.35,1), filter 0.85s ease;
 }
-.page-flip-3d .flip-grid { min-height:100%; height:100%; }
-.page-flip-3d .flip-face .recipe-card { cursor:default; }
-.page-flip-3d .flip-front { transform: rotateY(0deg); filter:brightness(1); }
-.page-flip-3d .flip-back  { transform: rotateY(180deg); filter:brightness(1); }
-.page-flip-3d.next.turning .flip-front { transform: rotateY(-180deg); filter:brightness(0.82); }
-.page-flip-3d.next.turning .flip-back  { transform: rotateY(0deg); filter:brightness(1); }
-.page-flip-3d.prev.turning .flip-front { transform: rotateY(180deg); filter:brightness(0.82); }
-.page-flip-3d.prev.turning .flip-back  { transform: rotateY(0deg); filter:brightness(1); }
-.page-flip-3d::after {
-  content:''; position:absolute; inset:0; pointer-events:none; border-radius:10px;
-  background:linear-gradient(90deg, rgba(20,10,5,0.4), transparent 22%, transparent 78%, rgba(20,10,5,0.4));
-  opacity:0; transition:opacity 0.85s ease; mix-blend-mode:multiply; z-index:2;
-}
-.page-flip-3d.turning::after { opacity:1; }
+.flip-face-back { transform:rotateY(180deg); }
+.flip-face .recipe-card, .flip-static .recipe-card, .flip-sheet .recipe-card { cursor:default; box-shadow:none; }
+.flip-shade { position:absolute; inset:0; opacity:0; pointer-events:none; }
 
 /* Toast */
 .toast {
