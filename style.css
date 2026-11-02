@@ -262,7 +262,7 @@ body::after {
 }
 
 /* Paper shared by the menu card and the order slip */
-.menu-card, .order-slip, .reserve-card, .room-card, .modal {
+.menu-card, .order-slip, .reserve-card, .room-card, .modal, .leave-modal {
   position:relative; color:var(--ink);
   background:
     radial-gradient(circle at 15% 10%, rgba(255,255,255,0.38), transparent 42%),
@@ -446,70 +446,133 @@ body::after {
 /* ── STUDY PAGE ── */
 #page-study {
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(116,48,20,0.35) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 8%, rgba(232,180,110,0.20) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(8,3,1,0.55) 100%),
     linear-gradient(180deg, #1e1008 0%, #3a2518 100%);
-  min-height:100vh; display:flex; align-items:center; justify-content:center;
-  padding:7rem 2rem 3rem;
+  min-height:100vh; display:flex; justify-content:center;
+  padding:5.6rem 2rem 2.5rem;
 }
 #page-study.focus-mode {
   background:
-    radial-gradient(ellipse at 50% 42%, rgba(199,168,109,0.18), transparent 30rem),
-    linear-gradient(rgba(245,232,211,0.025) 1px, transparent 1px),
+    radial-gradient(ellipse at 50% 8%, rgba(232,180,110,0.22) 0%, transparent 42%),
+    radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(8,3,1,0.62) 100%),
     linear-gradient(180deg, #160b06 0%, #3c2418 100%);
 }
-#page-study.focus-mode .study-layout {
-  max-width:680px; padding:2rem; border:1px solid rgba(199,168,109,0.16);
-  background:radial-gradient(ellipse at 50% 20%, rgba(245,232,211,0.04), transparent 70%);
-  box-shadow:0 28px 70px rgba(0,0,0,0.25);
-}
-.focus-mode .nav { display:none; }
+/* A framed card, like a page pinned up in a reading room */
 .study-layout {
-  display:flex; flex-direction:column; align-items:center; width:100%; max-width:560px;
+  position:relative; display:flex; flex-direction:column; align-items:center; text-align:center;
+  width:100%; max-width:600px; padding:2rem 2.4rem 1.8rem;
+  margin:auto 0;   /* centred, but never pushed up under the nav when tall */
+  border:1px solid rgba(199,168,109,0.34);
+  background:radial-gradient(ellipse at 50% 18%, rgba(245,232,211,0.045), transparent 70%);
+  box-shadow:0 28px 70px rgba(0,0,0,0.3);
 }
-.study-sub-lbl {
-  font-family:'Caveat',cursive; font-size:1.1rem; color:var(--gold); letter-spacing:0.08em; margin-bottom:0.3rem;
+.study-layout::before {
+  content:''; position:absolute; inset:8px; border:1px solid rgba(199,168,109,0.14); pointer-events:none;
 }
+.study-eyebrow {
+  display:flex; align-items:center; gap:0.8rem;
+  font-family:'Lora',serif; font-size:0.66rem; letter-spacing:0.32em; text-transform:uppercase; color:var(--gold);
+  margin-bottom:0.5rem;
+}
+.study-eyebrow::before, .study-eyebrow::after { content:''; width:34px; height:1px; background:rgba(199,168,109,0.55); }
+.study-sub-lbl { font-family:'Caveat',cursive; font-size:1.3rem; color:var(--gold); letter-spacing:0.04em; }
 .study-task-lbl {
-  font-family:'Playfair Display',serif; font-size:1.7rem; color:var(--cream);
-  font-style:italic; text-align:center; margin-bottom:2.5rem; line-height:1.3;
+  font-family:'Playfair Display',serif; font-size:2rem; color:var(--cream);
+  font-style:italic; line-height:1.25; margin:0.15rem 0 0.8rem; text-shadow:0 2px 0 rgba(0,0,0,0.25);
 }
-.timer-cup-wrap { position:relative; margin-bottom:0.5rem; }
+
+/* The cup in an arched window, on a shelf */
+.study-window {
+  position:relative; width:280px; height:320px; margin:1.2rem 0 1.2rem;
+  border:1px solid rgba(199,168,109,0.42); border-radius:140px 140px 4px 4px;
+  background:
+    radial-gradient(ellipse at 50% 82%, rgba(199,168,109,0.22), transparent 58%),
+    linear-gradient(180deg, rgba(58,34,18,0.45), rgba(20,10,4,0.7));
+  box-shadow:inset 0 0 50px rgba(0,0,0,0.35);
+  overflow:hidden;
+}
+.study-window::before {
+  content:''; position:absolute; inset:9px; border-radius:131px 131px 2px 2px;
+  border:1px solid rgba(199,168,109,0.14); pointer-events:none;
+}
+.study-shelf {
+  position:absolute; left:9px; right:9px; bottom:40px; height:8px;
+  background:linear-gradient(180deg, #6b4f3a, #3a2212);
+  box-shadow:0 8px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(245,232,211,0.18);
+}
+.timer-cup-wrap {
+  position:absolute; left:50%; bottom:22px; transform:translateX(-50%); z-index:1;
+  filter:drop-shadow(0 16px 30px rgba(0,0,0,0.5));
+}
+
+/* Timer on a framed plaque, with a thin steeping bar */
+.study-clock {
+  position:relative; padding:0.65rem 2.2rem 0.85rem;
+  border:1px solid rgba(199,168,109,0.5); outline:1px solid rgba(199,168,109,0.2); outline-offset:3px;
+  background:linear-gradient(180deg, rgba(58,34,18,0.55), rgba(30,16,8,0.55));
+}
+.clock-label {
+  font-family:'Lora',serif; font-size:0.58rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--gold); opacity:0.85;
+}
 .time-disp {
-  font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--beige);
-  letter-spacing:0.12em; opacity:0.6; margin-bottom:0.8rem;
+  font-family:'Playfair Display',serif; font-size:2.5rem; line-height:1.1; color:var(--cream);
+  letter-spacing:0.06em; font-variant-numeric:tabular-nums lining-nums; margin:0.1rem 0 0.45rem;
 }
+.steep-bar { width:150px; height:2px; margin:0 auto; background:rgba(199,168,109,0.2); }
+.steep-bar span { display:block; height:100%; width:0; background:var(--gold); transition:width 0.9s linear; }
 .ambient-lbl {
-  font-family:'Caveat',cursive; font-size:1rem; color:rgba(245,232,211,0.45);
-  letter-spacing:0.06em; margin-bottom:1.5rem; text-align:center;
+  font-family:'Caveat',cursive; font-size:1.15rem; color:rgba(245,232,211,0.62);
+  letter-spacing:0.03em; margin:0.9rem 0 1.1rem; min-height:1.5em;
 }
 .sess-ctrl { display:flex; gap:1rem; align-items:center; }
 .btn-ic {
-  width:50px; height:50px; border-radius:50%;
-  border:1px solid rgba(199,168,109,0.3); background:transparent;
-  color:var(--cream); font-size:1.1rem; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; transition:all 0.2s;
+  width:48px; height:48px; border-radius:2px;
+  border:1px solid rgba(199,168,109,0.42); background:transparent;
+  color:var(--cream); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:background 0.2s, border-color 0.2s;
 }
 .btn-ic:hover { background:rgba(199,168,109,0.12); border-color:var(--gold); }
-.btn-ic.play { width:62px; height:62px; background:var(--burgundy); border-color:var(--burgundy); font-size:1.3rem; }
-.btn-ic.play:hover { background:var(--rust); }
-.focus-stop {
-  margin-top:1rem; color:var(--beige); background:transparent;
-  border:1px solid rgba(199,168,109,0.28); padding:0.5rem 1rem;
-  font-family:'Lora',serif; cursor:pointer;
+.btn-ic:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
+.btn-ic.play {
+  width:62px; height:62px; background:var(--burgundy); border-color:var(--burgundy);
+  box-shadow:inset 0 0 0 4px var(--burgundy), inset 0 0 0 5px rgba(217,182,106,0.55), 0 10px 24px rgba(0,0,0,0.35);
 }
+.btn-ic.play:hover { background:var(--rust); border-color:var(--rust); box-shadow:inset 0 0 0 4px var(--rust), inset 0 0 0 5px rgba(217,182,106,0.6), 0 10px 24px rgba(0,0,0,0.35); }
+.focus-stop {
+  margin-top:1.3rem; background:none; border:none; cursor:pointer;
+  font-family:'Lora',serif; font-size:0.66rem; letter-spacing:0.24em; text-transform:uppercase;
+  color:var(--gold); opacity:0.7; padding:0.3rem 0.4rem; transition:opacity 0.2s;
+}
+.focus-stop:hover { opacity:1; text-decoration:underline; text-underline-offset:4px; }
+
+/* "Your brew is still warm" — parchment, like the other pop-ups */
 .leave-modal-bg {
   position:fixed; inset:0; z-index:800; background:rgba(30,16,8,0.82);
   display:none; align-items:center; justify-content:center; padding:1rem;
 }
 .leave-modal-bg.open { display:flex; }
-.leave-modal {
-  width:min(440px, 92vw); background:linear-gradient(145deg, #fbf1df, #e2c7a2);
-  color:var(--ink); padding:2rem; border:1px solid rgba(107,79,58,0.25);
-  box-shadow:0 30px 80px rgba(0,0,0,0.45);
+.leave-modal { width:min(440px, 92vw); padding:2.2rem 2.2rem 2rem; text-align:center; }
+.leave-modal::before {
+  content:''; position:absolute; inset:9px; pointer-events:none;
+  border:1px solid rgba(107,79,58,0.35); outline:1px solid rgba(107,79,58,0.14); outline-offset:3px;
 }
-.leave-modal h3 { font-family:'Playfair Display',serif; font-style:italic; font-size:1.7rem; margin-bottom:0.7rem; }
+.leave-modal > * { position:relative; }
+.leave-modal h3 { font-family:'Playfair Display',serif; font-style:italic; font-weight:400; font-size:1.7rem; margin-bottom:0.6rem; }
 .leave-modal p { font-family:'Caveat',cursive; font-size:1.25rem; line-height:1.45; color:var(--warm-brown); }
 .leave-actions { display:flex; gap:0.7rem; margin-top:1.4rem; }
+.leave-actions button { flex:1; padding-left:1rem; padding-right:1rem; }
+
+@media (max-width:700px){
+  #page-study { padding:5.5rem 1rem 2rem; }
+  .study-layout { padding:1.8rem 1.1rem 1.6rem; }
+  .study-task-lbl { font-size:1.6rem; }
+  .study-window { width:250px; height:300px; margin:1.1rem 0 1.1rem; }
+  .timer-cup-wrap { transform:translateX(-50%) scale(0.8); transform-origin:50% 100%; bottom:24px; }
+  .study-shelf { bottom:36px; }
+  .time-disp { font-size:2.1rem; }
+  .leave-actions { flex-direction:column; }
+}
 
 /* ── CAFÉ / FRIENDS PAGE ── */
 #page-cafe {
@@ -1081,6 +1144,7 @@ body::after {
   color:var(--warm-brown); line-height:1; transition:opacity 0.15s;
 }
 .pw-toggle:hover { opacity:1; }
+.pw-toggle svg { display:block; }
 
 /* ── AUTH MODAL ── */
 .auth-tabs { display:flex; gap:0; margin-bottom:1.4rem; border-radius:20px; overflow:hidden; border:1px solid rgba(107,79,58,0.22); }
