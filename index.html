@@ -179,17 +179,33 @@
 <!-- ═══════ STUDY ═══════════════════════════════════════════════════════════ -->
 <div id="page-study" class="page">
   <div class="study-layout">
+    <div class="study-eyebrow">Now studying</div>
     <div class="study-sub-lbl" id="study-sub-lbl">—</div>
     <div class="study-task-lbl" id="study-task-lbl">A quiet brew is ready</div>
-    <div class="timer-cup-wrap" id="timer-cup-area" style="filter:drop-shadow(0 16px 36px rgba(0,0,0,0.5))"></div>
-    <div class="time-disp" id="time-disp">25:00</div>
+    <div class="brew-rule" aria-hidden="true"><span></span></div>
+
+    <!-- The cup on display; it empties as the session steeps -->
+    <div class="study-window">
+      <div class="timer-cup-wrap" id="timer-cup-area"></div>
+      <div class="study-shelf"></div>
+    </div>
+
+    <div class="study-clock">
+      <div class="clock-label">Time remaining</div>
+      <div class="time-disp" id="time-disp">25:00</div>
+      <div class="steep-bar" aria-hidden="true"><span id="steep-fill"></span></div>
+    </div>
     <div class="ambient-lbl" id="ambient-lbl">Your brew is ready. Press play to begin.</div>
     <div class="sess-ctrl">
-      <button class="btn-ic" onclick="resetSession()" title="Restart">↩</button>
-      <button class="btn-ic play" id="play-btn" onclick="toggleTimer()">▶</button>
-      <button class="btn-ic" onclick="requestEndSession()" title="Stop Session">✓</button>
+      <button class="btn-ic" onclick="resetSession()" title="Restart" aria-label="Restart">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.6 10a5.4 5.4 0 1 0 1.7-3.95" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5.6 2.9v3.6h3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="btn-ic play" id="play-btn" onclick="toggleTimer()" aria-label="Start"></button>
+      <button class="btn-ic" onclick="requestEndSession()" title="Finish session" aria-label="Finish session">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4.5 10.5l3.6 3.6 7.4-8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
-    <button class="focus-stop" onclick="requestEndSession()">Stop Session</button>
+    <button class="focus-stop" onclick="requestEndSession()">End session</button>
   </div>
 </div>
 
@@ -369,7 +385,7 @@
       <label class="f-label" style="color:var(--warm-brown);">Password</label>
       <div class="pw-field">
         <input class="room-f-in" id="auth-password" type="password" placeholder="••••••••" style="width:100%;">
-        <button type="button" class="pw-toggle" id="pw-toggle-btn" onclick="togglePasswordVisibility()" aria-label="Show password">👁</button>
+        <button type="button" class="pw-toggle" id="pw-toggle-btn" onclick="togglePasswordVisibility()" aria-label="Show password"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M1.8 10S4.8 4.6 10 4.6 18.2 10 18.2 10 15.2 15.4 10 15.4 1.8 10 1.8 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
       </div>
     </div>
     <div class="auth-msg" id="auth-msg"></div>

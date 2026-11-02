@@ -456,6 +456,15 @@ document.querySelectorAll('.chip').forEach(chip=>{
 });
 
 // ── Session ───────────────────────────────────────────────────────────────
+const ICON_PLAY='<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M7 4.6v10.8l8.6-5.4z" fill="currentColor"/></svg>';
+const ICON_PAUSE='<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><rect x="5.6" y="4.6" width="2.8" height="10.8" rx="0.5" fill="currentColor"/><rect x="11.6" y="4.6" width="2.8" height="10.8" rx="0.5" fill="currentColor"/></svg>';
+function setPlayIcon(running){
+  const btn=document.getElementById('play-btn');
+  if(!btn) return;
+  btn.innerHTML = running ? ICON_PAUSE : ICON_PLAY;
+  btn.setAttribute('aria-label', running ? 'Pause' : 'Start');
+  btn.title = running ? 'Pause' : 'Start';
+}
 function startSession(){
   initAudio();
   setAmbience(document.getElementById('field-ambience').value || S.ambience);
@@ -471,27 +480,29 @@ function startSession(){
   document.getElementById('study-sub-lbl').textContent = S.subject;
   document.getElementById('study-task-lbl').textContent = S.task;
   document.getElementById('ambient-lbl').textContent = 'Your brew is ready. Press play to begin.';
-  document.getElementById('play-btn').textContent='▶';
+  setPlayIcon(false);
   renderTimerCup(); updateTimerDisp(); showPage('study');
 }
 
 function renderTimerCup(f){
   const frac = f!==undefined?f:1;
   const el = document.getElementById('timer-cup-area');
-  if(el) el.innerHTML = buildCupSVG({size:260,fillFraction:frac,steam:frac>0.12});
+  if(el) el.innerHTML = buildCupSVG({size:205,fillFraction:frac,steam:frac>0.12});
 }
 function updateTimerDisp(){
   const m=Math.floor(S.timerSecs/60), s=S.timerSecs%60;
   document.getElementById('time-disp').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  const fill=document.getElementById('steep-fill');
+  if(fill) fill.style.width = (S.timerTotal ? (1 - S.timerSecs/S.timerTotal)*100 : 0)+'%';
 }
 function toggleTimer(){
   if(S.timerRunning){
     clearInterval(S.timerIv); S.timerRunning=false;
-    document.getElementById('play-btn').textContent='▶';
+    setPlayIcon(false);
     document.getElementById('ambient-lbl').textContent='Paused. Your brew is waiting…';
   } else {
     S.timerRunning=true;
-    document.getElementById('play-btn').textContent='⏸';
+    setPlayIcon(true);
     document.getElementById('ambient-lbl').textContent='Brewing… let the time flow.';
     S.timerIv=setInterval(()=>{
       if(S.timerSecs<=0){clearInterval(S.timerIv);S.timerRunning=false;finishSession();return;}
@@ -505,7 +516,7 @@ function toggleTimer(){
 }
 function resetSession(){
   clearInterval(S.timerIv); S.timerRunning=false; S.timerSecs=S.timerTotal;
-  document.getElementById('play-btn').textContent='▶';
+  setPlayIcon(false);
   document.getElementById('ambient-lbl').textContent='Your brew is ready. Press play to begin.';
   renderTimerCup(1); updateTimerDisp();
 }
@@ -514,7 +525,7 @@ function finishSession(){
   S.focusActive=false;
   document.querySelector('.nav').classList.remove('focus-locked');
   document.getElementById('page-study').classList.remove('focus-mode');
-  document.getElementById('play-btn').textContent='▶';
+  setPlayIcon(false);
   const elapsed=S.timerTotal-S.timerSecs;
   const mins=Math.round(elapsed/60)||1;
   const now=new Date();
@@ -524,9 +535,9 @@ function finishSession(){
   S.recipes.unshift(recipe);
   localStorage.setItem('bf_recipes',JSON.stringify(S.recipes));
   if(S.user){ saveRecipeToCloud(recipe); } // fire-and-forget — recipe is already safe locally either way
-  showToast('✓ Session saved to your recipe book!');
+  showToast('Session saved to your recipe book');
   renderTimerCup(0);
-  document.getElementById('ambient-lbl').textContent=`${mins} min brewed. Beautiful. ☕`;
+  document.getElementById('ambient-lbl').textContent=`${mins} min brewed. Beautifully done.`;
   setTimeout(()=>showPage('recipes'),2200);
 }
 
@@ -1448,12 +1459,14 @@ function setAuthMsg(msg, type){
   const el=document.getElementById('auth-msg');
   el.textContent=msg; el.className='auth-msg'+(type?(' '+type):'');
 }
+const ICON_EYE='<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M1.8 10S4.8 4.6 10 4.6 18.2 10 18.2 10 15.2 15.4 10 15.4 1.8 10 1.8 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+const ICON_EYE_OFF='<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M1.8 10S4.8 4.6 10 4.6 18.2 10 18.2 10 15.2 15.4 10 15.4 1.8 10 1.8 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 16.5l13-13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 function togglePasswordVisibility(){
   const input=document.getElementById('auth-password');
   const btn=document.getElementById('pw-toggle-btn');
   const willShow = input.type==='password';
   input.type = willShow ? 'text' : 'password';
-  btn.textContent = willShow ? '🙈' : '👁';
+  btn.innerHTML = willShow ? ICON_EYE_OFF : ICON_EYE;
   btn.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
 }
 // Translates Supabase's raw auth errors into something a person can act on,
@@ -1497,7 +1510,7 @@ async function submitAuth(){
         catch(profileErr){ console.warn('Profile save failed (non-blocking):', profileErr); }
       }
       if(data.session){
-        setAuthMsg('Welcome to the café! ☕', 'success');
+        setAuthMsg('Welcome to the café!', 'success');
         setTimeout(closeAuthModalDirect, 900);
       } else {
         setAuthMsg('Check your inbox to confirm your email, then sign in.', 'success');
@@ -1505,7 +1518,7 @@ async function submitAuth(){
     } else {
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if(error) throw error;
-      setAuthMsg('Welcome back! ☕', 'success');
+      setAuthMsg('Welcome back!', 'success');
       setTimeout(closeAuthModalDirect, 700);
     }
   } catch(err){
@@ -1517,7 +1530,7 @@ async function submitAuth(){
 }
 async function signOutUser(){
   if(supabaseClient) await supabaseClient.auth.signOut();
-  showToast('Signed out — come back soon ☕');
+  showToast('Signed out — come back soon');
   // handleSessionChange (via onAuthStateChange) restores guest recipes and clears S.user
 }
 function renderAuthUI(){
@@ -1673,6 +1686,7 @@ document.addEventListener('pointerdown',()=>{ initAudio(); if(audioCtx && audioC
 try { initAudio(); } catch(e) {}
 applyDrinkPreset(S.drink);
 renderHeroCup();
+setPlayIcon(false);
 renderCupPreview();
 renderAuthUI();
 initAuthState();
