@@ -6,10 +6,25 @@
 const SUPABASE_URL = 'https://vigjumdpadyslbcvjeel.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_qkYURGAEv7vAgFXwFzgsdQ_VU0g6dZr';
 
+// What an emailed link put in the address bar, read before the Supabase
+// client tidies it away: a password-reset link, or an expired/used link.
+const AUTH_URL_STATE = (()=>{
+  const h=new URLSearchParams(location.hash.replace(/^#/,'')), q=new URLSearchParams(location.search);
+  return { recovery: h.get('type')==='recovery' || q.get('type')==='recovery',
+           error: h.get('error_description') || q.get('error_description') || '', recoveryEvent:false };
+})();
+
 let supabaseClient = null;
 try {
   if (window.supabase && SUPABASE_URL.startsWith('http')) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Listen straight away so a password-reset arrival isn't missed.
+    supabaseClient.auth.onAuthStateChange(event=>{
+      if(event==='PASSWORD_RECOVERY'){
+        AUTH_URL_STATE.recoveryEvent=true;
+        if(typeof openAuthModal==='function' && document.getElementById('auth-modal')) openAuthModal('reset');
+      }
+    });
   }
 } catch (e) { console.warn('Supabase not configured yet:', e); }
 
@@ -1897,79 +1912,186 @@ function flipStackedPage(shell, oldCards, g, dir){
 }
 
 // ── Auth (Supabase) ──────────────────────────────────────────────────────
-function openAuthModal(tab='signin'){
-  setAuthTab(tab);
+// One pop-up, four screens: Log in, Sign up, Forgot password, and Choose a
+// new password (where the reset email lands). Also: email sign-in links,
+// resending the confirmation email, and Google (shown once it's enabled).
+const AUTH_HOME = location.origin + location.pathname;   // where emailed links bring people back
+const AUTH_VIEWS = {
+  signin: { title:'Welcome back', sub:'Log in to keep your recipes with you, wherever you brew.', submit:'Log in',
+            show:['email','password','forgot','alt','magic','foot'], tabs:true },
+  signup: { title:'Join the café', sub:'Create an account so your brews follow you between visits.', submit:'Create account',
+            show:['username','email','password','strength','confirm','alt','foot'], tabs:true },
+  forgot: { title:'Forgot your password?', sub:'Enter your email and we’ll send you a link to choose a new one.', submit:'Send reset link',
+            show:['email','foot'], tabs:false },
+  reset:  { title:'Choose a new password', sub:'Almost there — pick a new password for your account.', submit:'Save new password',
+            show:['password','strength','confirm'], tabs:false },
+};
+let authProviders = null;      // which sign-in methods the project has switched on
+let resendCooldownUntil = 0;
+
+function openAuthModal(view='signin'){
+  setAuthTab(view);
   document.getElementById('auth-modal').classList.add('open');
+  loadAuthProviders();
+  setTimeout(()=>{ const f=document.querySelector('#auth-form .f-row:not([hidden]) input'); if(f) f.focus(); }, 60);
 }
-function closeAuthModal(e){ if(e.target===document.getElementById('auth-modal')) closeAuthModalDirect(); }
+function closeAuthModal(e){ if(e.target===document.getElementById('auth-modal') && S.authTab!=='reset') closeAuthModalDirect(); }
 function closeAuthModalDirect(){
   document.getElementById('auth-modal').classList.remove('open');
-  document.getElementById('auth-msg').textContent='';
-  document.getElementById('auth-msg').className='auth-msg';
+  setAuthMsg('');
 }
-function setAuthTab(tab){
-  S.authTab=tab;
-  document.getElementById('auth-tab-signin').classList.toggle('active', tab==='signin');
-  document.getElementById('auth-tab-signup').classList.toggle('active', tab==='signup');
-  document.getElementById('auth-username-row').style.display = tab==='signup' ? 'block' : 'none';
-  document.getElementById('auth-title').textContent = tab==='signup' ? 'Join the café' : 'Welcome back';
-  document.getElementById('auth-sub').textContent = tab==='signup'
-    ? 'Create a membership so your brews follow you between visits.'
-    : 'Sign in to keep your recipes with you, wherever you brew.';
-  document.getElementById('auth-submit-btn').textContent = tab==='signup' ? 'Join the Café →' : 'Sign In →';
-  document.getElementById('auth-msg').textContent='';
-  document.getElementById('auth-msg').className='auth-msg';
+function setAuthTab(view){
+  const v = AUTH_VIEWS[view] ? view : 'signin';
+  const cfg = AUTH_VIEWS[v];
+  S.authTab = v;
+  const on = part => cfg.show.includes(part);
+  document.getElementById('auth-tabs').hidden = !cfg.tabs;
+  document.getElementById('auth-tab-signin').classList.toggle('active', v==='signin');
+  document.getElementById('auth-tab-signup').classList.toggle('active', v==='signup');
+  document.getElementById('auth-tab-signin').setAttribute('aria-selected', v==='signin');
+  document.getElementById('auth-tab-signup').setAttribute('aria-selected', v==='signup');
+  document.getElementById('auth-username-row').hidden = !on('username');
+  document.getElementById('auth-email-row').hidden = !on('email');
+  document.getElementById('auth-password-row').hidden = !on('password');
+  document.getElementById('auth-forgot-link').hidden = !on('forgot');
+  document.getElementById('pw-strength-wrap').hidden = !on('strength');
+  document.getElementById('auth-confirm-row').hidden = !on('confirm');
+  document.getElementById('auth-alt').hidden = !on('alt');
+  document.getElementById('auth-magic-btn').hidden = !on('magic');
+  document.getElementById('auth-password-label').textContent = v==='reset' ? 'New password' : 'Password';
+  document.getElementById('auth-password').setAttribute('autocomplete', (v==='signin') ? 'current-password' : 'new-password');
+  document.getElementById('auth-title').textContent = cfg.title;
+  document.getElementById('auth-sub').textContent = cfg.sub;
+  document.getElementById('auth-submit-btn').textContent = cfg.submit;
+  document.getElementById('auth-password').value = v==='signin' ? document.getElementById('auth-password').value : '';
+  document.getElementById('auth-confirm').value = '';
+  updatePasswordStrength();
+  renderAuthFoot();
+  updateGoogleButton();
+  setAuthMsg('');
+}
+function renderAuthFoot(extra){
+  const foot=document.getElementById('auth-foot');
+  const v=S.authTab;
+  const links={
+    signin: `Didn’t get your confirmation email? <button type="button" class="auth-link" onclick="resendConfirmation()">Resend it</button>`,
+    signup: `Already a member? <button type="button" class="auth-link" onclick="setAuthTab('signin')">Log in</button>`,
+    forgot: `Remembered it? <button type="button" class="auth-link" onclick="setAuthTab('signin')">Back to log in</button>`,
+  };
+  foot.innerHTML = extra || links[v] || '';
+  foot.hidden = !foot.innerHTML;
 }
 function setAuthMsg(msg, type){
   const el=document.getElementById('auth-msg');
-  el.textContent=msg; el.className='auth-msg'+(type?(' '+type):'');
+  el.textContent=msg||''; el.className='auth-msg'+(type?(' '+type):'');
 }
+
+// Password visibility and strength
 const ICON_EYE='<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M1.8 10S4.8 4.6 10 4.6 18.2 10 18.2 10 15.2 15.4 10 15.4 1.8 10 1.8 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 const ICON_EYE_OFF='<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M1.8 10S4.8 4.6 10 4.6 18.2 10 18.2 10 15.2 15.4 10 15.4 1.8 10 1.8 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 16.5l13-13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 function togglePasswordVisibility(){
-  const input=document.getElementById('auth-password');
+  const fields=[document.getElementById('auth-password'), document.getElementById('auth-confirm')];
   const btn=document.getElementById('pw-toggle-btn');
-  const willShow = input.type==='password';
-  input.type = willShow ? 'text' : 'password';
+  const willShow = fields[0].type==='password';
+  fields.forEach(f=>f.type = willShow ? 'text' : 'password');
   btn.innerHTML = willShow ? ICON_EYE_OFF : ICON_EYE;
   btn.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
 }
-// Translates Supabase's raw auth errors into something a person can act on,
+const MIN_PASSWORD = 8;
+function passwordScore(p){
+  if(p.length < MIN_PASSWORD) return 0;
+  let s=1;
+  if(p.length>=12) s++;
+  if(/[a-z]/.test(p) && /[A-Z]/.test(p)) s++;
+  if(/\d/.test(p) && /[^A-Za-z0-9]/.test(p)) s++;
+  else if(/\d/.test(p) || /[^A-Za-z0-9]/.test(p)) s+=0.5;
+  return Math.min(4, Math.floor(s));
+}
+function updatePasswordStrength(){
+  const p=document.getElementById('auth-password').value;
+  const score=passwordScore(p);
+  const meter=document.getElementById('pw-strength');
+  meter.dataset.score = p ? score : '';
+  document.getElementById('pw-hint').textContent = !p ? `At least ${MIN_PASSWORD} characters.`
+    : ['Too short — at least '+MIN_PASSWORD+' characters', 'Weak — try making it longer', 'Fair — add a capital letter, number or symbol', 'Good', 'Strong'][score];
+  const confirm=document.getElementById('auth-confirm');
+  if(confirm.value) confirm.classList.toggle('mismatch', confirm.value!==p);
+}
+
+// Which sign-in methods the project has turned on (public, read-only).
+async function loadAuthProviders(){
+  if(authProviders) return;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/auth/v1/settings`, {headers:{apikey:SUPABASE_ANON_KEY}});
+    authProviders = (await r.json()).external || {};
+  }catch(e){ authProviders = {}; }
+  updateGoogleButton();
+}
+function updateGoogleButton(){
+  const btn=document.getElementById('auth-google-btn');
+  const on = !!authProviders?.google && (S.authTab==='signin' || S.authTab==='signup');
+  btn.hidden = !on;
+}
+
+// Turns Supabase's raw auth errors into something a person can act on,
 // without changing what actually happened.
 function friendlyAuthError(err){
   const msg = (err && err.message) || '';
-  if(/invalid login credentials/i.test(msg)){
-    return "That email and password don't match our records. Double-check for typos — tap the eye icon to reveal what you typed — or confirm your email first if this account is brand new.";
-  }
-  if(/email not confirmed/i.test(msg)) return 'Please confirm your email first — check your inbox for the confirmation link, then sign in.';
-  if(/user already registered/i.test(msg)) return 'An account with that email already exists — try signing in instead.';
-  if(/password should be at least/i.test(msg)) return msg;
+  if(/invalid login credentials/i.test(msg))
+    return "That email and password don't match. Check for typos (tap the eye to see what you typed), or use “Forgot password?”.";
+  if(/email not confirmed/i.test(msg)) return 'Please confirm your email first — tap “Resend it” below if the email never arrived.';
+  if(/user already registered|already been registered/i.test(msg)) return 'An account with that email already exists — try logging in instead.';
+  if(/signups? not allowed for otp|user not found/i.test(msg)) return 'There’s no account with that email yet — sign up first.';
+  if(/rate limit|too many/i.test(msg)) return 'Too many emails have been sent recently. Please wait a little while and try again.';
+  if(/only request this after|after \d+ seconds/i.test(msg)) return 'Please wait a minute before asking for another email.';
+  if(/provider is not enabled|unsupported provider/i.test(msg)) return 'Google sign-in isn’t switched on for this app yet.';
+  if(/should be different from the old password/i.test(msg)) return 'Your new password needs to be different from the old one.';
+  if(/invalid format|valid email/i.test(msg)) return 'That doesn’t look like an email address.';
+  if(/password should be at least|weak password/i.test(msg)) return msg;
+  if(/auth session missing|expired|invalid.*(link|token)/i.test(msg)) return 'That link has expired or was already used. Please request a new one.';
   return msg || 'Something went wrong. Please try again.';
 }
+const looksLikeEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+async function withAuthButton(btn, busyLabel, fn){
+  const label=btn.textContent; btn.disabled=true; btn.textContent=busyLabel;
+  try{ return await fn(); }
+  catch(err){ console.error('Auth error:', err); setAuthMsg(friendlyAuthError(err), 'error'); }
+  finally{ btn.disabled=false; btn.textContent=label; }
+}
+
 async function submitAuth(){
-  if(!supabaseClient){
-    setAuthMsg('Supabase isn\'t connected yet — add your Project URL and anon key at the top of script.js.', 'error');
-    return;
-  }
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
-  const username = document.getElementById('auth-username').value.trim();
-  if(!email || !password){ setAuthMsg('Please fill in your email and password.', 'error'); return; }
-  if(S.authTab==='signup' && password.length<6){ setAuthMsg('Password should be at least 6 characters.', 'error'); return; }
-
+  if(!supabaseClient){ setAuthMsg('Sign-in isn’t available right now. Please try again later.', 'error'); return; }
+  const v=S.authTab;
+  const email=document.getElementById('auth-email').value.trim();
+  const password=document.getElementById('auth-password').value;
+  const confirm=document.getElementById('auth-confirm').value;
+  const username=document.getElementById('auth-username').value.trim();
   const btn=document.getElementById('auth-submit-btn');
-  const originalLabel=btn.textContent;
-  btn.disabled=true; btn.textContent='Brewing…';
 
-  try {
-    if(S.authTab==='signup'){
-      if(!username){ setAuthMsg('Please tell us your name.', 'error'); return; }
+  if(v!=='reset'){
+    if(!email){ setAuthMsg('Please enter your email.', 'error'); return; }
+    if(!looksLikeEmail(email)){ setAuthMsg('That doesn’t look like an email address.', 'error'); return; }
+  }
+  if(v==='signin' && !password){ setAuthMsg('Please enter your password.', 'error'); return; }
+  if(v==='signup' && !username){ setAuthMsg('Please tell us your name.', 'error'); return; }
+  if(v==='signup' || v==='reset'){
+    if(password.length < MIN_PASSWORD){ setAuthMsg(`Your password needs at least ${MIN_PASSWORD} characters.`, 'error'); return; }
+    if(password!==confirm){ setAuthMsg('The two passwords don’t match.', 'error'); return; }
+  }
+
+  await withAuthButton(btn, 'Brewing…', async ()=>{
+    if(v==='signin'){
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      setAuthMsg('Welcome back!', 'success');
+      setTimeout(closeAuthModalDirect, 700);
+    }
+    else if(v==='signup'){
       const { data, error } = await supabaseClient.auth.signUp({
-        email, password, options:{ data:{ username } }
+        email, password, options:{ data:{ username }, emailRedirectTo: AUTH_HOME }
       });
       if(error) throw error;
-      // Save the public profile row (matches your existing profiles table:
-      // id, username, avatar_url — no email column, so we don't send one).
       if(data.user){
         try { await supabaseClient.from('profiles').upsert({ id:data.user.id, username }); }
         catch(profileErr){ console.warn('Profile save failed (non-blocking):', profileErr); }
@@ -1978,19 +2100,69 @@ async function submitAuth(){
         setAuthMsg('Welcome to the café!', 'success');
         setTimeout(closeAuthModalDirect, 900);
       } else {
-        setAuthMsg('Check your inbox to confirm your email, then sign in.', 'success');
+        setAuthMsg(`Almost there — we sent a confirmation link to ${email}. Open it to finish joining.`, 'success');
+        renderAuthFoot(`No email? Check your spam folder, or <button type="button" class="auth-link" onclick="resendConfirmation()">send it again</button>.`);
       }
-    } else {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if(error) throw error;
-      setAuthMsg('Welcome back!', 'success');
-      setTimeout(closeAuthModalDirect, 700);
     }
-  } catch(err){
-    console.error('Auth error:', err);
-    setAuthMsg(friendlyAuthError(err), 'error');
-  } finally {
-    btn.disabled=false; btn.textContent=originalLabel;
+    else if(v==='forgot'){
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: AUTH_HOME });
+      if(error) throw error;
+      // Same message whether or not the account exists, so emails can't be probed.
+      setAuthMsg(`If there’s an account for ${email}, a reset link is on its way. It may take a minute to arrive.`, 'success');
+    }
+    else if(v==='reset'){
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if(error) throw error;
+      setAuthMsg('Your password has been changed.', 'success');
+      setTimeout(()=>{ closeAuthModalDirect(); showToast('Password updated — you’re logged in'); }, 900);
+    }
+  });
+}
+
+// Log in without a password: we email a one-tap link (existing accounts only,
+// so every account still has a name from sign-up).
+async function sendMagicLink(){
+  if(!supabaseClient) return;
+  const email=document.getElementById('auth-email').value.trim();
+  if(!looksLikeEmail(email)){ setAuthMsg('Enter your email above, then tap “Email me a sign-in link”.', 'error'); document.getElementById('auth-email').focus(); return; }
+  await withAuthButton(document.getElementById('auth-magic-btn'), 'Sending…', async ()=>{
+    const { error } = await supabaseClient.auth.signInWithOtp({ email, options:{ shouldCreateUser:false, emailRedirectTo: AUTH_HOME } });
+    if(error) throw error;
+    setAuthMsg(`Check your inbox — we sent a sign-in link to ${email}.`, 'success');
+  });
+}
+
+// Send the sign-up confirmation email again.
+async function resendConfirmation(){
+  if(!supabaseClient) return;
+  const email=document.getElementById('auth-email').value.trim();
+  if(!looksLikeEmail(email)){ setAuthMsg('Enter the email you signed up with, then tap “Resend it”.', 'error'); document.getElementById('auth-email').focus(); return; }
+  const wait=Math.ceil((resendCooldownUntil-Date.now())/1000);
+  if(wait>0){ setAuthMsg(`Please wait ${wait} seconds before sending another email.`, 'error'); return; }
+  try{
+    const { error } = await supabaseClient.auth.resend({ type:'signup', email, options:{ emailRedirectTo: AUTH_HOME } });
+    if(error) throw error;
+    resendCooldownUntil = Date.now() + 60000;
+    setAuthMsg(`Sent — a new confirmation link is on its way to ${email}.`, 'success');
+  } catch(err){ setAuthMsg(friendlyAuthError(err), 'error'); }
+}
+
+async function signInWithGoogle(){
+  if(!supabaseClient) return;
+  try{
+    const { error } = await supabaseClient.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: AUTH_HOME } });
+    if(error) throw error;   // on success the browser leaves for Google
+  } catch(err){ setAuthMsg(friendlyAuthError(err), 'error'); }
+}
+
+// Coming back from an emailed link: a password reset opens "Choose a new
+// password"; an expired or used link explains what happened.
+function handleAuthRedirect(){
+  if(AUTH_URL_STATE.recovery || AUTH_URL_STATE.recoveryEvent){ openAuthModal('reset'); return; }
+  if(AUTH_URL_STATE.error){
+    history.replaceState(null, '', location.pathname + location.search);
+    openAuthModal('signin');
+    setAuthMsg(friendlyAuthError({message:AUTH_URL_STATE.error}), 'error');
   }
 }
 async function signOutUser(){
@@ -2109,10 +2281,15 @@ async function loadCloudRecipes(guestSnapshot){
 
 async function handleSessionChange(session){
   if(session?.user){
-    let username = session.user.user_metadata?.username;
+    const meta = session.user.user_metadata || {};
+    let username = meta.username;
     if(!username){
-      const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', session.user.id).single();
+      const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', session.user.id).maybeSingle();
       username = profile?.username;
+      if(!username){
+        username = (meta.full_name || meta.name || (session.user.email||'').split('@')[0] || 'Friend').trim().slice(0,40);
+        try { await supabaseClient.from('profiles').upsert({ id:session.user.id, username }); } catch(e){}
+      }
     }
     const justSignedIn = !S.user;
     const guestSnapshot = justSignedIn ? [...S.recipes] : null;
@@ -2136,6 +2313,7 @@ async function handleSessionChange(session){
   }
 }
 async function initAuthState(){
+  handleAuthRedirect();
   if(!supabaseClient){ processPendingInvite(true); return; }
   const { data:{ session } } = await supabaseClient.auth.getSession();
   await handleSessionChange(session);
