@@ -59,7 +59,14 @@ const DRINKS = {
   'caramel-latte': {label:'Caramel Latte', cup:'glass', base:'coffee', addons:['caramel','vanilla'], temp:'hot'},
   'vanilla-latte': {label:'Vanilla Latte', cup:'glass', base:'coffee', addons:['vanilla'], temp:'hot'},
   'honey-tea': {label:'Honey Tea', cup:'teacup', base:'tea', addons:['honey'], temp:'hot'},
-  'iced-americano': {label:'Iced Americano', cup:'glass', base:'coffee', addons:['ice'], temp:'cold'}
+  'iced-americano': {label:'Iced Americano', cup:'glass', base:'coffee', addons:['ice'], temp:'cold'},
+  'espresso': {label:'Espresso', cup:'demitasse', base:'coffee', addons:[], temp:'hot'},
+  'cafe-au-lait': {label:'Café au Lait', cup:'bowl', base:'coffee', addons:['vanilla'], temp:'hot'},
+  'chai-latte': {label:'Chai Latte', cup:'enamel', base:'chai', addons:['vanilla','cinnamon'], temp:'hot'},
+  'london-fog': {label:'London Fog', cup:'teacup', base:'earlgrey', addons:['vanilla'], temp:'hot'},
+  'golden-milk': {label:'Golden Milk', cup:'glass', base:'golden', addons:['honey'], temp:'hot'},
+  'hibiscus-cooler': {label:'Hibiscus Cooler', cup:'tumbler', base:'hibiscus', addons:['ice'], temp:'cold'},
+  'irish-cream': {label:'Irish Cream Coffee', cup:'footed', base:'coffee', addons:['whipped'], temp:'hot'}
 };
 
 // ── Color maps ────────────────────────────────────────────────────────────
@@ -67,272 +74,242 @@ const BC = {
   coffee:    { liq:'#7B5535', liq2:'#5A3A20', liq3:'#A07040', foam:'#D4AA7A', foamH:'#EDD9A3', steam:'rgba(240,220,195,0.7)', shadow:'rgba(90,58,32,0.4)' },
   matcha:    { liq:'#7FA85A', liq2:'#5A7A3A', liq3:'#A8C880', foam:'#B8D890', foamH:'#D8F0B8', steam:'rgba(180,215,150,0.6)', shadow:'rgba(80,110,50,0.35)' },
   tea:       { liq:'#C08040', liq2:'#9A6020', liq3:'#E0A860', foam:'#E8C898', foamH:'#F8E8C8', steam:'rgba(230,200,155,0.6)', shadow:'rgba(150,100,40,0.35)' },
-  chocolate: { liq:'#4A2818', liq2:'#301408', liq3:'#6A3828', foam:'#7A4830', foamH:'#A07050', steam:'rgba(180,130,100,0.6)', shadow:'rgba(50,20,10,0.45)' }
+  chocolate: { liq:'#4A2818', liq2:'#301408', liq3:'#6A3828', foam:'#7A4830', foamH:'#A07050', steam:'rgba(180,130,100,0.6)', shadow:'rgba(50,20,10,0.45)' },
+  chai:      { liq:'#B07A4A', liq2:'#7A4A28', liq3:'#D6A878', foam:'#E8CFA8', foamH:'#F6E6CC', steam:'rgba(235,210,180,0.65)', shadow:'rgba(110,70,40,0.38)' },
+  earlgrey:  { liq:'#9C8A7A', liq2:'#6A5A4C', liq3:'#C8B8A8', foam:'#E2D8CE', foamH:'#F4EEE8', steam:'rgba(225,215,205,0.65)', shadow:'rgba(90,80,70,0.35)' },
+  hibiscus:  { liq:'#B8324A', liq2:'#7A1A2E', liq3:'#E0607A', foam:'#F0B0BC', foamH:'#FAD8DE', steam:'rgba(240,190,200,0.6)', shadow:'rgba(120,30,50,0.35)' },
+  golden:    { liq:'#E0A830', liq2:'#B07818', liq3:'#F2CC6A', foam:'#F6E2A8', foamH:'#FBF0CC', steam:'rgba(245,225,170,0.65)', shadow:'rgba(160,110,30,0.35)' }
 };
 
-// ── Build cup SVG (old watercolour art style) ─────────────────────────────
+// ── Build cup SVG: vintage watercolour illustration ──────────────────────
+// Cream porcelain with sage folk-flower sprigs, clear glass mugs showing the
+// drink's layers, seen from a little above so latte art, foam and toppings
+// show on the surface. Everything is drawn in a fixed 200 × 270 space and
+// scaled, so cups look the same at any size. fillFraction lowers the drink
+// as a study session runs.
 function buildCupSVG(opts={}) {
   const {
     size:outSize=200, fillFraction=1, steam=true,
     cup=S.cup, base=S.base, addons=S.addons, drink=S.drink
   } = opts;
   const C = BC[base]||BC.coffee;
-  // The cup shapes use fixed pixel offsets, so tiny cups are drawn at a
-  // comfortable size and scaled down rather than squeezed out of shape.
-  const size = outSize < 120 ? 180 : outSize;
-  const H = Math.round(size*1.35);
-  const cx = size/2;
-  const uid = 'c'+Math.random().toString(36).slice(2,7);
+  const W=200, H=270, cx=100;
+  const uid = 'c'+Math.random().toString(36).slice(2,8);
+  const f = Math.max(0, Math.min(1, fillFraction));
+  const INK='#6b5440', SAGE='#7d9468', SAGE2='#a4b48c';
 
-  // ── Cup geometry ──────────────────────────────────────────────────────
-  const shapes = {
-    mug: {
-      // outer silhouette
-      outer: `M${cx-52},45 C${cx-54},45 ${cx-56},47 ${cx-55},50 L${cx-44},${H-48} C${cx-42},${H-34} ${cx-18},${H-22} ${cx},${H-22} C${cx+18},${H-22} ${cx+42},${H-34} ${cx+44},${H-48} L${cx+55},50 C${cx+56},47 ${cx+54},45 ${cx+52},45 Z`,
-      // inner liquid zone
-      lx:cx-44, ly:58, lw:88,
-      innerBottom: H-28,
-      // handle
-      handle:`M${cx+48},75 C${cx+72},75 ${cx+78},90 ${cx+78},115 C${cx+78},140 ${cx+72},152 ${cx+48},152`,
-      // rim ellipse
-      rim:`<ellipse cx="${cx}" cy="47" rx="52" ry="10" fill="${C.foamH}" fill-opacity="0.55" stroke="${C.liq2}" stroke-width="1.5"/>`,
-      // saucer
-      saucer:'',
-      // highlight
-      hl:`M${cx-38},65 C${cx-34},80 ${cx-32},110 ${cx-33},140`,
-    },
-    teacup: {
-      outer:`M${cx-44},52 C${cx-46},52 ${cx-48},54 ${cx-47},57 L${cx-37},${H-52} C${cx-35},${H-38} ${cx-16},${H-26} ${cx},${H-26} C${cx+16},${H-26} ${cx+35},${H-38} ${cx+37},${H-52} L${cx+47},57 C${cx+48},54 ${cx+46},52 ${cx+44},52 Z`,
-      lx:cx-37, ly:64, lw:74,
-      innerBottom:H-32,
-      handle:`M${cx+40},70 C${cx+60},70 ${cx+65},88 ${cx+65},108 C${cx+65},128 ${cx+60},140 ${cx+40},140`,
-      rim:`<ellipse cx="${cx}" cy="54" rx="44" ry="8" fill="${C.foamH}" fill-opacity="0.5" stroke="${C.liq2}" stroke-width="1.5"/>`,
-      saucer:`<ellipse cx="${cx}" cy="${H-26}" rx="58" ry="9" fill="${C.liq3}" fill-opacity="0.35" stroke="${C.liq2}" stroke-width="1.2"/>`,
-      hl:`M${cx-32},72 C${cx-28},88 ${cx-27},112 ${cx-28},134`,
-    },
-    // Vintage footed café glass: a gently swelling tulip bowl with a gold
-    // rim and pressed-glass fluting, on a short stem with a knot and a
-    // round foot.
-    glass: (()=>{
-      // Fixed proportions at every size (the bowl doesn't stretch taller in
-      // bigger drawings): bowl yt→yb, then stem and foot.
-      const yb = H-60;               // bottom of the bowl
-      const yt = yb-98;              // rim
-      const footY = H-24;
-      return {
-        outer:`M${cx-37},${yt} C${cx-39},${yt+28} ${cx-47},${yb-46} ${cx-42},${yb-16} C${cx-38},${yb-2} ${cx-18},${yb+4} ${cx},${yb+4} C${cx+18},${yb+4} ${cx+38},${yb-2} ${cx+42},${yb-16} C${cx+47},${yb-46} ${cx+39},${yt+28} ${cx+37},${yt} Z`,
-        lx:cx-46, ly:yt+7, lw:92,
-        innerBottom:yb,
-        handle:'',
-        rim:`<ellipse cx="${cx}" cy="${yt}" rx="37" ry="4.5" fill="${C.foamH}" fill-opacity="0.45" stroke="${C.liq2}" stroke-width="1.3"/>
-             <path d="M${cx-37},${yt+0.5} C${cx-25},${yt+6} ${cx+25},${yt+6} ${cx+37},${yt+0.5}" stroke="#C9A24A" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.85"/>`,
-        saucer:'',
-        hl:`M${cx-29},${yt+16} C${cx-31},${yt+38} ${cx-34},${yb-40} ${cx-31},${yb-18}`,
-        // drawn behind the bowl: stem, knot and foot
-        stand:`
-          <path d="M${cx-8},${yb+2} C${cx-3},${yb+9} ${cx-3},${footY-10} ${cx-6},${footY-3} L${cx+6},${footY-3} C${cx+3},${footY-10} ${cx+3},${yb+9} ${cx+8},${yb+2} Z"
-            fill="${C.foamH}" fill-opacity="0.35" stroke="${C.liq2}" stroke-width="1.6" stroke-linejoin="round"/>
-          <ellipse cx="${cx}" cy="${yb+15}" rx="6.5" ry="3.2" fill="${C.foamH}" fill-opacity="0.5" stroke="${C.liq2}" stroke-width="1.4"/>
-          <ellipse cx="${cx}" cy="${footY}" rx="34" ry="6.5" fill="${C.foamH}" fill-opacity="0.35" stroke="${C.liq2}" stroke-width="1.8"/>
-          <path d="M${cx-30},${footY+2.5} C${cx-16},${footY+7} ${cx+16},${footY+7} ${cx+30},${footY+2.5}" stroke="white" stroke-width="1.4" fill="none" stroke-opacity="0.35" stroke-linecap="round"/>`,
-        // pressed-glass fluting, over the liquid
-        deco:[-26,-13,0,13,26].map(dx=>`<path d="M${cx+dx*0.92},${yt+6} C${cx+dx*1.08},${yt+32} ${cx+dx*1.1},${yb-30} ${cx+dx*0.85},${yb}" stroke="white" stroke-width="1.6" fill="none" stroke-opacity="0.13" stroke-linecap="round"/>`).join(''),
-      };
-    })(),
-    takeaway: {
-      outer:`M${cx-36},46 L${cx-30},30 L${cx+30},30 L${cx+36},46 L${cx+44},${H-40} L${cx-44},${H-40} Z`,
-      lx:cx-38, ly:56, lw:76,
-      innerBottom:H-44,
-      handle:'',
-      rim:`<rect x="${cx-38}" y="26" width="76" height="22" rx="4" fill="${C.liq2}" fill-opacity="0.7" stroke="${C.liq2}" stroke-width="1.5"/>`,
-      saucer:'',
-      hl:`M${cx-28},60 C${cx-24},82 ${cx-23},108 ${cx-25},130`,
-    }
+  const has = a => (addons||[]).includes(a);
+  const hasIce = has('ice') || (DRINKS[drink] && DRINKS[drink].temp==='cold');
+  const hasWhip = has('whipped'), hasFoam = has('vanilla');
+  const artDrinks = ['cappuccino','vanilla-latte','caramel-latte','matcha-latte','milk-tea'];
+  const latteArt = !hasWhip && !hasIce && (hasFoam || artDrinks.includes(drink)) && base!=='tea' && base!=='hibiscus';
+  const cocoaDust = drink==='cappuccino' || base==='chocolate' || has('cinnamon');
+
+  // ── cup geometry ──
+  const G = {
+    mug:     { mat:'porcelain', rimY:100, rimRx:62, depth:46, saucer:false,
+               body:`M${cx-62},100 C${cx-63},160 ${cx-58},206 ${cx-46},220 Q${cx},236 ${cx+46},220 C${cx+58},206 ${cx+63},160 ${cx+62},100 Z`,
+               handle:`M${cx+60},124 C${cx+96},120 ${cx+100},176 ${cx+57},188`, bottomY:228 },
+    teacup:  { mat:'porcelain', rimY:126, rimRx:60, depth:30, saucer:true,
+               body:`M${cx-60},126 C${cx-58},176 ${cx-32},206 ${cx},206 C${cx+32},206 ${cx+58},176 ${cx+60},126 Z`,
+               handle:`M${cx+54},140 C${cx+84},134 ${cx+86},172 ${cx+44},182`, bottomY:206 },
+    glass:   { mat:'glass', rimY:92, rimRx:56, depth:118, saucer:false,
+               body:`M${cx-56},92 L${cx-50},214 Q${cx-49},228 ${cx-36},229 L${cx+36},229 Q${cx+49},228 ${cx+50},214 L${cx+56},92 Z`,
+               handle:`M${cx+53},118 C${cx+90},116 ${cx+94},182 ${cx+51},192`, bottomY:229 },
+    demitasse:{ mat:'porcelain', rimY:152, rimRx:40, depth:18, saucer:true, saucerRx:64,
+               body:`M${cx-40},152 C${cx-40},184 ${cx-26},202 ${cx},202 C${cx+26},202 ${cx+40},184 ${cx+40},152 Z`,
+               handle:`M${cx+37},162 C${cx+58},160 ${cx+58},186 ${cx+31},190`, bottomY:202 },
+    bowl:    { mat:'porcelain', rimY:142, rimRx:78, depth:30, saucer:false, foot:true,
+               body:`M${cx-78},142 C${cx-76},190 ${cx-42},214 ${cx},214 C${cx+42},214 ${cx+76},190 ${cx+78},142 Z`, handle:'', bottomY:214 },
+    enamel:  { mat:'porcelain', style:'enamel', rimY:110, rimRx:58, depth:40, saucer:false,
+               body:`M${cx-58},110 L${cx-58},214 Q${cx-58},226 ${cx-46},227 Q${cx},233 ${cx+46},227 Q${cx+58},226 ${cx+58},214 L${cx+58},110 Z`,
+               handle:`M${cx+57},130 C${cx+88},128 ${cx+90},178 ${cx+57},186`, bottomY:228 },
+    tumbler: { mat:'glass', rimY:70, rimRx:46, depth:148, saucer:false,
+               body:`M${cx-46},70 L${cx-40},222 Q${cx-39},232 ${cx-28},232 L${cx+28},232 Q${cx+39},232 ${cx+40},222 L${cx+46},70 Z`, handle:'', bottomY:232 },
+    footed:  { mat:'glass', rimY:84, rimRx:50, depth:100, saucer:false, stem:true,
+               body:`M${cx-50},84 C${cx-52},146 ${cx-42},188 ${cx},192 C${cx+42},188 ${cx+52},146 ${cx+50},84 Z`, handle:'', bottomY:192 },
+    takeaway:{ mat:'paper', rimY:86, rimRx:52, depth:120, saucer:false,
+               body:`M${cx-52},86 L${cx-40},226 Q${cx},234 ${cx+40},226 L${cx+52},86 Z`, handle:'', bottomY:230 },
   };
-  const sh = shapes[cup]||shapes.mug;
-  const lx=sh.lx, lw=sh.lw;
-  const liquidAvail = sh.innerBottom - sh.ly;
-  const fillH = Math.max(0, liquidAvail * fillFraction);
-  const fillY = sh.ly + (liquidAvail - fillH);
+  const g = G[cup] || G.mug;
+  const ry = r => r*0.27;
+  const rimRy = ry(g.rimRx);
 
-  // ── Addon presence ─────────────────────────────────────────────────────
-  const hasWhipped   = addons.includes('whipped');
-  const hasCaramel   = addons.includes('caramel');
-  const hasHoney     = addons.includes('honey');
-  const hasCinnamon  = addons.includes('cinnamon');
-  const hasMarshmallow = addons.includes('marshmallow');
-  const hasBoba      = addons.includes('boba');
-  const hasVanilla   = addons.includes('vanilla');
-  const hasIce       = addons.includes('ice') || (DRINKS[drink] && DRINKS[drink].temp==='cold');
+  // ── defs: gradients, the sage sprig motif, the watercolour edge ──
+  const defs = `
+    <filter id="${uid}-wc" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <linearGradient id="${uid}-porc" x1="0" x2="1"><stop offset="0" stop-color="#e9dfcc"/><stop offset="0.28" stop-color="#fbf6ec"/><stop offset="0.62" stop-color="#f1e8d8"/><stop offset="1" stop-color="#d6c7ad"/></linearGradient>
+    <linearGradient id="${uid}-inner" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d8cbb3"/><stop offset="1" stop-color="#f2eadb"/></linearGradient>
+    <radialGradient id="${uid}-surf" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="${C.liq3}"/><stop offset="0.55" stop-color="${C.liq}"/><stop offset="1" stop-color="${C.liq2}"/></radialGradient>
+    <linearGradient id="${uid}-layers" x1="0" y1="0" x2="0" y2="1">
+      ${hasIce ? `<stop offset="0" stop-color="${C.liq}" stop-opacity="0.9"/><stop offset="1" stop-color="${C.liq2}"/>`
+               : `<stop offset="0" stop-color="${C.foamH}"/><stop offset="0.16" stop-color="${C.foam}"/><stop offset="0.42" stop-color="${C.liq3}"/><stop offset="0.75" stop-color="${C.liq}"/><stop offset="1" stop-color="${C.liq2}"/>`}
+    </linearGradient>
+    <linearGradient id="${uid}-glass" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.18" stop-color="#fff" stop-opacity="0.05"/><stop offset="0.8" stop-color="#fff" stop-opacity="0.03"/><stop offset="1" stop-color="#fff" stop-opacity="0.28"/></linearGradient>
+    <linearGradient id="${uid}-enamel" x1="0" x2="1"><stop offset="0" stop-color="#e2ddd0"/><stop offset="0.3" stop-color="#faf8f2"/><stop offset="0.7" stop-color="#efebe0"/><stop offset="1" stop-color="#cfc8b6"/></linearGradient>
+    <linearGradient id="${uid}-kraft" x1="0" x2="1"><stop offset="0" stop-color="#c9a77a"/><stop offset="0.35" stop-color="#e6cfa8"/><stop offset="1" stop-color="#b8956a"/></linearGradient>
+    <clipPath id="${uid}-body"><path d="${g.body}"/><ellipse cx="${cx}" cy="${g.rimY}" rx="${g.rimRx-1}" ry="${ry(g.rimRx)-1}"/></clipPath>
+    <g id="${uid}-sprig">
+      <path d="M0,9 C1,5 1,1 0,-3" fill="none" stroke="${SAGE}" stroke-width="1" stroke-linecap="round"/>
+      <path d="M0,4 C-5,2 -7,6 -2,7 Z M0,2 C5,0 7,4 2,5 Z" fill="${SAGE}" opacity="0.85"/>
+      <g transform="translate(0,-6)" fill="${SAGE}">
+        <circle cx="0" cy="-3.2" r="1.9"/><circle cx="3" cy="-1" r="1.9"/><circle cx="1.9" cy="2.6" r="1.9"/><circle cx="-1.9" cy="2.6" r="1.9"/><circle cx="-3" cy="-1" r="1.9"/>
+        <circle cx="0" cy="0" r="1.2" fill="#c9a24a"/>
+      </g>
+      <circle cx="-5" cy="-11" r="0.9" fill="${SAGE2}"/><circle cx="5" cy="-10" r="0.8" fill="${SAGE2}"/><circle cx="6" cy="2" r="0.7" fill="${SAGE2}"/>
+    </g>`;
 
-  // Top of liquid surface Y
-  const surfaceY = fillH > 0 ? fillY : sh.ly;
+  // ── the drink's surface, with toppings ──
+  // where the surface sits for this fill level, and how wide it is there
+  let surfY, surfRx;
+  if(g.mat==='porcelain'){ surfY = g.rimY + 4 + (1-f)*g.depth*0.55; surfRx = (g.rimRx-6) - (1-f)*14; }
+  else { surfY = g.rimY + 6 + (1-f)*g.depth; const t=(surfY-g.rimY)/(g.bottomY-g.rimY); surfRx = (g.rimRx-5) - t*(g.mat==='paper'?12:6); }
+  const surfRy = ry(surfRx);
+  const showDrink = f > 0.03;
 
-  // ── Whipped cream (billowy mounds) ────────────────────────────────────
-  const whippedCream = (hasWhipped && fillFraction > 0.05) ? `
-    <g clip-path="url(#${uid}-cup)">
-      <!-- whipped cream base mound -->
-      <ellipse cx="${lx+lw*0.5}" cy="${surfaceY-2}" rx="${lw*0.42}" ry="12" fill="white" fill-opacity="0.92"/>
-      <ellipse cx="${lx+lw*0.35}" cy="${surfaceY-8}" rx="${lw*0.25}" ry="10" fill="white" fill-opacity="0.88"/>
-      <ellipse cx="${lx+lw*0.65}" cy="${surfaceY-6}" rx="${lw*0.22}" ry="9" fill="white" fill-opacity="0.85"/>
-      <ellipse cx="${lx+lw*0.5}" cy="${surfaceY-14}" rx="${lw*0.28}" ry="9" fill="white" fill-opacity="0.9"/>
-      <ellipse cx="${lx+lw*0.5}" cy="${surfaceY-21}" rx="${lw*0.16}" ry="7" fill="white" fill-opacity="0.85"/>
-      <!-- cream shading -->
-      <ellipse cx="${lx+lw*0.38}" cy="${surfaceY-5}" rx="${lw*0.15}" ry="5" fill="${C.foam}" fill-opacity="0.45"/>
-      <ellipse cx="${lx+lw*0.62}" cy="${surfaceY-3}" rx="${lw*0.12}" ry="4" fill="${C.foam}" fill-opacity="0.35"/>
-      <!-- highlight on cream -->
-      <ellipse cx="${lx+lw*0.44}" cy="${surfaceY-18}" rx="${lw*0.07}" ry="3" fill="white" fill-opacity="0.9"/>
-    </g>` : '';
+  function heart(x,y,rx,r_y,fill){
+    return `<path d="M${x},${y+r_y*0.62} C${x-rx*0.62},${y+r_y*0.05} ${x-rx*0.4},${y-r_y*0.8} ${x},${y-r_y*0.22} C${x+rx*0.4},${y-r_y*0.8} ${x+rx*0.62},${y+r_y*0.05} ${x},${y+r_y*0.62}Z" fill="${fill}"/>`;
+  }
+  let toppings='';
+  if(showDrink){
+    const x=cx, y=surfY, rx=surfRx, r_y=surfRy;
+    // crema / milk ring
+    toppings += `<ellipse cx="${x}" cy="${y}" rx="${rx*0.94}" ry="${r_y*0.9}" fill="none" stroke="${C.foam}" stroke-opacity="0.55" stroke-width="2.4"/>`;
+    if(latteArt){
+      toppings += `<ellipse cx="${x}" cy="${y}" rx="${rx*0.7}" ry="${r_y*0.66}" fill="${C.foam}" opacity="0.5"/>`;
+      toppings += heart(x, y, rx*0.95, r_y*1.05, C.foamH) + heart(x, y+r_y*0.12, rx*0.55, r_y*0.6, C.liq3) + heart(x, y+r_y*0.2, rx*0.32, r_y*0.34, C.foamH);
+    } else if(hasFoam || (drink==='cappuccino')){
+      toppings += `<ellipse cx="${x}" cy="${y}" rx="${rx*0.86}" ry="${r_y*0.8}" fill="${C.foamH}" opacity="0.92"/>`;
+    }
+    if(cocoaDust && !hasWhip && (latteArt || hasFoam || drink==='cappuccino')){
+      for(let i=0;i<26;i++){ const a=i*2.39, d=Math.sqrt(i/26); toppings += `<circle cx="${(x+Math.cos(a)*d*rx*0.6).toFixed(1)}" cy="${(y+Math.sin(a)*d*r_y*0.55).toFixed(1)}" r="${(0.7+(i%3)*0.35).toFixed(2)}" fill="#6a3a1e" opacity="0.7"/>`; }
+    }
+    if(has('honey')) toppings += `<path d="M${x-rx*0.45},${y} C${x-rx*0.45},${y-r_y*0.7} ${x+rx*0.45},${y-r_y*0.7} ${x+rx*0.4},${y} C${x+rx*0.35},${y+r_y*0.5} ${x-rx*0.2},${y+r_y*0.45} ${x-rx*0.15},${y}" fill="none" stroke="#d9a42a" stroke-width="2.2" stroke-linecap="round" opacity="0.9"/>`;
+    if(has('marshmallow')) [[-0.45,-0.1],[-0.1,-0.35],[0.3,-0.05],[0.05,0.3],[-0.35,0.35]].forEach(([dx,dy])=>{ toppings += `<rect x="${x+dx*rx-6}" y="${y+dy*r_y*1.6-4}" width="12" height="9" rx="3.5" fill="#fffaf4" stroke="#d8c8b8" stroke-width="0.8"/>`; });
+    if(hasIce && g.mat!=='glass') [[-0.4,-0.1],[0.15,-0.3],[0.35,0.2]].forEach(([dx,dy])=>{ toppings += `<rect x="${x+dx*rx-8}" y="${y+dy*r_y*1.6-6}" width="16" height="12" rx="3" fill="#eef7fb" fill-opacity="0.85" stroke="#b8d0da" stroke-width="0.8"/>`; });
+  }
+  // whipped cream dome (sits on the surface, rises above the rim when full)
+  let whip='';
+  if(showDrink && hasWhip){
+    const x=cx, y=surfY+surfRy*0.35, rx=surfRx*1.02;
+    // a billowing dome of cream: three soft swirls stacked
+    whip = `<path d="M${x-rx},${y} C${x-rx*1.02},${y-14} ${x-rx*0.82},${y-24} ${x-rx*0.6},${y-26} C${x-rx*0.62},${y-40} ${x-rx*0.3},${y-48} ${x-rx*0.08},${y-44} C${x},${y-58} ${x+rx*0.32},${y-56} ${x+rx*0.34},${y-42} C${x+rx*0.62},${y-44} ${x+rx*0.8},${y-30} ${x+rx*0.7},${y-22} C${x+rx*0.92},${y-20} ${x+rx*1.02},${y-10} ${x+rx},${y} Q${x},${y+surfRy*0.9} ${x-rx},${y} Z" fill="#fffaf2" stroke="#cdbda6" stroke-width="1.1"/>
+      <path d="M${x-rx*0.62},${y-12} C${x-rx*0.3},${y-22} ${x+rx*0.25},${y-20} ${x+rx*0.62},${y-12}" fill="none" stroke="#e2d3bc" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M${x-rx*0.36},${y-30} C${x-rx*0.12},${y-38} ${x+rx*0.18},${y-36} ${x+rx*0.34},${y-30}" fill="none" stroke="#e2d3bc" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M${x+rx*0.55},${y-8} C${x+rx*0.75},${y-14} ${x+rx*0.8},${y-22} ${x+rx*0.7},${y-22}" fill="none" stroke="#d6c6ae" stroke-width="3" stroke-linecap="round" opacity="0.6"/>`;
+    for(let i=0;i<22;i++){ const a=i*2.39, d=Math.sqrt(i/22); whip += `<circle cx="${(x+Math.cos(a)*d*rx*0.55).toFixed(1)}" cy="${(y-32+Math.sin(a)*d*13).toFixed(1)}" r="${(0.8+(i%3)*0.45).toFixed(2)}" fill="#6a3a1e" opacity="0.7"/>`; }
+    if(has('caramel')) whip += `<path d="M${x-rx*0.6},${y-14} l${rx*0.3},-10 l${rx*0.2},14 l${rx*0.25},-16 l${rx*0.25},14" fill="none" stroke="#b8742a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else if(showDrink && has('caramel')){
+    toppings += `<path d="M${cx-surfRx*0.6},${surfY-2} l${surfRx*0.3},-${surfRy*0.5} l${surfRx*0.3},${surfRy*0.8} l${surfRx*0.3},-${surfRy*0.8} l${surfRx*0.3},${surfRy*0.6}" fill="none" stroke="#b8742a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`;
+  }
 
-  // ── Vanilla foam (thinner airy layer) ────────────────────────────────
-  const vanillaFoam = (!hasWhipped && hasVanilla && fillFraction > 0.05) ? `
-    <g clip-path="url(#${uid}-cup)">
-      <ellipse cx="${lx+lw*0.5}" cy="${surfaceY+1}" rx="${lw*0.45}" ry="7" fill="${C.foamH}" fill-opacity="0.85"/>
-      <ellipse cx="${lx+lw*0.5}" cy="${surfaceY-4}" rx="${lw*0.35}" ry="5" fill="white" fill-opacity="0.6"/>
-      <!-- tiny bubbles -->
-      <circle cx="${lx+lw*0.3}" cy="${surfaceY}" r="2.5" fill="white" fill-opacity="0.7"/>
-      <circle cx="${lx+lw*0.6}" cy="${surfaceY-1}" r="2" fill="white" fill-opacity="0.65"/>
-      <circle cx="${lx+lw*0.45}" cy="${surfaceY-2}" r="1.5" fill="white" fill-opacity="0.6"/>
-    </g>` : '';
-
-  const iceCubes = hasIce && fillFraction > 0.08 ? `
-    <g clip-path="url(#${uid}-cup)" opacity="${0.25 + fillFraction*0.65}">
-      <rect x="${lx+9}" y="${surfaceY+10}" width="${14*fillFraction+5}" height="${12*fillFraction+4}" rx="3" fill="#f6fbff" fill-opacity="0.72" transform="rotate(-16 ${lx+15} ${surfaceY+16})"/>
-      <rect x="${lx+35}" y="${surfaceY+6}" width="${12*fillFraction+5}" height="${11*fillFraction+4}" rx="3" fill="#e9f6fb" fill-opacity="0.66" transform="rotate(14 ${lx+40} ${surfaceY+12})"/>
-      <rect x="${lx+58}" y="${surfaceY+15}" width="${11*fillFraction+4}" height="${10*fillFraction+4}" rx="3" fill="#f8fdff" fill-opacity="0.62" transform="rotate(-7 ${lx+62} ${surfaceY+20})"/>
-    </g>` : '';
-
-  // ── Boba pearls ───────────────────────────────────────────────────────
-  const bobaCount = 5;
-  const bobaPearls = hasBoba && fillH > 20 ? Array.from({length:bobaCount},(_, i)=>{
-    const bx = lx + 12 + (i*14);
-    const by = sh.innerBottom - 16 + (i%2)*8;
-    return `<circle cx="${bx}" cy="${by}" r="6" fill="#1A0A04" fill-opacity="0.85" clip-path="url(#${uid}-cup)"/>
-            <circle cx="${bx-2}" cy="${by-2}" r="2" fill="#4A2418" fill-opacity="0.5" clip-path="url(#${uid}-cup)"/>`;
-  }).join('') : '';
-
-  // ── Marshmallows ──────────────────────────────────────────────────────
-  const marshBits = hasMarshmallow && fillFraction > 0.08 ? `
-    <g clip-path="url(#${uid}-cup)">
-      <rect x="${lx+8}"  y="${surfaceY+4}"  width="13" height="10" rx="4" fill="white" fill-opacity="0.9"/>
-      <rect x="${lx+28}" y="${surfaceY+2}"  width="11" height="9"  rx="3" fill="white" fill-opacity="0.88"/>
-      <rect x="${lx+48}" y="${surfaceY+5}"  width="12" height="9"  rx="4" fill="#FFF0F0" fill-opacity="0.9"/>
-      <rect x="${lx+66}" y="${surfaceY+3}"  width="10" height="8"  rx="3" fill="white" fill-opacity="0.85"/>
-      <!-- shading on marshmallows -->
-      <rect x="${lx+8}"  y="${surfaceY+10}" width="13" height="4" rx="2" fill="${C.foam}" fill-opacity="0.25"/>
-      <rect x="${lx+48}" y="${surfaceY+11}" width="12" height="3" rx="2" fill="${C.foam}" fill-opacity="0.2"/>
-    </g>` : '';
-
-  // ── Caramel drizzle ───────────────────────────────────────────────────
-  const caramelDrizzle = hasCaramel && fillFraction > 0.05 ? `
-    <g clip-path="url(#${uid}-cup)">
-      <path d="M${lx+10},${surfaceY-2} Q${lx+22},${surfaceY+6} ${lx+40},${surfaceY+1} Q${lx+58},${surfaceY-4} ${lx+lw-12},${surfaceY+4}" stroke="#C8842A" stroke-width="2.8" fill="none" stroke-linecap="round" opacity="0.85"/>
-      <path d="M${lx+20},${surfaceY+6} Q${lx+35},${surfaceY+14} ${lx+55},${surfaceY+8}" stroke="#E09A3A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.65"/>
-    </g>` : '';
-
-  // ── Honey swirl ───────────────────────────────────────────────────────
-  const honeySwirl = hasHoney && fillFraction > 0.05 ? `
-    <g clip-path="url(#${uid}-cup)">
-      <path d="M${lx+lw*0.5},${surfaceY+2} m-18,0 a18,5 0 1,1 36,0" stroke="#D4A020" stroke-width="2.5" fill="none" opacity="0.8" stroke-linecap="round"/>
-      <circle cx="${lx+lw*0.5}" cy="${surfaceY+2}" r="3.5" fill="#E8B030" fill-opacity="0.7"/>
-    </g>` : '';
-
-  // ── Cinnamon sprinkle ─────────────────────────────────────────────────
-  const cinnamonSpots = hasCinnamon && fillFraction > 0.05 ? (() => {
-    const spots = [[lx+14,surfaceY+5,2.2],[lx+28,surfaceY+2,1.8],[lx+44,surfaceY+7,2],[lx+60,surfaceY+3,1.8],[lx+38,surfaceY+10,1.5],[lx+22,surfaceY+12,1.6]];
-    return `<g clip-path="url(#${uid}-cup)">${spots.map(([x,y,r])=>`<ellipse cx="${x}" cy="${y}" rx="${r*1.5}" ry="${r*0.7}" fill="#8B3A10" fill-opacity="${0.55+Math.random()*0.2}" transform="rotate(${Math.random()*60-30},${x},${y})"/>`).join('')}</g>`;
-  })() : '';
-
-  // ── Natural liquid surface (slightly wavy) ────────────────────────────
-  const surfaceWave = fillH > 4 ? `
-    <path d="M${lx+2},${surfaceY+3} Q${lx+lw*0.25},${surfaceY-2} ${lx+lw*0.5},${surfaceY+3} Q${lx+lw*0.75},${surfaceY+7} ${lx+lw-2},${surfaceY+3}"
-      stroke="${C.foam}" stroke-width="1.5" fill="none" stroke-opacity="0.5" clip-path="url(#${uid}-cup)"/>` : '';
-
-  // ── Watercolour liquid layers ─────────────────────────────────────────
-  const liquidLayers = fillH > 0 ? `
-    <!-- base liquid -->
-    <rect x="${lx}" y="${fillY}" width="${lw}" height="${fillH+2}" fill="${C.liq}" clip-path="url(#${uid}-cup)"/>
-    <!-- darker depth at bottom -->
-    <rect x="${lx}" y="${sh.innerBottom - Math.min(fillH, liquidAvail)*0.35}" width="${lw}" height="${Math.min(fillH, liquidAvail)*0.35 + 2}" fill="${C.liq2}" fill-opacity="0.55" clip-path="url(#${uid}-cup)"/>
-    <!-- lighter surface layer -->
-    <rect x="${lx}" y="${fillY}" width="${lw}" height="${Math.min(fillH*0.2, 18)}" fill="${C.liq3}" fill-opacity="0.4" clip-path="url(#${uid}-cup)"/>
-    <!-- meniscus / light edge -->
-    <ellipse cx="${lx+lw*0.5}" cy="${surfaceY+3}" rx="${lw*0.44}" ry="5" fill="${C.foam}" fill-opacity="0.3" clip-path="url(#${uid}-cup)"/>
-    ` : '';
-
-  // ── Plain coffee foam (if no other topping) ───────────────────────────
-  const plainFoam = (!hasWhipped && !hasVanilla && fillFraction > 0.85 && (base==='coffee'||base==='matcha')) ? `
-    <ellipse cx="${lx+lw*0.5}" cy="${surfaceY+2}" rx="${lw*0.43}" ry="8" fill="${C.foam}" fill-opacity="0.7" clip-path="url(#${uid}-cup)"/>
-    <ellipse cx="${lx+lw*0.5}" cy="${surfaceY-1}" rx="${lw*0.3}" ry="5" fill="${C.foamH}" fill-opacity="0.5" clip-path="url(#${uid}-cup)"/>
-    ` : '';
-
-  // ── Cup body watercolour shading ──────────────────────────────────────
-  const cupBody = `
-    <!-- cup shadow / base fill -->
-    <path d="${sh.outer}" fill="${C.liq2}" fill-opacity="0.18"/>
-    <!-- cup light side -->
-    <path d="${sh.outer}" fill="${C.foamH}" fill-opacity="0.08"/>
-  `;
-
-  // ── Highlight stroke on cup ───────────────────────────────────────────
-  const cupHL = `<path d="${sh.hl}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-opacity="0.22" clip-path="url(#${uid}-cup)"/>`;
-
-  // ── Steam wisps (organic curving paths) ───────────────────────────────
-  const steamPaths = (steam && fillFraction > 0.08) ? [
-    {dx:-16, delay:'0s', dur:'2.8s'},
-    {dx:0,   delay:'1s', dur:'3.2s'},
-    {dx:14,  delay:'1.9s', dur:'2.6s'}
-  ].map(({dx,delay,dur},i)=>`
-    <path d="M${cx+dx},${sh.ly-8} C${cx+dx+6},${sh.ly-22} ${cx+dx-7},${sh.ly-36} ${cx+dx+4},${sh.ly-52} C${cx+dx+12},${sh.ly-66} ${cx+dx-5},${sh.ly-80} ${cx+dx+3},${sh.ly-95}" stroke="${C.steam}" stroke-width="${2-i*0.3}" fill="none" stroke-linecap="round">
-      <animate attributeName="opacity" values="0;0.75;0.4;0" dur="${dur}" begin="${delay}" repeatCount="indefinite"/>
-      <animateTransform attributeName="transform" type="translate" values="0,0;${4-i},${-8}" dur="${dur}" begin="${delay}" repeatCount="indefinite"/>
+  // ── steam ──
+  const steamTop = (hasWhip && showDrink) ? surfY-56 : g.rimY-8;
+  const steamPaths = (steam && f>0.08 && !hasIce) ? [-16,0,14].map((dx,i)=>`
+    <path d="M${cx+dx},${steamTop} C${cx+dx+6},${steamTop-14} ${cx+dx-7},${steamTop-28} ${cx+dx+4},${steamTop-44} C${cx+dx+12},${steamTop-58} ${cx+dx-5},${steamTop-70} ${cx+dx+3},${steamTop-84}" stroke="${C.steam}" stroke-width="${1.8-i*0.3}" fill="none" stroke-linecap="round">
+      <animate attributeName="opacity" values="0;0.75;0.4;0" dur="${[2.8,3.2,2.6][i]}s" begin="${[0,1,1.9][i]}s" repeatCount="indefinite"/>
+      <animateTransform attributeName="transform" type="translate" values="0,0;${4-i},-8" dur="${[2.8,3.2,2.6][i]}s" begin="${[0,1,1.9][i]}s" repeatCount="indefinite"/>
     </path>`).join('') : '';
 
-  return `<svg width="${outSize}" height="${Math.round(outSize*1.35)}" viewBox="0 0 ${size} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <clipPath id="${uid}-cup"><path d="${sh.outer}"/></clipPath>
-  </defs>
+  // ── handle (drawn as a thick outlined loop) ──
+  const handle = g.handle ? (g.mat==='glass'
+    ? `<path d="${g.handle}" fill="none" stroke="${INK}" stroke-opacity="0.55" stroke-width="12" stroke-linecap="round"/><path d="${g.handle}" fill="none" stroke="#eef2ef" stroke-opacity="0.85" stroke-width="9" stroke-linecap="round"/><path d="${g.handle}" fill="none" stroke="#fff" stroke-opacity="0.8" stroke-width="2" stroke-linecap="round" transform="translate(-1.5,-1.5)"/>`
+    : `<path d="${g.handle}" fill="none" stroke="${INK}" stroke-width="11" stroke-linecap="round"/><path d="${g.handle}" fill="none" stroke="#f3ebdc" stroke-width="8" stroke-linecap="round"/><path d="${g.handle}" fill="none" stroke="${SAGE}" stroke-opacity="0.55" stroke-width="1" stroke-linecap="round" transform="translate(1,1)"/>`) : '';
 
-  <!-- drop shadow -->
-  <ellipse cx="${cx}" cy="${H-12}" rx="${size*0.38}" ry="9" fill="${C.shadow}" fill-opacity="0.6"/>
+  // ── saucer ──
+  const sk = (g.saucerRx||88)/88;
+  const saucer = g.saucer ? `
+    <ellipse cx="${cx}" cy="${g.bottomY+10*sk}" rx="${88*sk}" ry="${24*sk}" fill="url(#${uid}-porc)" stroke="${INK}" stroke-width="1.4"/>
+    <ellipse cx="${cx}" cy="${g.bottomY+8*sk}" rx="${76*sk}" ry="${19*sk}" fill="none" stroke="${SAGE}" stroke-width="1.6" stroke-dasharray="1.6 5" stroke-linecap="round"/>
+    <ellipse cx="${cx}" cy="${g.bottomY+7*sk}" rx="${48*sk}" ry="${11*sk}" fill="#e2d6c0" stroke="${INK}" stroke-opacity="0.35" stroke-width="1"/>
+    ${[-70,-46,46,70].map(dx=>`<use href="#${uid}-sprig" transform="translate(${cx+dx*sk},${g.bottomY+(12 + (Math.abs(dx)>60?-4:6))*sk}) scale(${0.8*sk})"/>`).join('')}` : '';
+  // a café-au-lait bowl stands on a little foot ring; an Irish coffee glass on a stem
+  const foot = g.foot ? `<ellipse cx="${cx}" cy="${g.bottomY+4}" rx="34" ry="8" fill="url(#${uid}-porc)" stroke="${INK}" stroke-width="1.3"/>` : '';
+  const stem = g.stem ? `
+    <path d="M${cx-7},${g.bottomY-2} C${cx-3},${g.bottomY+10} ${cx-3},${g.bottomY+30} ${cx-6},${g.bottomY+40} L${cx+6},${g.bottomY+40} C${cx+3},${g.bottomY+30} ${cx+3},${g.bottomY+10} ${cx+7},${g.bottomY-2} Z" fill="#eef2ef" fill-opacity="0.6" stroke="${INK}" stroke-opacity="0.65" stroke-width="1.2"/>
+    <ellipse cx="${cx}" cy="${g.bottomY+14}" rx="7" ry="3.5" fill="#eef2ef" fill-opacity="0.7" stroke="${INK}" stroke-opacity="0.6" stroke-width="1"/>
+    <ellipse cx="${cx}" cy="${g.bottomY+42}" rx="38" ry="8" fill="#eef2ef" fill-opacity="0.55" stroke="${INK}" stroke-opacity="0.65" stroke-width="1.3"/>
+    <path d="M${cx-30},${g.bottomY+44} Q${cx},${g.bottomY+50} ${cx+30},${g.bottomY+44}" stroke="#fff" stroke-opacity="0.7" stroke-width="1.4" fill="none"/>` : '';
 
-  ${sh.stand||''}
+  // ── body ──
+  let body='';
+  if(g.mat==='porcelain'){
+    const enamel = g.style==='enamel';
+    const SP = { teacup:[[[-34,158],[2,170],[34,156],[-14,190],[22,190]],1.05], demitasse:[[[-18,178],[14,182]],0.8],
+                 bowl:[[[-52,170],[-18,186],[18,188],[52,172]],1.1], mug:[[[-38,146],[0,156],[36,142],[-22,190],[16,196],[46,186]],1.25] };
+    const [spots, sc] = SP[cup] || SP.mug;
+    const sprigs = enamel ? '' : spots.map(([dx,y],i)=>`<use href="#${uid}-sprig" transform="translate(${cx+dx},${y}) rotate(${(i%3-1)*16}) scale(${sc})"/>`).join('');
+    const enamelBits = enamel ? `
+        <path d="M${cx-60},${g.bottomY-14} Q${cx},${g.bottomY-6} ${cx+60},${g.bottomY-14}" fill="none" stroke="#2f4a6a" stroke-width="3"/>
+        <path d="M${cx-34},150 q3,-2 5,1 q-1,3 -5,-1z M${cx+22},196 q3,-2 4,1 q-2,2 -4,-1z M${cx-48},204 q2,-1 3,1 q-1,2 -3,-1z" fill="#3a3a44" opacity="0.75"/>` : '';
+    body = `
+      ${foot}
+      <path d="${g.body}" fill="url(#${uid}-${enamel?'enamel':'porc'})"/>
+      <g clip-path="url(#${uid}-body)">${sprigs}${enamelBits}
+        <path d="M${cx-g.rimRx},${g.rimY+12} Q${cx},${g.rimY+12+rimRy*2.1} ${cx+g.rimRx},${g.rimY+12}" fill="none" stroke="${SAGE}" stroke-width="1.4" opacity="0.75"/>
+        <path d="M${cx+g.rimRx*0.62},${g.rimY+20} C${cx+g.rimRx*0.7},${g.rimY+60} ${cx+g.rimRx*0.62},${g.rimY+90} ${cx+g.rimRx*0.45},${g.rimY+110}" fill="none" stroke="#fff" stroke-opacity="0.45" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <path d="${g.body}" fill="none" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/>
+      <!-- looking into the cup -->
+      <ellipse cx="${cx}" cy="${g.rimY}" rx="${g.rimRx}" ry="${rimRy}" fill="url(#${uid}-inner)"/>
+      <clipPath id="${uid}-in"><ellipse cx="${cx}" cy="${g.rimY+0.5}" rx="${g.rimRx-3}" ry="${rimRy-2}"/></clipPath>
+      <g clip-path="url(#${uid}-in)">
+        ${showDrink ? `<ellipse cx="${cx}" cy="${surfY}" rx="${surfRx}" ry="${surfRy}" fill="url(#${uid}-surf)"/>${toppings}`
+                    : `<ellipse cx="${cx}" cy="${g.rimY+g.depth*0.5}" rx="${g.rimRx*0.55}" ry="${rimRy*0.5}" fill="none" stroke="${C.liq}" stroke-opacity="0.35" stroke-width="1.5"/>`}
+      </g>
+      <ellipse cx="${cx}" cy="${g.rimY}" rx="${g.rimRx}" ry="${rimRy}" fill="none" stroke="${INK}" stroke-width="1.4"/>
+      ${enamel ? `<ellipse cx="${cx}" cy="${g.rimY}" rx="${g.rimRx}" ry="${rimRy}" fill="none" stroke="#2f4a6a" stroke-width="3.2"/>`
+               : `<ellipse cx="${cx}" cy="${g.rimY+1.6}" rx="${g.rimRx-2.5}" ry="${rimRy-1.6}" fill="none" stroke="${SAGE}" stroke-width="1" opacity="0.7"/>`}`;
+  } else if(g.mat==='glass'){
+    const ice = hasIce && showDrink ? [[-24,0.12,-14],[8,0.06,10],[26,0.22,-6],[-6,0.3,18]].map(([dx,t,rot])=>{ const y=surfY+8+t*(g.bottomY-surfY); return `<rect x="${cx+dx-11}" y="${y}" width="22" height="18" rx="4" fill="#f2fafd" fill-opacity="0.55" stroke="#fff" stroke-opacity="0.8" stroke-width="1" transform="rotate(${rot} ${cx+dx} ${y+9})"/>`; }).join('') : '';
+    const boba = has('boba') && showDrink ? [-30,-16,-2,12,26,-22,4,20].map((dx,i)=>`<circle cx="${cx+dx}" cy="${g.bottomY-12-(i>4?11:0)}" r="6" fill="#2a160c"/><circle cx="${cx+dx-2}" cy="${g.bottomY-14-(i>4?11:0)}" r="1.6" fill="#7a5a48"/>`).join('') : '';
+    body = `
+      ${stem}
+      <g clip-path="url(#${uid}-body)">
+        ${showDrink ? `<rect x="${cx-60}" y="${surfY}" width="120" height="${g.bottomY-surfY+4}" fill="url(#${uid}-layers)"/>
+          <path d="M${cx-60},${surfY+(g.bottomY-surfY)*0.38} C${cx-20},${surfY+(g.bottomY-surfY)*0.32} ${cx+20},${surfY+(g.bottomY-surfY)*0.44} ${cx+60},${surfY+(g.bottomY-surfY)*0.36}" fill="none" stroke="${C.liq2}" stroke-opacity="0.18" stroke-width="10"/>
+          ${ice}${boba}
+          <ellipse cx="${cx}" cy="${surfY}" rx="${surfRx}" ry="${surfRy}" fill="url(#${uid}-surf)"/>${toppings}` : ''}
+        ${g.stem ? '' : `<rect x="${cx-60}" y="${g.bottomY-12}" width="120" height="14" fill="#e6efec" fill-opacity="0.45"/>`}
+      </g>
+      <path d="${g.body}" fill="url(#${uid}-glass)"/>
+      <path d="${g.body.replace(/\s*Z$/,'')}" fill="none" stroke="${INK}" stroke-opacity="0.7" stroke-width="1.3" stroke-linejoin="round"/>
+      <path d="M${cx-g.rimRx+10},${g.rimY+12} L${cx-g.rimRx+14},${g.bottomY-22}" stroke="#fff" stroke-opacity="0.7" stroke-width="3" stroke-linecap="round"/>
+      <path d="M${cx-g.rimRx+18},${g.rimY+18} L${cx-g.rimRx+20},${g.rimY+58}" stroke="#fff" stroke-opacity="0.45" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M${cx+g.rimRx-12},${g.rimY+16} L${cx+g.rimRx-16},${g.bottomY-28}" stroke="#fff" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round"/>
+      <ellipse cx="${cx}" cy="${g.rimY}" rx="${g.rimRx}" ry="${rimRy}" fill="none" stroke="${INK}" stroke-opacity="0.75" stroke-width="1.3"/>
+      <ellipse cx="${cx}" cy="${g.rimY+1.5}" rx="${g.rimRx-3}" ry="${rimRy-1.5}" fill="none" stroke="#fff" stroke-opacity="0.7" stroke-width="1.2"/>
+      ${hasIce ? `<path d="M${cx+g.rimRx*0.25},${surfY+40} L${cx+g.rimRx*0.6},${g.rimY-56}" stroke="#a8452e" stroke-width="5" stroke-linecap="round"/><path d="M${cx+g.rimRx*0.28},${surfY+20} L${cx+g.rimRx*0.6},${g.rimY-52}" stroke="#e8c8a8" stroke-width="1.3" stroke-linecap="round" opacity="0.7"/>` : ''}`;
+  } else {
+    // takeaway: kraft paper cup with a lid and a stamped sleeve
+    body = `
+      <g clip-path="url(#${uid}-body)">
+        <rect x="${cx-60}" y="80" width="120" height="160" fill="url(#${uid}-kraft)"/>
+        ${showDrink ? `<rect x="${cx-60}" y="${surfY}" width="120" height="${g.bottomY-surfY}" fill="${C.liq2}" opacity="0.14"/>` : ''}
+        <rect x="${cx-60}" y="132" width="120" height="50" fill="#f3ead8"/>
+        <path d="M${cx-60},132 h120 M${cx-60},182 h120" stroke="${INK}" stroke-width="1.2"/>
+      </g>
+      <path d="${g.body}" fill="none" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/>
+      <circle cx="${cx}" cy="157" r="16" fill="none" stroke="${SAGE}" stroke-width="1.4"/>
+      <use href="#${uid}-sprig" transform="translate(${cx},160) scale(1.2)"/>
+      <path d="M${cx-58},86 L${cx-56},72 Q${cx},62 ${cx+56},72 L${cx+58},86 Q${cx},96 ${cx-58},86 Z" fill="#f1e8d8" stroke="${INK}" stroke-width="1.4"/>
+      <ellipse cx="${cx}" cy="71" rx="44" ry="9" fill="#e6dac4" stroke="${INK}" stroke-opacity="0.6" stroke-width="1"/>
+      <ellipse cx="${cx+20}" cy="69" rx="6" ry="2" fill="${INK}" opacity="0.5"/>`;
+  }
 
-  <!-- cup body watercolour base -->
-  ${cupBody}
-
-  <!-- liquid layers -->
-  ${liquidLayers}
-
-  <!-- surface wave -->
-  ${surfaceWave}
-
-  <!-- plain foam -->
-  ${plainFoam}
-
-  <!-- add-ons below whipped cream -->
-  ${bobaCount ? bobaPearls : ''}
-  ${iceCubes}
-  ${marshBits}
-  ${caramelDrizzle}
-  ${honeySwirl}
-  ${cinnamonSpots}
-
-  <!-- whipped cream / vanilla on top -->
-  ${vanillaFoam}
-  ${whippedCream}
-
-  <!-- cup outline (drawn over liquid) -->
-  <path d="${sh.outer}" stroke="${C.liq2}" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
-  ${sh.handle ? `<path d="${sh.handle}" stroke="${C.liq2}" stroke-width="2.2" fill="none" stroke-linecap="round"/>` : ''}
-  ${sh.rim}
-  ${sh.saucer}
-
-  <!-- highlight -->
-  ${sh.deco ? `<g clip-path="url(#${uid}-cup)">${sh.deco}</g>` : ''}
-  ${cupHL}
-
-  <!-- steam -->
+  return `<svg width="${outSize}" height="${Math.round(outSize*1.35)}" viewBox="0 0 ${W} ${H}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>${defs}</defs>
+  <ellipse cx="${cx}" cy="${H-22}" rx="${g.saucer?96*sk:(cup==='bowl'?84:66)}" ry="${g.saucer?14*sk:10}" fill="${C.shadow}" fill-opacity="0.35"/>
+  <g filter="url(#${uid}-wc)">
+    ${saucer}
+    ${g.mat==='porcelain' ? handle : ''}
+    ${body}
+    ${g.mat!=='porcelain' ? handle : ''}
+    ${whip}
+  </g>
   ${steamPaths}
 </svg>`;
 }
@@ -594,7 +571,7 @@ const CAFE_VIBES = {
     menu:[
       {key:'cappuccino',    name:'Café Crème',        note:'velvet foam, slow mornings'},
       {key:'hot-chocolate', name:'Chocolat Chaud',    note:'thick, dark and comforting'},
-      {key:'vanilla-latte', name:'Latte à la Vanille', note:'soft and sweet'},
+      {key:'cafe-au-lait',  name:'Café au Lait',       note:'in a wide breakfast bowl'},
       {key:'black-coffee',  name:'Petit Noir',         note:'short, strong, no fuss'},
     ]},
   bookstore: { label:'Rainy Bookstore', tagline:'rain on the glass, pages turning', ambience:'rainy-bookstore',
@@ -602,7 +579,7 @@ const CAFE_VIBES = {
       {key:'caramel-latte', name:'Chapter One Caramel', note:'for long first pages'},
       {key:'milk-tea',      name:'Storm Milk Tea',      note:'with chewy pearls'},
       {key:'mocha',         name:'Inkwell Mocha',       note:'dark chocolate and espresso'},
-      {key:'black-coffee',  name:'Paperback Brew',      note:'plain and dependable'},
+      {key:'chai-latte',    name:'Paperback Chai',      note:'spiced, for long chapters'},
     ]},
   kyoto: { label:'Kyoto Tea House', tagline:'paper screens and quiet steam', ambience:'kyoto-tea',
     menu:[
@@ -613,14 +590,14 @@ const CAFE_VIBES = {
     ]},
   midnight: { label:'Midnight Jazz Café', tagline:'low lamps and a slow saxophone', ambience:'midnight-cafe',
     menu:[
-      {key:'black-coffee',   name:'Blue Note Espresso', note:'for the late set'},
+      {key:'espresso',       name:'Blue Note Espresso', note:'for the late set'},
       {key:'mocha',          name:'Midnight Mocha',     note:'chocolate after dark'},
       {key:'iced-americano', name:'Moonlit Americano',  note:'over ice'},
       {key:'vanilla-latte',  name:'Velvet Vanilla',     note:'smooth as a ballad'},
     ]},
   library: { label:'Library Reading Room', tagline:'green lamps and leather chairs', ambience:'vintage-library',
     menu:[
-      {key:'honey-tea',    name:"Scholar's Honey Tea", note:'gentle, for long reading'},
+      {key:'london-fog',   name:"Scholar's London Fog", note:'Earl Grey, steamed milk'},
       {key:'cappuccino',   name:'Reading Room Cappuccino', note:'a quiet classic'},
       {key:'black-coffee', name:'Archive Roast',       note:'deep and steady'},
       {key:'matcha-latte', name:'Margin Notes Matcha', note:'calm focus'},
@@ -629,7 +606,7 @@ const CAFE_VIBES = {
     menu:[
       {key:'iced-americano', name:'Seaside Cold Brew',    note:'over ice, by the water'},
       {key:'caramel-latte',  name:'Salted Caramel Latte', note:'sweet with a hint of sea salt'},
-      {key:'honey-tea',      name:'Sunset Honey Tea',     note:'golden and gentle'},
+      {key:'hibiscus-cooler',name:'Hibiscus Cooler',      note:'ruby red, over ice'},
       {key:'matcha-latte',   name:'Coconut Matcha',       note:'green, creamy, breezy'},
     ]},
 };
@@ -1634,7 +1611,7 @@ function setRecipeTab(tab){
 }
 
 const addonNames={whipped:'Whipped Cream',caramel:'Caramel',honey:'Honey',cinnamon:'Cinnamon',marshmallow:'Marshmallows',boba:'Boba',vanilla:'Vanilla Foam'};
-const baseNames={coffee:'Coffee',matcha:'Matcha',tea:'Tea',chocolate:'Hot Chocolate'};
+const baseNames={coffee:'Coffee',matcha:'Matcha',tea:'Tea',chocolate:'Hot Chocolate',chai:'Chai',earlgrey:'Earl Grey',hibiscus:'Hibiscus',golden:'Golden Milk'};
 const sortLabels={newest:'Newest ↓', oldest:'Oldest ↑', favorite:'Favorites ★'};
 function recipeListRaw(){ return S.recipeTab==='mine' ? S.recipes : S.sharedRecipes; }
 function filteredRecipes(){
@@ -2212,7 +2189,7 @@ function gazetteStats(all){
   if(days.length && (today-days[days.length-1]) <= DAY){ current=1; for(let i=days.length-1;i>0 && days[i]-days[i-1]===DAY;i--) current++; }
   const byWeekday=[0,0,0,0,0,0,0]; withTime.forEach(r=>byWeekday[new Date(r.t).getDay()]++);
   const weekStart=today - 6*DAY, prevStart=today - 13*DAY;
-  const bases=['coffee','matcha','tea','chocolate'];
+  const bases=Object.keys(BC);
   const exchange=bases.map(b=>{
     const now=withTime.filter(r=>r.base===b && r.t>=weekStart).length;
     const before=withTime.filter(r=>r.base===b && r.t>=prevStart && r.t<weekStart).length;
@@ -2266,10 +2243,10 @@ function renderGazetteExtras(all){
       return `<div class="gz-col${d===st.busiestDay&&n?' top':''}"><span class="gz-col-n">${n||''}</span><i style="height:${pct}%"></i></div>`; }).join('')}</div>
     <div class="gz-axis">${order.map(d=>`<span>${GZ_DAYS[d]}</span>`).join('')}</div>`;
   // The Bean Exchange
-  const names={coffee:'Coffee', matcha:'Matcha', tea:'Tea', chocolate:'Cocoa'};
+  const names={coffee:'Coffee', matcha:'Matcha', tea:'Tea', chocolate:'Cocoa', chai:'Chai', earlgrey:'Earl Grey', hibiscus:'Hibiscus', golden:'Golden'};
   const exMax=Math.max(1, ...st.exchange.map(x=>x.total));
   document.getElementById('gz-exchange').innerHTML = `<div class="gz-ex-head"><span>Bean</span><span>All-time</span><span>Wk</span><span>Chg</span></div>` +
-    st.exchange.map(x=>{ const ch=x.now-x.before; const sym = ch>0?'▲':ch<0?'▼':'—';
+    [...st.exchange].sort((a,b)=>(b.total+b.now)-(a.total+a.now)).slice(0,4).map(x=>{ const ch=x.now-x.before; const sym = ch>0?'▲':ch<0?'▼':'—';
       return `<div class="gz-ex-row"><span>${names[x.b]}</span><span class="gz-ex-bar"><i style="width:${Math.round(x.total/exMax*100)}%"></i><em>${x.total}</em></span><span>${x.now}</span><span class="${ch>0?'up':ch<0?'down':''}">${sym}${ch?' '+Math.abs(ch):''}</span></div>`; }).join('') +
     `<p class="gz-small gz-ex-note">Cups brewed this week against last week. All-time leader: <b>${names[[...st.exchange].sort((a,b)=>b.total-a.total)[0].b]}</b>.</p>`;
   // Brewoscope and quote of the day (change daily)
