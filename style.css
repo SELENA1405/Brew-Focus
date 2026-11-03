@@ -2163,3 +2163,95 @@ body::after {
 .music-skip:hover { background:rgba(122,46,58,0.08); }
 .music-credit { margin:0.55rem 0 0; text-align:center; font-family:'Lora',serif; font-size:0.66rem; line-height:1.4; color:var(--warm-brown); }
 .music-credit a { color:var(--burgundy); }
+
+/* ── Friends: calling cards ─────────────────────────────────────────────── */
+/* a Victorian visiting card: cream board, a fine double rule with corner
+   flourishes, the animal in an oval, the name in copperplate */
+.ccards { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:0.7rem; }
+.ccards.wide { grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); margin-bottom:2.2rem; }
+.ccard { position:relative; display:flex; align-items:center; gap:0.75rem; padding:0.65rem 0.8rem 0.65rem 0.7rem; color:var(--ink); min-width:0;
+  background:radial-gradient(circle at 15% 10%, rgba(255,255,255,0.5), transparent 45%), linear-gradient(172deg, #fbf6ea, #efe3c9);
+  border-radius:2px; box-shadow:0 2px 0 rgba(58,34,18,0.08), 0 6px 14px rgba(20,10,5,0.22), inset 0 0 0 1px rgba(122,46,58,0.25); }
+.ccard::before { content:''; position:absolute; inset:4px; pointer-events:none; border:1px solid rgba(122,46,58,0.35); outline:1px solid rgba(199,168,109,0.45); outline-offset:-4px; }
+.ccard::after { content:'\2766'; position:absolute; right:7px; top:3px; font-size:0.62rem; color:rgba(199,168,109,0.9); pointer-events:none; }
+.ccard-cameo { flex:none; width:46px; height:52px; border-radius:50%; overflow:hidden; display:flex; align-items:flex-end; justify-content:center;
+  background:radial-gradient(circle at 50% 38%, #fffaf0, #efe2c8 80%); box-shadow:inset 0 0 0 1px rgba(122,46,58,0.45), inset 0 0 0 3px #fbf6ea, inset 0 0 0 4px rgba(199,168,109,0.6); }
+.ccard-cameo .char { width:92%; height:auto; display:block; margin-bottom:-1px; }
+.ccard-txt { flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.15; }
+.ccard-txt b { font-family:'Pinyon Script', 'Cormorant Garamond', cursive; font-weight:400; font-size:1.45rem; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ccard-txt i { font-family:'Courier Prime', 'Courier New', monospace; font-style:normal; font-size:0.72rem; letter-spacing:0.04em; color:var(--warm-brown); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ccard-act { flex:none; display:flex; flex-direction:column; align-items:stretch; gap:0.3rem; position:relative; z-index:1; }
+.ccard-btn { font-family:'Lora',serif; font-size:0.62rem; letter-spacing:0.14em; text-transform:uppercase; padding:0.38rem 0.7rem; border-radius:1px; cursor:pointer;
+  background:transparent; color:var(--coffee); border:1px solid rgba(58,34,18,0.4); transition:all .2s; white-space:nowrap; }
+.ccard-btn:hover { color:var(--burgundy); border-color:var(--burgundy); }
+.ccard-btn.p { background:var(--burgundy); color:#f6ead2; border-color:var(--burgundy); }
+.ccard-btn.p:hover { background:#8e3644; color:#fff3dd; }
+.ccard-btn.quiet { border-color:transparent; color:var(--warm-brown); padding:0.2rem 0.4rem; text-decoration:underline; text-underline-offset:3px; letter-spacing:0.1em; }
+.ccard-wait, .ccard-ok { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.95rem; color:var(--warm-brown); white-space:nowrap; text-align:center; }
+.ccard-ok { color:var(--sage); }
+.ccard-ok::before { content:'\2713  '; font-style:normal; }
+
+/* the wax seal on your name when cards are waiting */
+.nav-user-avatar { position:relative; overflow:visible; }
+.nav-user-avatar img { border-radius:50%; }
+.nav-seal { position:absolute; right:-6px; top:-5px; min-width:17px; height:17px; padding:0 3px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:'Playfair Display',serif; font-style:normal; font-size:0.62rem; font-weight:700; color:#f6e2b8; line-height:1;
+  background:radial-gradient(circle at 35% 30%, #c25a6a, #7a2e3a 60%, #561c28); box-shadow:0 1px 3px rgba(0,0,0,0.5), inset 0 0 0 1.5px rgba(0,0,0,0.15); }
+
+/* the card box */
+.modal.cardbox-modal { max-width:640px; width:94%; max-height:90vh; overflow:auto; }
+.cb-sub { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.15rem; color:var(--warm-brown); margin-bottom:1rem; }
+.cb-leave { padding-bottom:0.6rem; margin-bottom:0.4rem; border-bottom:1px dashed rgba(58,34,18,0.3); }
+.cb-at { flex:1; display:flex; align-items:center; gap:0.2rem; }
+.cb-at span { font-family:'Courier Prime', monospace; color:var(--warm-brown); }
+.cb-at input { font-family:'Courier Prime', 'Courier New', monospace; }
+.cb-sec { margin-top:1rem; }
+.cb-h { display:flex; align-items:center; gap:0.8rem; margin:0 0 0.6rem; font-family:'Lora',serif; font-weight:400; font-size:0.66rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--warm-brown); }
+.cb-h::after { content:''; flex:1; height:1px; background:rgba(58,34,18,0.22); }
+.cb-h em { font-family:'Playfair Display',serif; font-style:italic; letter-spacing:0; text-transform:none; font-size:0.85rem; color:var(--burgundy); }
+.cb-empty { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:1.08rem; color:var(--warm-brown); line-height:1.4; }
+
+/* the Study Café page */
+.cafe-tools { display:flex; justify-content:flex-end; margin:-0.6rem 0 1.2rem; }
+.cafe-friends-btn em { font-family:'Playfair Display',serif; font-style:italic; margin-left:0.3em; color:var(--gold); }
+
+/* in the Gazette: friends in Café Society */
+.gz-friends-row { display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap; margin:0.2rem 0 0.4rem; }
+.gz-friend { display:flex; flex-direction:column; align-items:center; width:46px; }
+.gz-friend .char { width:40px; height:auto; display:block; border-radius:50%; background:#efe7d6; box-shadow:inset 0 0 0 1px rgba(28,25,21,0.6); filter:grayscale(1) sepia(0.25) contrast(1.1); }
+.gz-friend i { font-family:'Playfair Display',serif; font-style:italic; font-size:0.72rem; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.gz-cardbox { display:block; margin:0 auto 0.5rem; font-size:0.72rem; }
+
+/* at the café table: a calling card pops up over the person you tapped */
+.cr-sitter:not(.me) { cursor:pointer; }
+.cr-sitter:not(.me):hover { filter:drop-shadow(0 0 6px rgba(243,217,142,0.8)) drop-shadow(0 4px 4px rgba(0,0,0,0.32)); }
+.cr-sitter:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.cr-callcard { position:absolute; z-index:6000; width:250px; transform:translateY(-100%); filter:drop-shadow(0 10px 18px rgba(0,0,0,0.45)); animation:ccIn .22s ease-out; }
+@keyframes ccIn { from { opacity:0; transform:translateY(-94%) rotate(-2deg); } to { opacity:1; transform:translateY(-100%); } }
+.cr-callcard .ccard.solo { flex-wrap:wrap; }
+.cr-callcard .ccard.solo .ccard-act { flex-basis:100%; flex-direction:row; justify-content:center; margin-top:0.2rem; }
+.cc-x { position:absolute; right:4px; top:2px; z-index:2; background:none; border:none; cursor:pointer; color:var(--warm-brown); font-family:'Playfair Display',serif; font-size:1.1rem; line-height:1; }
+.cc-drink { margin-top:-2px; padding:0.15rem 0.6rem 0.3rem; text-align:center; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.95rem; color:#f3e2bd; text-shadow:0 1px 2px rgba(0,0,0,0.7); }
+
+/* the invite window: friends, one tap away */
+.inv-friends { display:flex; gap:0.5rem; flex-wrap:wrap; }
+.inv-friend { display:flex; flex-direction:column; align-items:center; gap:0.1rem; width:78px; padding:0.35rem 0.2rem 0.3rem; cursor:pointer; background:rgba(255,250,240,0.5); border:1px solid rgba(58,34,18,0.25); border-radius:2px; color:var(--ink); transition:all .2s; }
+.inv-friend:hover { border-color:var(--burgundy); }
+.inv-friend.done { opacity:0.6; cursor:default; }
+.inv-cameo { width:42px; height:42px; border-radius:50%; overflow:hidden; display:flex; align-items:flex-end; justify-content:center; background:#efe2c8; box-shadow:inset 0 0 0 1px rgba(122,46,58,0.4); }
+.inv-cameo .char { width:92%; height:auto; display:block; }
+.inv-friend span:not(.inv-cameo) { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:0.95rem; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inv-friend em { font-family:'Lora',serif; font-style:normal; font-size:0.58rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--burgundy); }
+@media(max-width:700px){
+  .ccards, .ccards.wide { grid-template-columns:1fr; }
+  .cafe-tools { margin-top:-0.4rem; }
+}
+
+.cardbox-modal .ccards { grid-template-columns:1fr; }
+.cardbox-modal .ccard-act { flex-direction:row; align-items:center; }
+.nav-seal { cursor:pointer; }
+@media(max-width:520px){
+  .ccard.in { flex-wrap:wrap; }
+  .ccard.in .ccard-act, .cardbox-modal .ccard.in .ccard-act { flex-basis:100%; flex-direction:row; justify-content:flex-end; padding-left:3.5rem; }
+  .cb-leave .invite-link-row { flex-wrap:wrap; }
+}

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611032054" />
+<link rel="stylesheet" href="style.css?v=202611032240" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Courier+Prime:wght@400;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -349,6 +349,8 @@
     </section>
 
     <div id="cafe-signed-in" hidden>
+      <div class="cafe-tools"><button type="button" class="btn-s vbtn cafe-friends-btn" id="cafe-friends-btn" onclick="openCardBox()">Card box</button></div>
+      <div id="cafe-friend-cards" hidden></div>
       <div id="cafe-invites" hidden></div>
 
       <!-- Open a café -->
@@ -515,6 +517,7 @@
 
       <section class="gz-box gz-society-box">
         <h3 class="gz-kicker gz-fancy">Café Society</h3>
+        <div id="gz-friends"></div>
         <div id="gz-society"></div>
       </section>
 
@@ -584,6 +587,7 @@
         <div class="cr-furniture-slot"></div>
         <div class="cr-sitters" id="cr-sitters"></div>
         <div class="cr-seats" id="cr-seats"></div>
+        <div class="cr-callcard" id="cr-callcard" hidden></div>
       </div>
     </div>
 
@@ -783,6 +787,24 @@
   </div>
 </div>
 
+<!-- The card box: friends, and calling cards left and received -->
+<div class="modal-bg" id="friends-modal" onclick="closeCardBox(event)">
+  <div class="modal cardbox-modal" role="dialog" aria-labelledby="cb-title">
+    <button class="modal-close" onclick="closeCardBox()" aria-label="Close">×</button>
+    <h3 id="cb-title">The Card Box</h3>
+    <p class="cb-sub">Leave your calling card, and keep the cards of friends.</p>
+    <div class="cb-leave">
+      <label class="room-f-label" for="cb-username">Leave your card for</label>
+      <div class="invite-link-row">
+        <div class="cb-at"><span>@</span><input class="room-f-in" id="cb-username" placeholder="username" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')sendFriendCard(this.value, document.getElementById('cb-msg')).then(r=>{ if(r==='sent'||r==='accepted') this.value=''; })"></div>
+        <button class="btn-p vbtn" onclick="const i=document.getElementById('cb-username'); sendFriendCard(i.value, document.getElementById('cb-msg')).then(r=>{ if(r==='sent'||r==='accepted') i.value=''; })">Leave card</button>
+      </div>
+      <div class="auth-msg" id="cb-msg"></div>
+    </div>
+    <div id="cb-body"></div>
+  </div>
+</div>
+
 <!-- The Character Studio: choose who sits at café tables for you -->
 <div class="modal-bg" id="char-modal" onclick="closeCharStudio(event)">
   <div class="modal char-modal" role="dialog" aria-labelledby="char-title">
@@ -832,6 +854,7 @@
       </div>
       <div class="invite-code-line">or tell them the code <strong id="invite-code"></strong></div>
     </div>
+    <div class="f-row" id="invite-friends" hidden></div>
     <div class="f-row">
       <label class="room-f-label" for="invite-username">Or invite by username</label>
       <div class="invite-link-row">
@@ -907,6 +930,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611032054"></script>
+<script src="script.js?v=202611032240"></script>
 </body>
 </html>

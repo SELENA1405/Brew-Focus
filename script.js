@@ -1005,6 +1005,7 @@ async function renderCafeList(){
   if(!signedIn){ if(unsubInvites){ unsubInvites(); unsubInvites=null; } return; }
   renderVibePicker();
   if(!unsubInvites){ try{ unsubInvites = CafeDB.subscribeInvites(()=>renderCafeList()); }catch(e){} }
+  renderCafeFriendCards();
   const grid=document.getElementById('rooms-grid');
   const invitesEl=document.getElementById('cafe-invites');
   try{
@@ -1179,7 +1180,7 @@ async function loadCafeRoom(){
 }
 function leaveRoomRealtime(){
   if(!S.room) return;
-  clearSitters();
+  clearSitters(); closeCallCard();
   if(S.room.unsub) S.room.unsub();
   if(S.room.tick) clearInterval(S.room.tick);
   clearTimeout(S.room.refreshTimer);
@@ -1222,6 +1223,7 @@ function timerState(){
 }
 // ── Vintage line icons (engraving style) ──
 const VICON = {
+  cards:   '<rect x="5.5" y="4" width="11" height="8" rx="0.8" transform="rotate(8 11 8)" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.6"/><rect x="3" y="7" width="12" height="8.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.6 10.2h4.4M5.6 12.6h6.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>',
   back:    '<path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
   letter:  '<rect x="2.8" y="5" width="14.4" height="10" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.2 5.6L10 11l6.8-5.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="12.6" r="1.5" fill="currentColor" opacity="0.55"/>',
   kettle:  '<path d="M5 15.5h10M6 15.5c-.9-1.6-1.2-3.4-.6-5.6.6-2.2 2.4-3.4 4.6-3.4s4 1.2 4.6 3.4c.6 2.2.3 4-.6 5.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M14.7 9.4l2.6-1.8M8.6 6.5c0-1 .6-1.8 1.4-1.8s1.4.8 1.4 1.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 3.2c.4-.6.4-1.1 0-1.7M11.2 3.2c.4-.6.4-1.1 0-1.7" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>',
@@ -1655,12 +1657,15 @@ function syncSitters(angles, who, vibe){
     const mine = m.user_id===S.user.id;
     const seat=sitterSpot(a, vibe), here = mine || S.room.presence.has(m.user_id);
     let rec=st.get(m.user_id), fresh=false;
-    if(!rec){ rec={uid:m.user_id, el:document.createElement('div'), mode:null, state:null, x:null, y:null}; rec.el.className='cr-sitter'+(mine?' me':''); layer.appendChild(rec.el); st.set(m.user_id, rec); fresh=true; }
+    if(!rec){ rec={uid:m.user_id, el:document.createElement('div'), mode:null, state:null, x:null, y:null}; rec.el.className='cr-sitter'+(mine?' me':'');
+      if(!mine){ const uid=m.user_id; rec.el.addEventListener('click', e=>openCallCard(uid, e)); rec.el.setAttribute('role','button'); rec.el.tabIndex=0;
+        rec.el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openCallCard(uid, e); } }); }
+      layer.appendChild(rec.el); st.set(m.user_id, rec); fresh=true; }
     const moved = !rec.seat || rec.seat.x!==seat.x || rec.seat.y!==seat.y || rec.seat.kneel!==seat.kneel;
     rec.seat=seat;
     const key=JSON.stringify(normalizeChar(m.look || defaultCharFor(m.user_id)))+(seat.kneel?'k':'c');
     if(rec.key!==key){ rec.key=key; buildSitter(rec, m); }
-    rec.el.title = mine ? 'You' : personName(m)+(here?'':' (away)');
+    rec.el.title = mine ? 'You' : personName(m)+(here?'':' (away)')+' — tap for their calling card';
     rec.el.classList.toggle('away', !here);
     // away friends doze in their seats; everyone here wanders while the timer is off
     const want = (running || !here || !roamOK) ? 'seated' : 'roam';
@@ -1952,6 +1957,190 @@ function finishCafeSession(){
 }
 
 // ── Invites ──
+// ── Friends: calling cards ────────────────────────────────────────────────
+// Like the visiting cards of old: leave your card for someone by their
+// username; once they accept it you're friends. Cards that arrive show as a
+// wax seal on your name in the bar, on the Study Café page, and in the card
+// box; friends can be invited to a café with one tap.
+S.friends = { list:[], incoming:[], outgoing:[], loaded:false, missing:false };
+let unsubFriends=null;
+const FriendsDB = {
+  async list(){ return CafeDB.check(await CafeDB.sb.rpc('my_friends')) || []; },
+  async send(username){ return CafeDB.check(await CafeDB.sb.rpc('send_friend_request', {p_username:username})); },
+  async respond(id, accept){ return CafeDB.check(await CafeDB.sb.rpc('respond_friend_request', {p_id:id, p_accept:accept})); },
+  async remove(id){ CafeDB.check(await CafeDB.sb.from('friendships').delete().eq('id', id)); },
+  subscribe(cb){
+    const ch=CafeDB.sb.channel('friends:'+S.user.id)
+      .on('postgres_changes', {event:'*', schema:'public', table:'friendships', filter:`addressee=eq.${S.user.id}`}, ()=>cb())
+      .on('postgres_changes', {event:'*', schema:'public', table:'friendships', filter:`requester=eq.${S.user.id}`}, ()=>cb())
+      .subscribe();
+    return ()=>{ try{ CafeDB.sb.removeChannel(ch); }catch(e){} };
+  },
+};
+const friendName = f => f.display_name || f.username || 'A friend';
+async function loadFriends(){
+  if(!S.user || !supabaseClient){ S.friends={list:[], incoming:[], outgoing:[], loaded:false, missing:false}; renderFriendBadges(); return; }
+  try{
+    const rows=(await FriendsDB.list()).map(r=>({...r, look:r.look||null}));
+    S.friends = { list:rows.filter(r=>r.status==='accepted'), incoming:rows.filter(r=>r.status==='pending'&&r.direction==='in'),
+                  outgoing:rows.filter(r=>r.status==='pending'&&r.direction==='out'), loaded:true, missing:false };
+  } catch(e){
+    const missing=/my_friends|schema cache|does not exist|Could not find/i.test(e.message||'');
+    S.friends={list:[], incoming:[], outgoing:[], loaded:true, missing};
+    if(!missing) console.warn('Friends not loaded:', e.message);
+  }
+  if(!unsubFriends && !S.friends.missing){ try{ unsubFriends=FriendsDB.subscribe(()=>loadFriends()); }catch(e){} }
+  renderFriendBadges();
+  if(document.getElementById('friends-modal')?.classList.contains('open')) renderCardBox();
+  if(document.getElementById('page-cafe').classList.contains('active')) renderCafeFriendCards();
+  if(document.getElementById('page-profile').classList.contains('active')) renderGazetteFriends();
+  if(document.getElementById('invite-modal')?.classList.contains('open')) renderInviteFriends();
+  if(document.getElementById('cr-callcard')?.dataset.uid) renderCallCard(document.getElementById('cr-callcard').dataset.uid);
+}
+function stopFriends(){ if(unsubFriends){ unsubFriends(); unsubFriends=null; } S.friends={list:[], incoming:[], outgoing:[], loaded:false, missing:false}; renderFriendBadges(); }
+function friendStatus(uid){
+  if(S.friends.list.some(f=>f.user_id===uid)) return 'friend';
+  if(S.friends.incoming.some(f=>f.user_id===uid)) return 'incoming';
+  if(S.friends.outgoing.some(f=>f.user_id===uid)) return 'outgoing';
+  return 'none';
+}
+const FRIEND_MSG = {
+  sent:     n=>[`Your card is on its way to ${n}.`, 'success'],
+  accepted: n=>[`${n} had already left a card for you — you're now friends.`, 'success'],
+  pending:  n=>[`Your card is already waiting for ${n}.`, ''],
+  already_friends: n=>[`You and ${n} are already friends.`, ''],
+  not_found: n=>[`No one called "${n}" has joined Brew & Focus yet.`, 'error'],
+  yourself: ()=>['That’s your own card!', ''],
+};
+async function sendFriendCard(username, msgEl){
+  const name=String(username||'').trim().replace(/^@/,'');
+  if(!name) return;
+  if(S.friends.missing){ const m='Friends aren’t set up in Supabase yet — run supabase/friends.sql in the SQL editor.'; if(msgEl) setMsgEl(msgEl,m,'error'); else showToast(m); return; }
+  try{
+    const res=await FriendsDB.send(name);
+    const [m,t]=(FRIEND_MSG[res]||(()=>[String(res),'']))(name);
+    if(msgEl) setMsgEl(msgEl,m,t); else showToast(m);
+    playPageSound('turn');
+    await loadFriends();
+    return res;
+  } catch(e){ const m=cafeErrorText(e); if(msgEl) setMsgEl(msgEl,m,'error'); else showToast(m); }
+}
+function setMsgEl(el,m,t){ el.textContent=m; el.className='auth-msg'+(t?' '+t:''); }
+async function answerFriendCard(id, accept){
+  try{ await FriendsDB.respond(id, accept); playPageSound(accept?'open':'close'); showToast(accept ? 'You have a new friend at the café' : 'Card returned with thanks'); await loadFriends(); }
+  catch(e){ showToast(cafeErrorText(e)); }
+}
+async function removeFriendCard(id, label){
+  if(label && !confirm(label)) return;
+  try{ await FriendsDB.remove(id); await loadFriends(); } catch(e){ showToast(cafeErrorText(e)); }
+}
+
+// a calling card: the person's animal in an oval, their name in copperplate, their @handle in type
+function callingCardHTML(f, actions='', extra=''){
+  return `<div class="ccard ${extra}">
+    <span class="ccard-cameo">${characterSVG(f.look || defaultCharFor(f.user_id))}</span>
+    <span class="ccard-txt"><b>${esc(friendName(f))}</b><i>@${esc(f.username||'')}</i></span>
+    ${actions ? `<span class="ccard-act">${actions}</span>` : ''}
+  </div>`;
+}
+const fbtn=(label, onclick, cls='')=>`<button type="button" class="ccard-btn ${cls}" onclick="${onclick}">${label}</button>`;
+
+// the wax seal on your name when cards are waiting
+function renderFriendBadges(){
+  const n=S.friends.incoming.length;
+  document.querySelectorAll('.nav-user').forEach(b=>{
+    let seal=b.querySelector('.nav-seal');
+    if(n && !seal){ seal=document.createElement('span'); seal.className='nav-seal'; seal.setAttribute('role','button');
+      seal.addEventListener('click', e=>{ e.stopPropagation(); openCardBox(); }); b.querySelector('.nav-user-avatar')?.appendChild(seal); }
+    if(seal){ if(n){ seal.textContent=n>9?'9+':n; seal.title=`${n} calling card${n>1?'s':''} waiting`; } else seal.remove(); }
+  });
+}
+
+// ── The card box (modal) ──
+function openCardBox(){
+  if(!S.user){ openAuthModal('signin'); return; }
+  document.getElementById('cb-username').value=''; setMsgEl(document.getElementById('cb-msg'),'','');
+  document.getElementById('friends-modal').classList.add('open');
+  renderCardBox(); loadFriends();
+}
+function closeCardBox(e){ if(!e || e.target===document.getElementById('friends-modal')) document.getElementById('friends-modal').classList.remove('open'); }
+function renderCardBox(){
+  const F=S.friends, body=document.getElementById('cb-body'); if(!body) return;
+  if(F.missing){ body.innerHTML=`<p class="cb-empty">Friends aren’t set up in Supabase yet — run <b>supabase/friends.sql</b> in the SQL editor, then come back.</p>`; return; }
+  const sec=(title, inner)=>`<div class="cb-sec"><h4 class="cb-h"><span>${title}</span></h4>${inner}</div>`;
+  let html='';
+  if(F.incoming.length) html+=sec(`Cards for you <em>${F.incoming.length}</em>`, `<div class="ccards">${F.incoming.map(f=>callingCardHTML(f, fbtn('Accept',`answerFriendCard('${f.id}',true)`,'p')+fbtn('Decline',`answerFriendCard('${f.id}',false)`), 'in')).join('')}</div>`);
+  html+=sec(`Friends${F.list.length?` <em>${F.list.length}</em>`:''}`, F.list.length
+    ? `<div class="ccards">${F.list.map(f=>callingCardHTML(f, (S.room?.cafe && !S.room.cafe.members.some(m=>m.user_id===f.user_id) ? fbtn('Invite here',`inviteFriendHere('${esc(f.username)}')`,'p') : '') + fbtn('Remove',`removeFriendCard('${f.id}', 'Part ways with ${esc(friendName(f)).replace(/'/g,'')}?')`,'quiet'))).join('')}</div>`
+    : `<p class="cb-empty">No friends in the card box yet. Leave your card for someone above — or tap a fellow student’s animal at a café table.</p>`);
+  if(F.outgoing.length) html+=sec('Cards you’ve left', `<div class="ccards">${F.outgoing.map(f=>callingCardHTML(f, `<span class="ccard-wait">awaiting reply</span>`+fbtn('Withdraw',`removeFriendCard('${f.id}')`,'quiet'), 'out')).join('')}</div>`);
+  body.innerHTML=html;
+}
+async function inviteFriendHere(username){
+  if(!S.room?.cafe) return;
+  try{ const res=await CafeDB.invite(S.room.id, username);
+    showToast(res==='sent' ? `Invitation sent to ${username}` : res==='already_member' ? `${username} already has a seat here` : String(res)); }
+  catch(e){ showToast(cafeErrorText(e)); }
+}
+
+// ── On the Study Café page: cards waiting for you ──
+function renderCafeFriendCards(){
+  const el=document.getElementById('cafe-friend-cards'); if(!el) return;
+  const inc=S.friends.incoming;
+  el.hidden=!inc.length;
+  el.innerHTML = inc.length ? `<h3 class="cafe-section-h"><span>Calling cards</span></h3><div class="ccards wide">${inc.map(f=>callingCardHTML(f, fbtn('Accept',`answerFriendCard('${f.id}',true)`,'p')+fbtn('Decline',`answerFriendCard('${f.id}',false)`), 'in')).join('')}</div>` : '';
+  const fb=document.getElementById('cafe-friends-btn');
+  if(fb) fb.innerHTML = `${vicon('cards')}Card box${S.friends.list.length?` <em>${S.friends.list.length}</em>`:''}`;
+}
+
+// ── In the Gazette: Café Society lists your friends ──
+function renderGazetteFriends(){
+  const el=document.getElementById('gz-friends'); if(!el) return;
+  const F=S.friends;
+  const faces=F.list.slice(0,5).map(f=>`<span class="gz-friend" title="${esc(friendName(f))}">${characterSVG(f.look||defaultCharFor(f.user_id))}<i>${esc(friendName(f).split(' ')[0])}</i></span>`).join('');
+  el.innerHTML = `<div class="gz-friends-row">${faces || '<span class="gz-small">No acquaintances on record — yet.</span>'}</div>
+    <button type="button" class="gz-link gz-cardbox" onclick="openCardBox()">${F.incoming.length ? `${F.incoming.length} card${F.incoming.length>1?'s':''} waiting — open the card box` : 'Open the card box'}</button>`;
+}
+
+// ── At the café table: tap someone's animal for their calling card ──
+function openCallCard(uid, ev){
+  if(ev) ev.stopPropagation();
+  const m=S.room?.cafe?.members.find(x=>x.user_id===uid); if(!m || uid===S.user?.id) return;
+  const pop=document.getElementById('cr-callcard'); pop.dataset.uid=uid;
+  renderCallCard(uid);
+  const wrap=document.getElementById('cr-tablewrap').getBoundingClientRect(), el=ev?.currentTarget?.getBoundingClientRect?.();
+  if(el){ pop.style.left=Math.max(8, Math.min(wrap.width-250, el.left-wrap.left+el.width/2-125))+'px'; pop.style.top=Math.max(6, el.top-wrap.top-6)+'px'; }
+  pop.hidden=false;
+}
+function closeCallCard(){ const p=document.getElementById('cr-callcard'); if(p){ p.hidden=true; delete p.dataset.uid; } }
+function renderCallCard(uid){
+  const pop=document.getElementById('cr-callcard'); const m=S.room?.cafe?.members.find(x=>x.user_id===uid); if(!pop || !m) return;
+  const st=friendStatus(uid), inc=S.friends.incoming.find(f=>f.user_id===uid);
+  const act = S.friends.missing ? `<span class="ccard-wait">friends not set up yet</span>`
+    : st==='friend' ? `<span class="ccard-ok">friends</span>`
+    : st==='outgoing' ? `<span class="ccard-wait">your card is waiting</span>`
+    : st==='incoming' ? fbtn('Accept their card',`answerFriendCard('${inc.id}',true)`,'p')
+    : fbtn('Leave my card',`sendFriendCard('${esc(m.username)}')`,'p');
+  pop.innerHTML = `<button type="button" class="cc-x" onclick="closeCallCard()" aria-label="Close">×</button>`
+    + callingCardHTML({user_id:m.user_id, username:m.username, display_name:m.name, look:m.look}, act, 'solo')
+    + (m.drink ? `<div class="cc-drink">having ${esc(m.drink.label||'a drink')}</div>` : '');
+}
+
+// ── In the invite window: your friends, one tap away ──
+function renderInviteFriends(){
+  const el=document.getElementById('invite-friends'); if(!el) return;
+  const c=S.room?.cafe, seated=new Set((c?.members||[]).map(m=>m.user_id));
+  const list=S.friends.list.filter(f=>!seated.has(f.user_id));
+  el.hidden=!list.length;
+  el.innerHTML = list.length ? `<label class="room-f-label">From your card box</label><div class="inv-friends">${list.map(f=>`<button type="button" class="inv-friend" onclick="inviteFriendFromModal('${esc(f.username)}', this)"><span class="inv-cameo">${characterSVG(f.look||defaultCharFor(f.user_id))}</span><span>${esc(friendName(f))}</span><em>invite</em></button>`).join('')}</div>` : '';
+}
+async function inviteFriendFromModal(username, btn){
+  try{ const res=await CafeDB.invite(S.room.id, username);
+    if(res==='sent'){ btn.classList.add('done'); btn.querySelector('em').textContent='sent'; btn.disabled=true; setInviteMsg(`Invitation sent to ${username}.`,'success'); }
+    else setInviteMsg(res==='already_member' ? `${username} already has a seat here.` : String(res),'');
+  } catch(e){ setInviteMsg(cafeErrorText(e),'error'); }
+}
+
 function openInviteModal(){
   const c=S.room?.cafe; if(!c) return;
   document.getElementById('invite-cafe-name').textContent = c.name;
@@ -1959,6 +2148,7 @@ function openInviteModal(){
   document.getElementById('invite-code').textContent = c.invite_code;
   document.getElementById('invite-username').value='';
   setInviteMsg('');
+  renderInviteFriends();
   document.getElementById('invite-modal').classList.add('open');
 }
 function closeInviteModal(e){ if(!e || e.target===document.getElementById('invite-modal')) document.getElementById('invite-modal').classList.remove('open'); }
@@ -3122,6 +3312,7 @@ function renderGazetteExtras(all){
 
 // Your cafés, fetched when the page opens.
 async function renderGazetteSociety(){
+  renderGazetteFriends();
   const el=document.getElementById('gz-society');
   if(!S.user || !supabaseClient){ el.innerHTML=''; return; }
   try{
@@ -3529,6 +3720,7 @@ function renderAuthUI(){
     nav.innerHTML = `<a onclick="openAuthModal('signin')" id="nl-signin">Log in</a>`;
   }
   setCoverOwner();
+  renderFriendBadges();
 }
 
 // ── Recipe cloud sync ────────────────────────────────────────────────────
@@ -3640,6 +3832,7 @@ async function handleSessionChange(session){
     S.user = { id:session.user.id, email:session.user.email, username, meta };
     await loadMyProfile();
     renderAuthUI();
+    loadFriends();
     if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();
     if(document.getElementById('page-cafe').classList.contains('active')) renderCafeList();
     processPendingInvite(true);
@@ -3651,6 +3844,7 @@ async function handleSessionChange(session){
       if(document.getElementById('page-recipes').classList.contains('active')) renderRecipes();
     }
     S.user = null; S.profile = null;
+    stopFriends();
     renderAuthUI();
     if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();
     if(S.room){ backToCafeList(); }
@@ -3695,5 +3889,6 @@ function unlockSound(){
   else bgMusic.play().then(done).catch(()=>{});
 }
 UNLOCK_EVENTS.forEach(ev=>document.addEventListener(ev, unlockSound, true));
+document.addEventListener('click', e=>{ const cc=document.getElementById('cr-callcard'); if(cc && !cc.hidden && !e.target.closest('#cr-callcard, .cr-sitter')) closeCallCard(); });
 document.addEventListener('click', e=>{ const m=document.getElementById('music-menu'); if(m?.classList.contains('open') && !e.target.closest('#music-menu, #sound-toggle')) toggleMusicMenu(false); });
 renderMusicMenu();
