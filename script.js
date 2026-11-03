@@ -999,7 +999,7 @@ function lowTableSVG(){
 // as an SVG bust that sits on a café chair or cushion.
 const CHAR = {
   animal:  { cat:'Cat', rabbit:'Rabbit', fox:'Fox', bear:'Bear', mouse:'Mouse', owl:'Owl', dog:'Dog', hedgehog:'Hedgehog' },
-  fur:     { ginger:'#d0894f', honey:'#d8b07a', cocoa:'#8c6448', chestnut:'#a4643c', slate:'#8e9096', charcoal:'#55504b', oat:'#e3d3b4', snow:'#f4efe4' },
+  fur:     { ginger:'#d0894f', honey:'#d8b07a', cocoa:'#8c6448', chestnut:'#a4643c', slate:'#8e9096', charcoal:'#55504b', oat:'#e8dcc2', snow:'#fcfaf5' },
   outfit:  { cardigan:'Cardigan', waistcoat:'Waistcoat', scarf:'Scarf', collar:'Collar' },
   color:   { burgundy:'#7a2e3a', mustard:'#c4973c', sage:'#7f9470', rose:'#c48a8c', slate:'#4e5a70', rust:'#a4552f', oat:'#d9c8a4', cocoa:'#6b4a34' },
   hat:     { none:'None', beret:'Beret', flatcap:'Flat cap', cloche:'Cloche', boater:'Boater', flower:'Flower', bow:'Bow' },
@@ -1055,7 +1055,7 @@ const CHAR_ANCHOR = { stand:0.985, sit:150/188, kneel:161/188 };   // where it t
 function characterSVG(cfg, {cls='', title='', pose='bust', step=0}={}){
   const c=normalizeChar(cfg), u='ch'+(++charUid);
   const ink='#4a3428', lw=`stroke="${ink}" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round"`;
-  const fur=CHAR.fur[c.fur], furD=tint(fur,-0.22), furL=c.fur==='snow'||c.fur==='oat' ? '#fbf8f1' : tint(fur,0.62);
+  const fur=CHAR.fur[c.fur], furD=tint(fur,-0.22), furL=c.fur==='snow'||c.fur==='oat' ? '#fffdf9' : tint(fur,0.62);
   const pink='#e7a9a4', cloth=CHAR.color[c.outfitColor], hatC=CHAR.color[c.hatColor];
   const F=(d,fill,extra='')=>`<path d="${d}" fill="${fill}" ${lw} ${extra}/>`;
   const wash=(d)=>`<path d="${d}" fill="url(#${u}-w)"/>`;          // a little watercolour shading
@@ -1134,7 +1134,7 @@ function characterSVG(cfg, {cls='', title='', pose='bust', step=0}={}){
   const bodyD='M12,124 C14,102 32,90 60,90 C88,90 106,102 108,124 Z';
   let body='';
   if(c.outfit==='waistcoat'){
-    body = F(bodyD,'#f3ece0') + F('M12,124 C14,102 30,91 47,90 L60,113 L60,124 Z',cloth) + F('M108,124 C106,102 90,91 73,90 L60,113 L60,124 Z',cloth)
+    body = F(bodyD,'#fffcf6') + F('M12,124 C14,102 30,91 47,90 L60,113 L60,124 Z',cloth) + F('M108,124 C106,102 90,91 73,90 L60,113 L60,124 Z',cloth)
          + wash('M12,124 C14,102 30,91 47,90 L60,113 L60,124 Z') + wash('M108,124 C106,102 90,91 73,90 L60,113 L60,124 Z')
          + `<circle cx="64" cy="116" r="1.5" fill="${ink}"/><circle cx="64" cy="121" r="1.5" fill="${ink}"/><path d="M28,108 h10 M82,108 h10" stroke="${ink}" stroke-width="1" opacity="0.6"/>`
          + F('M60,94 L51,89 L51,99 Z',tint(cloth,-0.35)) + F('M60,94 L69,89 L69,99 Z',tint(cloth,-0.35)) + `<circle cx="60" cy="94" r="2.4" fill="${tint(cloth,-0.35)}" ${lw}/>`;
@@ -1145,11 +1145,11 @@ function characterSVG(cfg, {cls='', title='', pose='bust', step=0}={}){
          + F('M64,100 L73,121 L63,123 L57,102 Z',cloth) + `<path d="M62,108 L70,106 M64,114 L72,112" stroke="${tint(cloth,0.55)}" stroke-width="2.2"/><path d="M63,123 l-1,3 M66,122.5 l-0.5,3 M69,122 l0,3 M72,121.5 l0.5,3" stroke="${cloth}" stroke-width="1.3"/>`;
   } else if(c.outfit==='collar'){
     body = F(bodyD,cloth) + wash(bodyD)
-         + F('M60,92 C56,101 45,102 42,93 C48,90 55,90 60,92 Z','#fbf7ee') + F('M60,92 C64,101 75,102 78,93 C72,90 65,90 60,92 Z','#fbf7ee')
+         + F('M60,92 C56,101 45,102 42,93 C48,90 55,90 60,92 Z','#fffdf8') + F('M60,92 C64,101 75,102 78,93 C72,90 65,90 60,92 Z','#fffdf8')
          + `<circle cx="60" cy="100" r="2.6" fill="#c4973c" ${lw} stroke-width="0.9"/>`;
   } else { // cardigan over a cream blouse
     body = F(bodyD,cloth) + wash(bodyD)
-         + F('M47,90 L60,112 L73,90 C68,92 52,92 47,90 Z','#f3ece0')
+         + F('M47,90 L60,112 L73,90 C68,92 52,92 47,90 Z','#fffcf6')
          + `<path d="M47,90 L60,112 L73,90" fill="none" stroke="${tint(cloth,-0.3)}" stroke-width="3.2" stroke-linejoin="round"/>`
          + `<circle cx="60" cy="116" r="1.7" fill="${tint(cloth,0.5)}" ${lw} stroke-width="0.7"/><circle cx="60" cy="121.5" r="1.7" fill="${tint(cloth,0.5)}" ${lw} stroke-width="0.7"/>`
          + `<path d="M24,110 l4,0 M92,110 l4,0" stroke="${ink}" stroke-width="0.9" opacity="0.5"/>`;
@@ -1163,20 +1163,20 @@ function characterSVG(cfg, {cls='', title='', pose='bust', step=0}={}){
   if(c.hat==='beret') hat = H('M28,38 C30,23 52,16 71,20 C88,23 96,31 92,39 C78,45 42,46 28,38 Z',hatC) + `<path d="M62,18 l2,-6" stroke="${ink}" stroke-width="2.2" stroke-linecap="round" transform="translate(0 ${hatTop})"/>`;
   if(c.hat==='flatcap') hat = H('M31,41 C29,24 45,18 62,18 C80,18 93,26 91,38 C78,35 46,36 31,41 Z',hatC) + H('M38,41 C50,48 74,48 87,40 C80,49 48,52 38,41 Z',tint(hatC,-0.25)) + `<circle cx="61" cy="19" r="2" fill="${tint(hatC,-0.3)}" ${lw} transform="translate(0 ${hatTop})"/>`;
   if(c.hat==='cloche') hat = H('M29,46 C27,23 43,13 60,13 C77,13 93,23 91,46 C84,41 36,41 29,46 Z',hatC) + H('M30,39 C44,34 76,34 90,39 L90,44 C76,39 44,39 30,44 Z',tint(hatC,-0.3))
-        + `<g transform="translate(0 ${hatTop})"><circle cx="79" cy="38" r="3.4" fill="#f4ece0" ${lw} stroke-width="0.8"/><circle cx="84" cy="36.5" r="2.8" fill="#e7a9a4" ${lw} stroke-width="0.8"/><circle cx="79" cy="38" r="1" fill="#c4973c"/></g>`;
+        + `<g transform="translate(0 ${hatTop})"><circle cx="79" cy="38" r="3.4" fill="#fffcf6" ${lw} stroke-width="0.8"/><circle cx="84" cy="36.5" r="2.8" fill="#e7a9a4" ${lw} stroke-width="0.8"/><circle cx="79" cy="38" r="1" fill="#c4973c"/></g>`;
   if(c.hat==='boater') hat = `<g transform="translate(0 ${hatTop})"><ellipse cx="60" cy="35" rx="35" ry="6.5" fill="#e3c98c" ${lw}/><path d="M42,35 L44,19 C52,16 68,16 76,19 L78,35 Z" fill="#e3c98c" ${lw}/><path d="M43,27 C52,25 68,25 77,27 L77.6,32 C68,30 52,30 42.4,32 Z" fill="${CHAR.color[c.outfitColor]}" ${lw} stroke-width="0.9"/><path d="M46,21 l28,0 M45,24 l30,0" stroke="#b8975a" stroke-width="0.6"/></g>`;
-  if(c.hat==='flower') hat = `<g transform="translate(${c.animal==='rabbit'?2:0} ${hatTop})"><path d="M78,40 l6,-6 M80,41 l8,-2" stroke="#6f8a5a" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="88" cy="35" rx="4" ry="2.4" fill="#7f9470" ${lw} stroke-width="0.8" transform="rotate(-30 88 35)"/>${[0,72,144,216,288].map(a=>{const r=a*Math.PI/180; return `<circle cx="${(79+4.2*Math.cos(r)).toFixed(1)}" cy="${(33+4.2*Math.sin(r)).toFixed(1)}" r="3" fill="#f6eee2" ${lw} stroke-width="0.8"/>`;}).join('')}<circle cx="79" cy="33" r="2.4" fill="#c4973c" ${lw} stroke-width="0.8"/></g>`;
+  if(c.hat==='flower') hat = `<g transform="translate(${c.animal==='rabbit'?2:0} ${hatTop})"><path d="M78,40 l6,-6 M80,41 l8,-2" stroke="#6f8a5a" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="88" cy="35" rx="4" ry="2.4" fill="#7f9470" ${lw} stroke-width="0.8" transform="rotate(-30 88 35)"/>${[0,72,144,216,288].map(a=>{const r=a*Math.PI/180; return `<circle cx="${(79+4.2*Math.cos(r)).toFixed(1)}" cy="${(33+4.2*Math.sin(r)).toFixed(1)}" r="3" fill="#fffcf6" ${lw} stroke-width="0.8"/>`;}).join('')}<circle cx="79" cy="33" r="2.4" fill="#c4973c" ${lw} stroke-width="0.8"/></g>`;
   if(c.hat==='bow') hat = `<g ${lw} fill="${hatC}" transform="translate(0 ${hatTop})"><path d="M80,32 L68,24 L69,40 Z"/><path d="M80,32 L92,24 L91,40 Z"/><circle cx="80" cy="32" r="3.6"/></g>`;
   // ── full body: torso and arms in the same clothes, then legs and shoes ──
   let tail='', full='';
   if(pose!=='bust'){
     const shoe='#3d2b20', paw=c.animal==='hedgehog'?furL:fur;
     const trousers = c.outfit==='waistcoat' ? tint(cloth,-0.42) : c.outfit==='cardigan' ? '#cbb896' : '#6b4a34';
-    const sleeve = c.outfit==='waistcoat' ? '#f3ece0' : c.outfit==='scarf' ? '#e2d4b6' : cloth;
+    const sleeve = c.outfit==='waistcoat' ? '#fffcf6' : c.outfit==='scarf' ? '#e2d4b6' : cloth;
     const torsoD='M38,92 C32,98 31,122 33,146 L87,146 C89,122 88,98 82,92 C74,88 46,88 38,92 Z';
     let torso='';
     if(c.outfit==='waistcoat'){
-      torso = F(torsoD,'#f3ece0') + F('M38,92 C32,98 31,122 33,146 L60,146 L60,113 L50,89 Z',cloth) + F('M82,92 C88,98 89,122 87,146 L60,146 L60,113 L70,89 Z',cloth)
+      torso = F(torsoD,'#fffcf6') + F('M38,92 C32,98 31,122 33,146 L60,146 L60,113 L50,89 Z',cloth) + F('M82,92 C88,98 89,122 87,146 L60,146 L60,113 L70,89 Z',cloth)
             + wash('M38,92 C32,98 31,122 33,146 L60,146 L60,113 L50,89 Z') + wash('M82,92 C88,98 89,122 87,146 L60,146 L60,113 L70,89 Z')
             + `<circle cx="63.5" cy="120" r="1.5" fill="${ink}"/><circle cx="63.5" cy="128" r="1.5" fill="${ink}"/><circle cx="63.5" cy="136" r="1.5" fill="${ink}"/><path d="M40,124 h8 M72,124 h8" stroke="${ink}" stroke-width="0.9" opacity="0.6"/>`
             + F('M60,95 L52,90.5 L52,99.5 Z',tint(cloth,-0.35)) + F('M60,95 L68,90.5 L68,99.5 Z',tint(cloth,-0.35)) + `<circle cx="60" cy="95" r="2.2" fill="${tint(cloth,-0.35)}" ${lw}/>`;
@@ -1186,10 +1186,10 @@ function characterSVG(cfg, {cls='', title='', pose='bust', step=0}={}){
             + F('M63,100 L70,126 L62,128 L57,102 Z',cloth) + `<path d="M61,110 L68,108 M63,118 L70,116" stroke="${tint(cloth,0.55)}" stroke-width="2"/><path d="M62,128 l-1,3 M65,127.5 l-0.5,3 M68,127 l0,3" stroke="${cloth}" stroke-width="1.2"/>`;
     } else if(c.outfit==='collar'){
       torso = F(torsoD,cloth) + wash(torsoD)
-            + F('M60,93 C56,101 46,102 43,94 C49,91 55,91 60,93 Z','#fbf7ee') + F('M60,93 C64,101 74,102 77,94 C71,91 65,91 60,93 Z','#fbf7ee')
+            + F('M60,93 C56,101 46,102 43,94 C49,91 55,91 60,93 Z','#fffdf8') + F('M60,93 C64,101 74,102 77,94 C71,91 65,91 60,93 Z','#fffdf8')
             + `<circle cx="60" cy="101" r="2.4" fill="#c4973c" ${lw} stroke-width="0.9"/>`;
     } else {
-      torso = F(torsoD,cloth) + wash(torsoD) + F('M49,89 L60,110 L71,89 C66,91 54,91 49,89 Z','#f3ece0')
+      torso = F(torsoD,cloth) + wash(torsoD) + F('M49,89 L60,110 L71,89 C66,91 54,91 49,89 Z','#fffcf6')
             + `<path d="M49,89 L60,110 L71,89" fill="none" stroke="${tint(cloth,-0.3)}" stroke-width="3" stroke-linejoin="round"/>`
             + [116,124,132,140].map(y=>`<circle cx="60" cy="${y}" r="1.6" fill="${tint(cloth,0.5)}" ${lw} stroke-width="0.7"/>`).join('')
             + `<path d="M34,140 h52" stroke="${tint(cloth,-0.3)}" stroke-width="2.4" opacity="0.6"/>`;
@@ -1209,7 +1209,7 @@ function characterSVG(cfg, {cls='', title='', pose='bust', step=0}={}){
       const lift=[0, -4, 0][step], liftR=[0, 0, -4][step];
       const leg=(x0,x1,dy,col)=>`<g transform="translate(0 ${dy})">${F(`M${x0},150 L${x0+16},150 L${x0+15},${dress?176:177} L${x0+2},${dress?176:177} Z`,col)}<ellipse cx="${x0+8.5}" cy="179" rx="9" ry="4.4" fill="${shoe}" ${lw}/><path d="M${x0+3},177.5 q5.5,-2 11,0" fill="none" stroke="rgba(255,240,220,0.35)" stroke-width="1"/></g>`;
       legs = leg(40,0,lift, dress?paw:trousers) + leg(64,0,liftR, dress?paw:trousers);
-      legs += dress ? F('M34,140 C30,152 27,162 26,168 C42,174 78,174 94,168 C93,162 90,152 86,140 Z',cloth) + wash('M34,140 C30,152 27,162 26,168 C42,174 78,174 94,168 C93,162 90,152 86,140 Z') + `<path d="M28,165 C44,170 76,170 92,165" fill="none" stroke="#fbf7ee" stroke-width="2" opacity="0.8"/>`
+      legs += dress ? F('M34,140 C30,152 27,162 26,168 C42,174 78,174 94,168 C93,162 90,152 86,140 Z',cloth) + wash('M34,140 C30,152 27,162 26,168 C42,174 78,174 94,168 C93,162 90,152 86,140 Z') + `<path d="M28,165 C44,170 76,170 92,165" fill="none" stroke="#fffdf8" stroke-width="2" opacity="0.8"/>`
                     : F('M33,142 L87,142 L86,155 L34,155 Z',trousers);
     } else if(pose==='sit'){
       // seen from the front: the lap comes towards us, the lower legs hang down
@@ -1240,11 +1240,13 @@ function characterSVG(cfg, {cls='', title='', pose='bust', step=0}={}){
         <feTurbulence type="fractalNoise" baseFrequency="0.05 0.07" numOctaves="2" seed="7" result="n"/>
         <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="d"/>
         <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="3" seed="3" result="blot"/>
+        <feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -0.4 -0.4 -0.4 0 1.12" result="dk"/>
+        <feComposite in="dk" in2="d" operator="in" result="dkm"/>
         <feColorMatrix in="blot" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.18  0 0 0 0 0.08  0 0 0 0.9 -0.42" result="b2"/>
-        <feComposite in="b2" in2="d" operator="in" result="b3"/>
+        <feComposite in="b2" in2="dkm" operator="in" result="b3"/>
         <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="2" result="grain"/>
         <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.22  0 0 0 0 0.12  0 0 0 0.45 -0.15" result="g2"/>
-        <feComposite in="g2" in2="d" operator="in" result="g3"/>
+        <feComposite in="g2" in2="dkm" operator="in" result="g3"/>
         <feMerge><feMergeNode in="d"/><feMergeNode in="b3"/><feMergeNode in="g3"/></feMerge>
       </filter>
       <linearGradient id="${u}-w" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#fff8e8" stop-opacity="0.22"/><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3a2416" stop-opacity="0.22"/></linearGradient>
@@ -1464,7 +1466,12 @@ function renderSeats(force){
   const c=S.room?.cafe; if(!c) return;
   const {remaining,total,running}=timerState();
   const frac = (running || remaining<total) ? remaining/total : 1;
-  const key=Math.round(frac*50);
+  // a session that just finished leaves the cups empty until the next one
+  // starts, or until that person orders or brews something new
+  if(running && S.room.emptied) S.room.emptied=null;
+  const emptied = S.room.emptied;
+  const levelOf = m => emptied && emptied[m.user_id]===JSON.stringify(m.drink||null) ? 0 : frac;
+  const key=Math.round(frac*100)+(emptied?'e'+Object.keys(emptied).length:'');
   const seatCount = Math.min(8, Math.max(4, c.members.length + (c.members.length<8 ? 1 : 0)));
   const vibe = c.vibe==='cabin' ? 'beach' : c.vibe;
   const layoutKey = `${vibe}|${seatCount}`;
@@ -1491,7 +1498,7 @@ function renderSeats(force){
     const here=S.room.presence.has(m.user_id);
     const mine=m.user_id===S.user.id;
     const cupArt = m.drink
-      ? buildCupSVG({size:104, fillFraction:frac, steam: frac>0.08, cup:m.drink.cup||'mug', base:m.drink.base||'coffee', drink:m.drink.drink, addons:m.drink.addons||[]})
+      ? buildCupSVG({size:104, fillFraction:levelOf(m), steam: levelOf(m)>0.08, cup:m.drink.cup||'mug', base:m.drink.base||'coffee', drink:m.drink.drink, addons:m.drink.addons||[]})
       : '';
     // Your own place: tap the little menu card (or your cup) to order from your seat.
     const cup = mine
@@ -1625,6 +1632,8 @@ function tickCafeTimer(){
 // their recipe book (once), and the host's browser resets the clock.
 function finishCafeSession(){
   const c=S.room.cafe;
+  // everyone has drunk up: keep these cups empty after the timer resets
+  S.room.emptied = Object.fromEntries(c.members.filter(m=>m.drink).map(m=>[m.user_id, JSON.stringify(m.drink)]));
   const key=`bf_cafe_done_${c.id}_${c.timer_started_at}`;
   if(!localStorage.getItem(key)){
     localStorage.setItem(key,'1');
@@ -2531,16 +2540,17 @@ let charDraft=null;
 const myLook = () => normalizeChar(S.profile?.look || S.user?.meta?.look || defaultCharFor(S.user?.id));
 function renderCharSticker(){
   const el=document.getElementById('gz-char-sticker'); if(!el || !S.user) return;
-  el.innerHTML = characterSVG(myLook(), {title:'Your café character'});
+  el.innerHTML = characterSVG(myLook(), {title:'Your café character'}) + '<span class="gz-char-cap">At the café</span>';
 }
 function openCharStudio(){
   if(!S.user){ openAuthModal('signin'); return; }
+  document.getElementById('gz-char-sticker')?.classList.add('lit');   // colour comes in once tapped
   charDraft = myLook();
   document.getElementById('char-msg').textContent='';
   renderCharStudio();
   document.getElementById('char-modal').classList.add('open');
 }
-function closeCharStudio(e){ if(!e || e.target===document.getElementById('char-modal')) document.getElementById('char-modal').classList.remove('open'); }
+function closeCharStudio(e){ if(!e || e.target===document.getElementById('char-modal')){ document.getElementById('char-modal').classList.remove('open'); document.getElementById('gz-char-sticker')?.classList.remove('lit'); } }
 const CHAR_ROWS = [
   ['animal','Animal','animal'], ['fur','Fur','fur'], ['face','Expression','face'], ['glasses','Spectacles','glasses'],
   ['hat','On the head','hat'], ['hatColor','Its colour','color'], ['outfit','Wearing','outfit'], ['outfitColor','Its colour','color'],
