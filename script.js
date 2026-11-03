@@ -334,6 +334,7 @@ function showPage(name) {
   if(name==='cafe') renderCafeList();
   if(name==='home') renderHeroCup();
   if(name==='profile') renderProfilePage();
+  if(audioCtx) applyMusic();   // "Match the café" follows you in and out of cafés
 }
 
 function renderHeroCup(){
@@ -399,23 +400,233 @@ function setAmbience(name){
   S.ambience=name; localStorage.setItem('bf_ambience',name);
   initAudio(); startAmbience(name);
 }
-function toggleSound() {
-  S.soundOn = !S.soundOn;
+// ── The gramophone: music for studying ────────────────────────────────────
+// Besides the café recording, six little pieces are composed live in the
+// browser (Web Audio), one for each café atmosphere: a Parisian accordion
+// waltz, rainy-day piano, tea-house koto, midnight jazz, a library nocturne
+// and seaside bossa nova. Each plays forever without repeating exactly, with
+// its own soft background (rain, waves, vinyl crackle…). "Match the café"
+// plays the music of whichever café you're sitting in.
+const MUSIC_STATIONS = {
+  auto:     { label:'Match the café',   note:'each café plays its own music' },
+  records:  { label:'Café Records',     note:'the house recording' },
+  parisian: { label:'Parisian Waltz',   note:'accordion musette' },
+  rain:     { label:'Rainy Day Piano',  note:'soft piano and rain on the glass' },
+  koto:     { label:'Tea House Koto',   note:'koto by a quiet garden' },
+  jazz:     { label:'Midnight Jazz',    note:'walking bass, brushes, vinyl' },
+  nocturne: { label:'Library Nocturne', note:'slow piano among the shelves' },
+  bossa:    { label:'Seaside Bossa',    note:'nylon guitar and the waves' },
+};
+const VIBE_MUSIC = { parisian:'parisian', bookstore:'rain', kyoto:'koto', midnight:'jazz', library:'nocturne', beach:'bossa', cabin:'bossa' };
+S.music = localStorage.getItem('bf_music') || 'auto';
+if(!MUSIC_STATIONS[S.music]) S.music='auto';
+S.musicVol = Math.min(1, Math.max(0, parseFloat(localStorage.getItem('bf_music_vol') ?? '0.6')));
 
-  localStorage.setItem(
-    'bf_sound',
-    S.soundOn ? 'on' : 'off'
-  );
+function musicPlaying(){
+  if(S.music!=='auto') return S.music;
+  const inCafe = S.room?.cafe && document.getElementById('page-caferoom')?.classList.contains('active');
+  return inCafe ? (VIBE_MUSIC[S.room.cafe.vibe] || 'records') : 'records';
+}
 
-  document
-    .getElementById('sound-toggle')
-    .classList.toggle('on', S.soundOn);
+const MX = { bus:null, noise:null, timer:null, key:null, step:0, nextT:0, bed:[], prev:{} };
+const mtof = m => 440*Math.pow(2,(m-69)/12);
+function mxBus(){
+  if(MX.bus || !audioCtx) return MX.bus;
+  MX.bus=audioCtx.createGain(); MX.bus.gain.value=0;
+  const comp=audioCtx.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=3;
+  MX.bus.connect(comp); comp.connect(audioCtx.destination);
+  const len=audioCtx.sampleRate*2, buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  MX.noise=buf;
+  return MX.bus;
+}
+// one note: an oscillator with a plucked or held envelope, optionally filtered
+function mxTone(t, f, {wave='sine', vol=0.1, a=0.006, hold=0, d=1.2, cutoff=0, detune=0, bend=0, vib=0}={}){
+  const ac=audioCtx, o=ac.createOscillator(), g=ac.createGain();
+  o.type=wave; o.detune.value=detune;
+  o.frequency.setValueAtTime(bend ? f*Math.pow(2,bend/12) : f, t);
+  if(bend) o.frequency.exponentialRampToValueAtTime(f, t+0.07);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t+a);
+  if(hold) g.gain.setValueAtTime(vol, t+a+hold);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+a+hold+d);
+  let src=o;
+  if(cutoff){ const fl=ac.createBiquadFilter(); fl.type='lowpass'; fl.frequency.value=cutoff; o.connect(fl); src=fl; }
+  if(vib){ const l=ac.createOscillator(), lg=ac.createGain(); l.frequency.value=5.2; lg.gain.value=f*vib; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t+a+hold+d+0.1); }
+  src.connect(g); g.connect(MX.bus); o.start(t); o.stop(t+a+hold+d+0.08);
+}
+function mxNoise(t, {vol=0.05, d=0.12, a=0.004, type='bandpass', freq=4000, q=0.8}={}){
+  const ac=audioCtx, n=ac.createBufferSource(), fl=ac.createBiquadFilter(), g=ac.createGain();
+  n.buffer=MX.noise; fl.type=type; fl.frequency.value=freq; fl.Q.value=q;
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+a); g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);
+  n.connect(fl); fl.connect(g); g.connect(MX.bus); n.start(t, Math.random()); n.stop(t+a+d+0.05);
+}
+// instruments
+const INS = {
+  piano:(t,m,v=0.09,d=2.2)=>{ const f=mtof(m); mxTone(t,f,{vol:v,d}); mxTone(t,f*2,{wave:'triangle',vol:v*0.18,d:d*0.35}); mxTone(t,f*3,{vol:v*0.05,d:0.3}); },
+  epiano:(t,m,v=0.07,d=1.6)=>{ const f=mtof(m); mxTone(t,f,{vol:v,d}); mxTone(t,f*4,{vol:v*0.1,d:0.35}); },
+  koto:(t,m,v=0.09)=>{ const f=mtof(m); mxTone(t,f,{wave:'triangle',vol:v,d:1.5,cutoff:2600,bend:0.35}); mxTone(t,f*2,{vol:v*0.3,d:0.45}); mxTone(t,f*3,{wave:'triangle',vol:v*0.08,d:0.2}); },
+  accordion:(t,m,dur,v=0.03,bright=1500)=>{ const f=mtof(m); mxTone(t,f,{wave:'sawtooth',vol:v,a:0.03,hold:dur,d:0.12,cutoff:bright,detune:-7}); mxTone(t,f,{wave:'sawtooth',vol:v,a:0.03,hold:dur,d:0.12,cutoff:bright,detune:8}); },
+  bass:(t,m,dur=0.5,v=0.13)=>{ const f=mtof(m); mxTone(t,f,{wave:'triangle',vol:v,a:0.01,d:dur,cutoff:700}); mxTone(t,f,{vol:v*0.6,a:0.01,d:dur*0.8}); },
+  guitar:(t,m,v=0.06)=>{ const f=mtof(m); mxTone(t,f,{wave:'triangle',vol:v,d:1.1,cutoff:2000}); mxTone(t,f*2,{vol:v*0.15,d:0.25}); },
+  flute:(t,m,dur,v=0.045)=>{ mxTone(t,mtof(m),{vol:v,a:0.08,hold:dur,d:0.35,vib:0.006}); },
+  pad:(t,m,dur,v=0.025)=>{ mxTone(t,mtof(m),{wave:'triangle',vol:v,a:0.6,hold:dur,d:1.5,cutoff:900}); },
+};
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const chance = p => Math.random()<p;
+// a melody that moves mostly by step through a scale, drifting back to the middle
+function mxWalk(key, scale, lo, hi){
+  const prev = MX.prev[key] ?? scale[Math.floor(scale.length/2)];
+  let i = scale.indexOf(prev); if(i<0) i=Math.floor(scale.length/2);
+  const mid=(lo+hi)/2, bias = prev>mid ? -0.25 : 0.25;
+  i += Math.round((Math.random()*2-1)*1.6 + bias);
+  i = Math.max(0, Math.min(scale.length-1, i));
+  let n=scale[i]; while(n>hi) n-=12; while(n<lo) n+=12;
+  MX.prev[key]=n; return n;
+}
+const near = (key, tones, lo, hi) => { const p=MX.prev[key] ?? (lo+hi)/2; let best=null;
+  for(const c of tones) for(let o=-24;o<=24;o+=12){ const n=c+o; if(n<lo||n>hi) continue; if(best==null || Math.abs(n-p)<Math.abs(best-p)) best=n; }
+  MX.prev[key]=best; return best; };
 
-  if (S.soundOn) {
-    bgMusic.play();
-  } else {
-    bgMusic.pause();
+// the pieces: each says how fast it goes and what to play on every eighth note
+const PIECES = {
+  parisian:{ bpm:168, per:6, swing:0, bed:'murmur',
+    bars:[[45,[57,60,64]],[50,[57,62,65]],[40,[56,59,62,64]],[45,[57,60,64]],[41,[57,60,65]],[50,[57,62,65]],[40,[56,59,62,64]],[45,[57,60,64]]],
+    play(bar, s, t, dur){
+      const [root,ch]=this.bars[bar%8];
+      if(s===0) INS.accordion(t, root + (bar%2 ? 7 : 0) - (bar%2 && root>44 ? 12 : 0), dur*1.4, 0.032, 900);
+      if(s===2||s===4) ch.forEach(n=>INS.accordion(t, n, dur*0.7, 0.012, 1300));
+      const phraseEnd = bar%4===3 && s>=3;
+      if(!phraseEnd && (s%2===0 ? chance(0.85) : chance(0.45))){
+        const n = s%2===0 ? near('mel', ch.map(x=>x+12), 69, 84) : mxWalk('mel', [69,71,72,74,76,77,80,81,83,84], 69, 84);
+        INS.accordion(t, n, dur*(s%2===0?1.6:0.8), 0.022, 2400);
+      }
+    }},
+  rain:{ bpm:66, per:8, swing:0, bed:'rain',
+    bars:[[41,[53,57,60,64]],[40,[52,55,59,62]],[38,[50,53,57,60]],[36,[48,52,55,59]],[41,[53,57,60,64]],[40,[52,55,59,62]],[45,[57,60,64,67]],[43,[55,59,62,65]]],
+    play(bar, s, t, dur){
+      const [root,ch]=this.bars[bar%8];
+      if(s===0) INS.piano(t, root, 0.07, 3);
+      const arp=[0,1,2,3,2,1,2,1][s]; INS.piano(t, ch[arp]+12, 0.035, 1.6);
+      if((s===0||s===4||(s===6&&chance(0.3))) && chance(0.6)) INS.piano(t+0.01, mxWalk('mel',[72,74,76,79,81,84],72,86), 0.06, 2.4);
+    }},
+  koto:{ bpm:64, per:8, swing:0, bed:'wind',
+    scale:[62,64,65,69,70,74,76,77,81],
+    play(bar, s, t, dur){
+      if(s===0 && bar%2===0){ INS.koto(t, 50, 0.07); INS.koto(t+0.02, 57, 0.05); }
+      if(s===0 && bar%4===0 && chance(0.6)){ [0,1,2,3].forEach(i=>INS.koto(t+i*0.07, this.scale[2+i], 0.04)); return; }
+      if(chance(s%2===0 ? 0.5 : 0.22)){
+        const n=mxWalk('mel', this.scale, 62, 81);
+        INS.koto(t, n, 0.08);
+        if(chance(0.12)) [1,2].forEach(i=>INS.koto(t+i*0.09, n, 0.04));
+      }
+    }},
+  jazz:{ bpm:96, per:8, swing:0.62, bed:'vinyl',
+    bars:[[36,[63,67,70,74]],[41,[57,60,63,67]],[34,[62,65,69,72]],[43,[58,62,65,69]],[36,[63,67,70,74]],[41,[57,60,63,67]],[34,[62,65,69,72]],[34,[62,65,69,72]]],
+    play(bar, s, t, dur){
+      const [root,ch]=this.bars[bar%8], next=this.bars[(bar+1)%8][0];
+      if(s%2===0){
+        const beat=s/2, walk=[root, root+(chance(0.5)?3:4), root+7, next+(chance(0.5)?1:-1)][beat];
+        INS.bass(t, walk, 0.55, 0.12);
+        mxNoise(t, {vol: beat%2 ? 0.035 : 0.018, d:0.22, a:0.02, type:'bandpass', freq:3500, q:0.6});   // brushes
+      } else if(s===3||s===7){ mxNoise(t, {vol:0.014, d:0.06, type:'highpass', freq:7000}); }
+      if(s===0 || (s===3 && chance(0.7))) ch.forEach((n,i)=>INS.epiano(t+i*0.008, n, 0.028, 1.2));
+      if(chance(s%2===0 ? 0.32 : 0.22)) INS.epiano(t, mxWalk('mel',[70,72,73,74,77,79,80,82,84],70,86), 0.055, 0.9);
+    }},
+  nocturne:{ bpm:60, per:6, swing:0, bed:'room',
+    bars:[[43,[59,62,66]],[38,[57,61,66]]],
+    play(bar, s, t, dur){
+      const [root,ch]=this.bars[bar%2];
+      if(s===0) INS.piano(t, root, 0.075, 3.5);
+      if(s===2) ch.forEach((n,i)=>INS.piano(t+i*0.01, n, 0.032, 3));
+      if((s===0||s===4) && chance(0.5)) INS.piano(t+0.02, mxWalk('mel',[66,69,71,73,74,76,78,81],66,81), 0.06, 3.2);
+    }},
+  bossa:{ bpm:124, per:8, swing:0, bed:'waves',
+    bars:[[36,[52,55,59,64]],[45,[55,60,64,67]],[38,[53,57,60,65]],[43,[53,59,62,65]],[40,[55,59,62,67]],[45,[55,61,64,67]],[38,[53,57,60,65]],[43,[53,59,62,65]]],
+    play(bar, s, t, dur){
+      const [root,ch]=this.bars[bar%8];
+      if(s===0) INS.bass(t, root, 0.6, 0.11); if(s===3) INS.bass(t, root+7, 0.3, 0.08); if(s===4) INS.bass(t, root+7, 0.5, 0.1);
+      const hits = bar%2 ? [0,3,6] : [2,4,7];
+      if(hits.includes(s)) ch.forEach((n,i)=>INS.guitar(t+i*0.012, n, 0.03));
+      mxNoise(t, {vol: s%2 ? 0.012 : 0.007, d:0.05, type:'highpass', freq:6500});   // shaker
+      if((s===0||s===4) && chance(0.35)) INS.flute(t, mxWalk('mel',[72,74,76,79,81,84],72,86), dur*3, 0.035);
+    }},
+};
+
+// soft backgrounds under the music
+function mxStartBed(kind){
+  const ac=audioCtx, mk=(type,freq,q=0.7)=>{ const f=ac.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q; return f; };
+  const loop=(vol, chain)=>{ const n=ac.createBufferSource(), g=ac.createGain(); n.buffer=MX.noise; n.loop=true; g.gain.value=vol;
+    let x=n; chain.forEach(c=>{ x.connect(c); x=c; }); x.connect(g); g.connect(MX.bus); n.start(); MX.bed.push(n,g,...chain); return g; };
+  const lfo=(g, rate, depth)=>{ const l=ac.createOscillator(), lg=ac.createGain(); l.frequency.value=rate; lg.gain.value=depth; l.connect(lg); lg.connect(g.gain); l.start(); MX.bed.push(l,lg); };
+  if(kind==='rain'){ loop(0.05,[mk('highpass',900),mk('lowpass',5500)]); loop(0.03,[mk('lowpass',400)]); }
+  if(kind==='waves'){ const g=loop(0.05,[mk('lowpass',650)]); lfo(g, 0.09, 0.045); }
+  if(kind==='wind'){ const g=loop(0.02,[mk('bandpass',500,0.4)]); lfo(g, 0.05, 0.015); }
+  if(kind==='murmur'){ const g=loop(0.016,[mk('bandpass',700,0.6)]); lfo(g, 0.3, 0.008); }
+  if(kind==='room'){ loop(0.008,[mk('lowpass',300)]); }
+  if(kind==='vinyl'){ loop(0.006,[mk('bandpass',1200,0.5)]); }
+  MX.bedKind=kind;
+}
+function mxTick(){
+  const piece=PIECES[MX.key]; if(!piece || !audioCtx) return;
+  const beat=60/piece.bpm, eighth=beat/2;
+  while(MX.nextT < audioCtx.currentTime + 0.3){
+    const s=MX.step % piece.per, bar=Math.floor(MX.step/piece.per);
+    const dur = piece.swing ? (s%2===0 ? beat*piece.swing : beat*(1-piece.swing)) : eighth;
+    try{ piece.play(bar, s, MX.nextT, dur); }catch(e){ console.warn(e); }
+    if(piece.bed==='vinyl' && chance(0.18)) mxNoise(MX.nextT+Math.random()*dur, {vol:0.02, d:0.004, a:0.001, type:'highpass', freq:2500});   // crackle
+    if(piece.bed==='rain' && chance(0.12)) mxTone(MX.nextT+Math.random()*dur, 2000+Math.random()*2500, {vol:0.006, d:0.05});        // drips
+    MX.nextT += dur; MX.step++;
   }
+}
+function mxStop(){
+  clearInterval(MX.timer); MX.timer=null; MX.key=null;
+  MX.bed.forEach(n=>{ try{ n.stop&&n.stop(); }catch(e){} try{ n.disconnect(); }catch(e){} }); MX.bed=[];
+}
+function mxStart(key){
+  if(MX.key===key) return;
+  mxStop(); if(!mxBus()) return;
+  MX.key=key; MX.step=0; MX.prev={}; MX.nextT=audioCtx.currentTime+0.15;
+  mxStartBed(PIECES[key].bed);
+  MX.timer=setInterval(mxTick, 60); mxTick();
+}
+// Bring the speakers in line with the choices: which station, on or off, how loud.
+function applyMusic(){
+  const key=musicPlaying(), on=S.soundOn, vol=S.musicVol;
+  bgMusic.volume = Math.min(1, 0.45*vol);
+  if(audioCtx && masterGain) masterGain.gain.value = on ? 0.16 : 0;
+  if(!on){ bgMusic.pause(); mxStop(); if(MX.bus) MX.bus.gain.value=0; }
+  else if(key==='records'){ mxStop(); if(MX.bus) MX.bus.gain.value=0; bgMusic.play().catch(()=>{}); }
+  else { bgMusic.pause(); if(audioCtx){ mxBus(); MX.bus.gain.setTargetAtTime(1.1*vol, audioCtx.currentTime, 0.4); mxStart(key); } }
+  renderMusicMenu();
+}
+function setMusic(key){ if(!MUSIC_STATIONS[key]) return; S.music=key; localStorage.setItem('bf_music',key); initAudio(); if(audioCtx?.state==='suspended') audioCtx.resume(); if(!S.soundOn){ S.soundOn=true; localStorage.setItem('bf_sound','on'); } applyMusic(); }
+function setMusicVol(v){ S.musicVol=Math.min(1,Math.max(0,+v)); localStorage.setItem('bf_music_vol',String(S.musicVol)); applyMusic(); }
+function toggleMusicMenu(force){
+  const m=document.getElementById('music-menu'); if(!m) return;
+  const open = typeof force==='boolean' ? force : !m.classList.contains('open');
+  m.classList.toggle('open', open); document.getElementById('sound-toggle').setAttribute('aria-expanded', String(open));
+  if(open) renderMusicMenu();
+}
+function renderMusicMenu(){
+  document.getElementById('sound-toggle')?.classList.toggle('on', S.soundOn);
+  const list=document.getElementById('music-list'); if(!list) return;
+  const playing=musicPlaying();
+  document.getElementById('music-now').textContent = S.soundOn ? `Now playing: ${MUSIC_STATIONS[playing].label}` : 'The gramophone is resting';
+  list.innerHTML = Object.entries(MUSIC_STATIONS).map(([k,st])=>`
+    <button type="button" class="music-row ${S.music===k?'sel':''}" role="radio" aria-checked="${S.music===k}" onclick="setMusic('${k}')">
+      <span class="music-dot" aria-hidden="true"></span>
+      <span class="music-txt"><b>${st.label}</b><i>${k==='auto' ? (S.room?.cafe ? `here: ${MUSIC_STATIONS[VIBE_MUSIC[S.room.cafe.vibe]]?.label||'Café Records'}` : st.note) : st.note}</i></span>
+      ${S.soundOn && playing===k ? '<span class="music-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}
+    </button>`).join('');
+  const t=document.getElementById('music-power'); if(t) t.textContent = S.soundOn ? 'Lift the needle' : 'Play';
+  const v=document.getElementById('music-vol'); if(v && document.activeElement!==v) v.value=S.musicVol;
+  const np=document.getElementById('cr-nowplaying'); if(np) np.textContent = S.soundOn ? MUSIC_STATIONS[playing].label : 'music off';
+}
+
+function toggleSound(){
+  S.soundOn=!S.soundOn; localStorage.setItem('bf_sound', S.soundOn?'on':'off');
+  initAudio(); if(audioCtx?.state==='suspended') audioCtx.resume();
+  applyMusic();
 }
 function playPageSound(type='turn'){
   initAudio(); if(!S.soundOn) return;
@@ -958,6 +1169,7 @@ async function enterCafe(id){
     renderCafeRoom();
     const vibe=vibeOf(cafe.vibe);
     try{ setAmbience(vibe.ambience); document.getElementById('field-ambience').value=vibe.ambience; }catch(e){}
+    applyMusic();
     S.room.unsub = CafeDB.subscribeCafe(id, {
       onChange: ()=>refreshCafeRoom(),
       onPresence: ids=>{ if(S.room){ S.room.presence=new Set([S.user.id, ...ids]); renderSeats(true); } },
@@ -3504,8 +3716,7 @@ renderCupPreview();
 renderAuthUI();
 initAuthState();
 
-document.addEventListener('click', startMusic, { once: true });
-
-function startMusic() {
-  bgMusic.play().catch(err => console.log(err));
-}
+// browsers only allow sound after a first tap or click
+document.addEventListener('pointerdown', ()=>{ initAudio(); if(audioCtx?.state==='suspended') audioCtx.resume(); applyMusic(); }, { once:true });
+document.addEventListener('click', e=>{ const m=document.getElementById('music-menu'); if(m?.classList.contains('open') && !e.target.closest('#music-menu, #sound-toggle')) toggleMusicMenu(false); });
+renderMusicMenu();

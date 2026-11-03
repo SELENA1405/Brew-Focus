@@ -78,11 +78,45 @@ body::after {
 .nav.focus-locked .nav-links a { opacity:0.28; cursor:not-allowed; }
 .sound-toggle {
   position:fixed; right:1.2rem; bottom:1.2rem; z-index:220;
-  width:46px; height:46px; border-radius:50%; border:1px solid rgba(199,168,109,0.45);
-  background:rgba(44,26,16,0.72); color:var(--cream); cursor:pointer;
-  box-shadow:0 14px 28px rgba(0,0,0,0.28); font-size:1rem;
+  width:50px; height:50px; border-radius:50%; border:1px solid rgba(199,168,109,0.7);
+  background:radial-gradient(circle at 35% 30%, #5a3a24, #2c1a10); color:#e8cf95; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 14px 28px rgba(0,0,0,0.35), inset 0 0 0 3px rgba(44,26,16,0.6), inset 0 0 0 4px rgba(199,168,109,0.3);
 }
-.sound-toggle.on { background:var(--burgundy); }
+.sound-toggle.on { background:radial-gradient(circle at 35% 30%, #a8485a, #7a2e3a 60%, #561c28); color:#f6e2b8; }
+.sound-toggle.on svg { animation:gramoBob 2.4s ease-in-out infinite; }
+@keyframes gramoBob { 0%,100% { transform:rotate(-4deg); } 50% { transform:rotate(4deg); } }
+
+/* the gramophone menu: a little paper card of records */
+.music-menu { position:fixed; right:1.2rem; bottom:5rem; z-index:221; width:min(300px, calc(100vw - 2.4rem)); padding:1rem 1rem 0.85rem; color:var(--ink);
+  background:radial-gradient(circle at 15% 10%, rgba(255,255,255,0.38), transparent 42%), linear-gradient(172deg, #f5ead5, #e8d5b2);
+  border-radius:3px; box-shadow:0 22px 44px rgba(0,0,0,0.45); opacity:0; transform:translateY(10px) scale(0.98); transform-origin:bottom right; pointer-events:none; transition:opacity .2s, transform .2s; }
+.music-menu.open { opacity:1; transform:none; pointer-events:auto; }
+.music-menu::before { content:''; position:absolute; inset:6px; border:1px solid rgba(107,79,58,0.3); pointer-events:none; }
+.music-head { text-align:center; font-family:'Playfair Display',serif; font-style:italic; font-size:1.2rem; }
+.music-now { text-align:center; font-family:'Caveat',cursive; font-size:1rem; color:var(--burgundy); margin-bottom:0.5rem; }
+.music-list { display:flex; flex-direction:column; border-top:1px dotted rgba(58,34,18,0.3); }
+.music-row { display:flex; align-items:center; gap:0.6rem; padding:0.38rem 0.3rem; background:none; border:none; border-bottom:1px dotted rgba(58,34,18,0.3); cursor:pointer; text-align:left; color:inherit; }
+.music-row:hover { background:rgba(122,46,58,0.06); }
+.music-row:focus-visible { outline:2px solid var(--gold); outline-offset:-2px; }
+.music-dot { flex:none; width:14px; height:14px; border-radius:50%; background:radial-gradient(circle, #f5ead5 0 2px, #2c1a10 2.5px 5px, #4a3428 5.5px); box-shadow:inset 0 0 0 1px rgba(0,0,0,0.3); opacity:0.45; }
+.music-row.sel .music-dot { opacity:1; background:radial-gradient(circle, #f5ead5 0 2px, #7a2e3a 2.5px 4px, #2c1a10 4.5px); }
+.music-txt { flex:1; display:flex; flex-direction:column; line-height:1.15; min-width:0; }
+.music-txt b { font-family:'Playfair Display',serif; font-style:italic; font-weight:500; font-size:0.92rem; color:var(--ink); }
+.music-row.sel .music-txt b { color:var(--burgundy); }
+.music-txt i { font-family:'Caveat',cursive; font-style:normal; font-size:0.88rem; color:var(--warm-brown); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.music-eq { display:flex; align-items:flex-end; gap:2px; height:12px; }
+.music-eq i { width:3px; background:var(--burgundy); animation:eq 0.9s ease-in-out infinite; }
+.music-eq i:nth-child(2) { animation-delay:-.3s; } .music-eq i:nth-child(3) { animation-delay:-.6s; }
+@keyframes eq { 0%,100% { height:3px; } 50% { height:12px; } }
+.music-foot { display:flex; align-items:center; gap:0.5rem; margin-top:0.65rem; }
+.music-vol-l { font-family:'Lora',serif; font-size:0.56rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--warm-brown); }
+#music-vol { flex:1; min-width:0; accent-color:var(--burgundy); }
+.music-power { flex:none; background:none; border:1px solid rgba(58,34,18,0.4); border-radius:2px; padding:0.32rem 0.55rem; cursor:pointer;
+  font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--coffee); }
+.music-power:hover { color:var(--burgundy); border-color:var(--burgundy); }
+.cr-nowplaying-btn { display:inline-flex; align-items:center; gap:0.35rem; margin-top:0.2rem; background:none; border:none; cursor:pointer;
+  font-family:'Caveat',cursive; font-size:1rem; color:var(--gold); opacity:0.85; }
+.cr-nowplaying-btn:hover { opacity:1; text-decoration:underline; text-underline-offset:3px; }
 
 /* ── NAV AUTH ── */
 .nav-auth { display:flex; align-items:center; gap:0.9rem; }
