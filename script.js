@@ -630,11 +630,12 @@ async function attachPeople(members){
   }
   const byId=Object.fromEntries(rows.map(r=>[r.id, r]));
   // your own name and picture are always to hand, even before cafe_people exists
-  if(S.user && S.profile) byId[S.user.id] = {...(byId[S.user.id]||{}), display_name:S.profile.display_name, avatar_url:S.profile.avatar_url, username:S.profile.username};
+  if(S.user && S.profile) byId[S.user.id] = {...(byId[S.user.id]||{}), display_name:S.profile.display_name, avatar_url:S.profile.avatar_url, username:S.profile.username, look:S.profile.look};
   members.forEach(m=>{
     const p=byId[m.user_id || m.from_user]; if(!p) return;
     m.name = p.display_name || null;
     m.avatar = p.avatar_url || null;
+    m.look = p.look || null;
   });
   return members;
 }
@@ -882,6 +883,7 @@ async function loadCafeRoom(){
 }
 function leaveRoomRealtime(){
   if(!S.room) return;
+  clearSitters();
   if(S.room.unsub) S.room.unsub();
   if(S.room.tick) clearInterval(S.room.tick);
   clearTimeout(S.room.refreshTimer);
@@ -944,7 +946,10 @@ const TABLE_STYLE = {   // tabletop finish and centrepiece for each café type
   parisian:'marble', bookstore:'wood', kyoto:'wood', midnight:'lacquer', library:'leather', beach:'linen' };
 const CENTREPIECE = { parisian:'flowers', bookstore:'books', kyoto:'ikebana', midnight:'candle', library:'lamp', beach:'carafe' };
 
-function seatAngles(n){ return Array.from({length:n}, (_,i)=> Math.PI/2 + i*2*Math.PI/n); }
+// Seats go round the table leaving the front open (that's where we're
+// looking from); seat 0 — yours — is at the front left.
+const FRONT_GAP = 64*Math.PI/180;
+function seatAngles(n){ return Array.from({length:n}, (_,i)=> Math.PI/2 + FRONT_GAP/2 + i*(2*Math.PI-FRONT_GAP)/Math.max(1,n-1)); }
 function seatPoint(a, rx, ry){ return { x:TABLE.cx + rx*Math.cos(a), y:TABLE.cy + ry*Math.sin(a) }; }
 function depthScale(y){ return 0.78 + 0.34*(y - (TABLE.cy-TABLE.chairRy))/(2*TABLE.chairRy); }
 
@@ -987,19 +992,391 @@ function lowTableSVG(){
     <ellipse cx="${cx}" cy="${cy+22}" rx="${rx}" ry="${ry}" fill="var(--table-2)"/>`;
 }
 
-// Someone sitting at the table: their portrait (or initial) above a pair
-// of shoulders in a coat, placed on their chair or floor cushion.
-const COATS = ['#7a2e3a', '#2f5a4a', '#34405a', '#8a5a2a', '#5a3a5a', '#4a5a3a', '#6a3a24', '#2e4a5a'];
-function coatFor(id){ let h=2166136261; for(const ch of String(id)){ h^=ch.charCodeAt(0); h=Math.imul(h, 16777619)>>>0; } return COATS[(h ^ (h>>>13)) % COATS.length]; }
-function sitterHTML(m, spot, here){
-  const name=personName(m);
-  const face = m.avatar
-    ? `<img src="${esc(m.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:${esc(JSON.stringify((name[0]||'?').toUpperCase()))}}))">`
-    : `<span>${esc((name[0]||'?').toUpperCase())}</span>`;
-  return `<div class="cr-sitter ${here?'here':'away'} ${spot.kneel?'kneel':''}" style="left:${(spot.x/TABLE.w*100).toFixed(2)}%; top:${(spot.y/TABLE.h*100).toFixed(2)}%; --s:${spot.s.toFixed(3)}; --coat:${coatFor(m.user_id)}; z-index:${Math.round(spot.y)};" title="${esc(name)}${here?'':' (away)'}">
-    <div class="sitter-head">${face}</div>
-    <svg class="sitter-body" viewBox="0 0 60 34" aria-hidden="true"><path d="M2,34 C2,18 8,10 20,8 Q30,13 40,8 C52,10 58,18 58,34 Z" fill="var(--coat)"/><path d="M20,8 Q30,13 40,8 L36,8 Q30,11 24,8 Z" fill="#f2e6cf"/><path d="M30,12 L27,24 L30,30 L33,24 Z" fill="rgba(0,0,0,0.22)"/><path d="M6,30 C8,20 12,15 18,13" stroke="rgba(255,255,255,0.15)" stroke-width="2" fill="none"/></svg>
-  </div>`;
+// ── Café characters ───────────────────────────────────────────────────────
+// Storybook animals in old-fashioned café clothes, drawn like a vintage
+// children's book plate: sepia ink, soft watercolour washes on paper. A
+// character is a handful of named choices (never raw colours), drawn fresh
+// as an SVG bust that sits on a café chair or cushion.
+const CHAR = {
+  animal:  { cat:'Cat', rabbit:'Rabbit', fox:'Fox', bear:'Bear', mouse:'Mouse', owl:'Owl', dog:'Dog', hedgehog:'Hedgehog' },
+  fur:     { ginger:'#d0894f', honey:'#d8b07a', cocoa:'#8c6448', chestnut:'#a4643c', slate:'#8e9096', charcoal:'#55504b', oat:'#e3d3b4', snow:'#f4efe4' },
+  outfit:  { cardigan:'Cardigan', waistcoat:'Waistcoat', scarf:'Scarf', collar:'Collar' },
+  color:   { burgundy:'#7a2e3a', mustard:'#c4973c', sage:'#7f9470', rose:'#c48a8c', slate:'#4e5a70', rust:'#a4552f', oat:'#d9c8a4', cocoa:'#6b4a34' },
+  hat:     { none:'None', beret:'Beret', flatcap:'Flat cap', cloche:'Cloche', boater:'Boater', flower:'Flower', bow:'Bow' },
+  glasses: { none:'None', round:'Spectacles', halfmoon:'Half-moon' },
+  face:    { smile:'Content', happy:'Happy', wink:'Wink', sleepy:'Sleepy' },
+};
+const CHAR_KEYS = { animal:'animal', fur:'fur', outfit:'outfit', outfitColor:'color', hat:'hat', hatColor:'color', glasses:'glasses', face:'face' };
+const CHAR_PRESETS = [
+  {animal:'cat', fur:'ginger', outfit:'cardigan', outfitColor:'sage', hat:'none', glasses:'none', face:'smile'},
+  {animal:'rabbit', fur:'snow', outfit:'collar', outfitColor:'rose', hat:'flower', glasses:'none', face:'happy'},
+  {animal:'fox', fur:'ginger', outfit:'waistcoat', outfitColor:'burgundy', hat:'flatcap', hatColor:'cocoa', glasses:'none', face:'wink'},
+  {animal:'bear', fur:'cocoa', outfit:'scarf', outfitColor:'mustard', hat:'none', glasses:'round', face:'smile'},
+  {animal:'mouse', fur:'slate', outfit:'cardigan', outfitColor:'burgundy', hat:'bow', hatColor:'mustard', glasses:'none', face:'happy'},
+  {animal:'owl', fur:'chestnut', outfit:'waistcoat', outfitColor:'sage', hat:'none', glasses:'halfmoon', face:'smile'},
+  {animal:'dog', fur:'honey', outfit:'scarf', outfitColor:'burgundy', hat:'beret', hatColor:'slate', glasses:'none', face:'happy'},
+  {animal:'hedgehog', fur:'cocoa', outfit:'cardigan', outfitColor:'mustard', hat:'none', glasses:'round', face:'sleepy'},
+  {animal:'cat', fur:'charcoal', outfit:'collar', outfitColor:'burgundy', hat:'beret', hatColor:'burgundy', glasses:'none', face:'smile'},
+  {animal:'rabbit', fur:'oat', outfit:'scarf', outfitColor:'sage', hat:'cloche', hatColor:'rose', glasses:'none', face:'smile'},
+  {animal:'bear', fur:'honey', outfit:'waistcoat', outfitColor:'mustard', hat:'boater', glasses:'none', face:'happy'},
+  {animal:'fox', fur:'chestnut', outfit:'cardigan', outfitColor:'oat', hat:'none', glasses:'round', face:'smile'},
+  {animal:'mouse', fur:'honey', outfit:'collar', outfitColor:'sage', hat:'flower', glasses:'none', face:'smile'},
+  {animal:'dog', fur:'charcoal', outfit:'waistcoat', outfitColor:'rust', hat:'flatcap', hatColor:'slate', glasses:'none', face:'smile'},
+  {animal:'owl', fur:'oat', outfit:'scarf', outfitColor:'rose', hat:'none', glasses:'round', face:'happy'},
+  {animal:'cat', fur:'snow', outfit:'scarf', outfitColor:'slate', hat:'cloche', hatColor:'burgundy', glasses:'none', face:'sleepy'},
+  {animal:'hedgehog', fur:'chestnut', outfit:'collar', outfitColor:'rose', hat:'bow', hatColor:'burgundy', glasses:'none', face:'happy'},
+  {animal:'bear', fur:'charcoal', outfit:'cardigan', outfitColor:'rust', hat:'beret', hatColor:'mustard', glasses:'none', face:'wink'},
+];
+// Keep only choices we know how to draw; anything else falls back.
+function normalizeChar(c){
+  const d={animal:'cat', fur:'ginger', outfit:'cardigan', outfitColor:'sage', hat:'none', hatColor:'burgundy', glasses:'none', face:'smile'};
+  if(!c || typeof c!=='object') return d;
+  const out={...d};
+  for(const [k,group] of Object.entries(CHAR_KEYS)) if(typeof c[k]==='string' && Object.prototype.hasOwnProperty.call(CHAR[group], c[k])) out[k]=c[k];
+  return out;
+}
+// Someone who hasn't chosen yet still gets a character, always the same one.
+function defaultCharFor(id){
+  let h=2166136261; for(const ch of String(id||'')){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619)>>>0; }
+  return {...CHAR_PRESETS[h % CHAR_PRESETS.length]};
+}
+// mix a colour towards black (amt<0) or cream (amt>0)
+function tint(hex, amt){
+  const n=parseInt(hex.slice(1),16), r=n>>16, g=(n>>8)&255, b=n&255;
+  const to = amt<0 ? [40,26,18] : [250,244,232], t=Math.abs(amt);
+  const m=(a,z)=>Math.round(a+(z-a)*t);
+  return '#'+[m(r,to[0]),m(g,to[1]),m(b,to[2])].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+let charUid=0;
+// pose: 'bust' (portrait), 'stand' (step 0/1/2 for walking), 'sit' (on a chair), 'kneel' (on a cushion)
+const CHAR_FULL_H = 188;                                   // height of the full-body drawing
+const CHAR_ANCHOR = { stand:0.985, sit:150/188, kneel:161/188 };   // where it touches the floor or seat
+function characterSVG(cfg, {cls='', title='', pose='bust', step=0}={}){
+  const c=normalizeChar(cfg), u='ch'+(++charUid);
+  const ink='#4a3428', lw=`stroke="${ink}" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round"`;
+  const fur=CHAR.fur[c.fur], furD=tint(fur,-0.22), furL=c.fur==='snow'||c.fur==='oat' ? '#fbf8f1' : tint(fur,0.62);
+  const pink='#e7a9a4', cloth=CHAR.color[c.outfitColor], hatC=CHAR.color[c.hatColor];
+  const F=(d,fill,extra='')=>`<path d="${d}" fill="${fill}" ${lw} ${extra}/>`;
+  const wash=(d)=>`<path d="${d}" fill="url(#${u}-w)"/>`;          // a little watercolour shading
+  let ears='', head='', face='', back='';
+  // eyes / nose anchor per animal
+  let ey=57, ex=10.5, noseY=65, cheeks=true;
+  switch(c.animal){
+    case 'rabbit':
+      ears = F('M45,38 C37,20 38,2 47,1 C56,0 57,20 53,38 Z',fur)+F('M47,34 C43,20 44,8 47,6 C51,8 52,20 50,34 Z',pink,'stroke-width="0.8"')
+           + F('M67,38 C63,20 64,0 73,1 C82,2 83,20 75,38 Z',fur)+F('M70,34 C68,20 69,8 73,6 C76,8 77,20 73,34 Z',pink,'stroke-width="0.8"');
+      head = F('M33,57 C33,40 45,31 60,31 C75,31 87,40 87,57 C87,72 75,82 60,82 C45,82 33,72 33,57 Z',fur)
+           + `<ellipse cx="55" cy="68" rx="6" ry="5" fill="${furL}"/><ellipse cx="65" cy="68" rx="6" ry="5" fill="${furL}"/>`;
+      noseY=65; break;
+    case 'fox':
+      ears = F('M35,46 L31,18 L52,33 Z',fur)+F('M37,40 L35,25 L46,34 Z',furD,'stroke-width="0.8"')
+           + F('M85,46 L89,18 L68,33 Z',fur)+F('M83,40 L85,25 L74,34 Z',furD,'stroke-width="0.8"');
+      head = F('M31,52 C31,38 45,31 60,31 C75,31 89,38 89,52 C89,64 74,78 60,84 C46,78 31,64 31,52 Z',fur)
+           + F('M33,56 C42,57 52,63 60,84 C68,63 78,57 87,56 C85,68 72,79 60,84 C48,79 35,68 33,56 Z',furL,'stroke-width="0.9"');
+      noseY=79; ey=55; break;
+    case 'bear':
+      ears = `<circle cx="37" cy="36" r="10" fill="${fur}" ${lw}/><circle cx="37" cy="36" r="5.5" fill="${furD}"/><circle cx="83" cy="36" r="10" fill="${fur}" ${lw}/><circle cx="83" cy="36" r="5.5" fill="${furD}"/>`;
+      head = F('M31,58 C31,40 44,31 60,31 C76,31 89,40 89,58 C89,74 76,84 60,84 C44,84 31,74 31,58 Z',fur)
+           + `<ellipse cx="60" cy="69" rx="12" ry="9" fill="${furL}" ${lw} stroke-width="0.9"/>`;
+      noseY=65; break;
+    case 'mouse':
+      ears = `<circle cx="32" cy="38" r="14" fill="${fur}" ${lw}/><circle cx="32" cy="38" r="8.5" fill="${pink}"/><circle cx="88" cy="38" r="14" fill="${fur}" ${lw}/><circle cx="88" cy="38" r="8.5" fill="${pink}"/>`;
+      head = F('M33,54 C33,39 46,32 60,32 C74,32 87,39 87,54 C87,66 76,75 65,79 C62,80.5 58,80.5 55,79 C44,75 33,66 33,54 Z',fur);
+      noseY=76; ey=55; break;
+    case 'owl':
+      ears = F('M35,40 L30,20 L47,33 Z',furD)+F('M85,40 L90,20 L73,33 Z',furD);
+      head = F('M30,58 C30,38 44,30 60,30 C76,30 90,38 90,58 C90,74 76,84 60,84 C44,84 30,74 30,58 Z',fur)
+           + `<circle cx="48.5" cy="56" r="12" fill="${furL}" ${lw} stroke-width="0.9"/><circle cx="71.5" cy="56" r="12" fill="${furL}" ${lw} stroke-width="0.9"/>`
+           + `<path d="M50,38 l3,3 l3,-3 M58,36 l2.5,3 l2.5,-3 M64,38 l3,3 l3,-3" fill="none" stroke="${furD}" stroke-width="1.2"/>`;
+      ey=56; ex=11.5; cheeks=false; noseY=0; break;
+    case 'dog':
+      back = F('M36,40 C24,40 18,60 22,78 C25,86 35,84 38,74 C41,62 42,46 36,40 Z',furD)+F('M84,40 C96,40 102,60 98,78 C95,86 85,84 82,74 C79,62 78,46 84,40 Z',furD);
+      head = F('M34,57 C34,40 46,31 60,31 C74,31 86,40 86,57 C86,72 74,82 60,82 C46,82 34,72 34,57 Z',fur)
+           + `<ellipse cx="60" cy="69" rx="12.5" ry="9.5" fill="${furL}" ${lw} stroke-width="0.9"/>`;
+      ears = '';
+      noseY=65; break;
+    case 'hedgehog': {
+      let d='M26,64'; const n=13;
+      for(let i=0;i<=n;i++){ const a=Math.PI*(1.05+0.9*i/n), r1=36, r2=27; const x1=60+r1*Math.cos(a), y1=58+r1*Math.sin(a)*0.92, a2=Math.PI*(1.05+0.9*(i+0.5)/n), x2=60+r2*Math.cos(a2), y2=58+r2*Math.sin(a2)*0.92; d+=` L${x1.toFixed(1)},${y1.toFixed(1)} L${x2.toFixed(1)},${y2.toFixed(1)}`; }
+      d+=' L94,64 C90,76 76,84 60,84 C44,84 30,76 26,64 Z';
+      back = F(d,furD) + `<path d="${d}" fill="url(#${u}-s)"/>`;
+      head = F('M35,60 C35,46 46,38 60,38 C74,38 85,46 85,60 C85,70 72,79 60,81 C48,79 35,70 35,60 Z',furL);
+      ears = `<circle cx="40" cy="44" r="4.5" fill="${furL}" ${lw}/><circle cx="80" cy="44" r="4.5" fill="${furL}" ${lw}/>`;
+      noseY=76; ey=60; break; }
+    default: // cat
+      ears = F('M36,46 L33,20 L53,34 Z',fur)+F('M38,41 L37,27 L47,35 Z',pink,'stroke-width="0.8"')
+           + F('M84,46 L87,20 L67,34 Z',fur)+F('M82,41 L83,27 L73,35 Z',pink,'stroke-width="0.8"');
+      head = F('M32,58 C32,41 45,32 60,32 C75,32 88,41 88,58 C88,73 75,82 60,82 C45,82 32,73 32,58 Z',fur)
+           + `<path d="M50,34 l2,7 M58,32.5 l0,7 M66,33 l-1.5,7" stroke="${furD}" stroke-width="1.6" stroke-linecap="round"/>`;
+      noseY=66;
+  }
+  // nose, mouth and whiskers
+  let nose='';
+  if(c.animal==='owl') nose=`<path d="M56.5,62 L63.5,62 L60,70 Z" fill="#c4973c" ${lw}/>`;
+  else if(c.animal==='fox'||c.animal==='hedgehog'||c.animal==='mouse') nose=`<ellipse cx="60" cy="${noseY}" rx="3.2" ry="2.5" fill="${c.animal==='mouse'?pink:ink}" ${lw} stroke-width="0.9"/>`;
+  else nose=`<path d="M55.5,${noseY-1.5} C55.5,${noseY-3.5} 64.5,${noseY-3.5} 64.5,${noseY-1.5} C64.5,${noseY+0.5} 61,${noseY+2.5} 60,${noseY+2.5} C59,${noseY+2.5} 55.5,${noseY+0.5} 55.5,${noseY-1.5} Z" fill="${c.animal==='rabbit'||c.animal==='cat'?pink:ink}" ${lw} stroke-width="0.9"/>`
+    + `<path d="M60,${noseY+2.5} v2.5 M60,${noseY+5} q-3,3 -6,1 M60,${noseY+5} q3,3 6,1" fill="none" stroke="${ink}" stroke-width="1.1" stroke-linecap="round"/>`;
+  const whiskers = (c.animal==='cat'||c.animal==='rabbit'||c.animal==='mouse')
+    ? `<path d="M46,${noseY+1} l-14,-3 M46,${noseY+4} l-14,2 M74,${noseY+1} l14,-3 M74,${noseY+4} l14,2" stroke="${ink}" stroke-width="0.7" opacity="0.7"/>` : '';
+  // eyes
+  const L=60-ex, R=60+ex, big=c.animal==='owl';
+  const open=(x)=> big ? `<circle cx="${x}" cy="${ey}" r="5.6" fill="#d9a441" ${lw} stroke-width="1"/><circle cx="${x}" cy="${ey}" r="3" fill="${ink}"/><circle cx="${x+1.2}" cy="${ey-1.4}" r="1" fill="#fff"/>`
+                       : `<ellipse cx="${x}" cy="${ey}" rx="2.4" ry="2.9" fill="${ink}"/><circle cx="${x+0.8}" cy="${ey-1.1}" r="0.8" fill="#fff8ec"/>`;
+  const shut=(x)=>`<path d="M${x-3.6},${ey+0.4} Q${x},${ey-3.4} ${x+3.6},${ey+0.4}" fill="none" stroke="${ink}" stroke-width="1.6" stroke-linecap="round"/>`;
+  const sleepy=(x)=>`<path d="M${x-3.6},${ey} Q${x},${ey+2.6} ${x+3.6},${ey}" fill="none" stroke="${ink}" stroke-width="1.6" stroke-linecap="round"/><path d="M${x-3.6},${ey-1.2} H${x+3.6}" stroke="${ink}" stroke-width="0.8" opacity="0.6"/>`;
+  const eyes = c.face==='happy' ? shut(L)+shut(R) : c.face==='wink' ? open(L)+shut(R) : c.face==='sleepy' ? sleepy(L)+sleepy(R) : open(L)+open(R);
+  const blush = cheeks ? `<ellipse cx="${L-6}" cy="${ey+9}" rx="5" ry="3" fill="#e0837e" opacity="0.32"/><ellipse cx="${R+6}" cy="${ey+9}" rx="5" ry="3" fill="#e0837e" opacity="0.32"/>` : '';
+  let glasses='';
+  if(c.glasses==='round') glasses=`<g fill="rgba(255,250,235,0.18)" stroke="#a8823a" stroke-width="1.5"><circle cx="${L}" cy="${ey}" r="${big?9.5:7.2}"/><circle cx="${R}" cy="${ey}" r="${big?9.5:7.2}"/></g><path d="M${L+(big?9.5:7.2)},${ey} Q60,${ey-3} ${R-(big?9.5:7.2)},${ey}" fill="none" stroke="#a8823a" stroke-width="1.4"/>`;
+  if(c.glasses==='halfmoon') glasses=`<g fill="rgba(255,250,235,0.18)" stroke="#a8823a" stroke-width="1.5"><path d="M${L-7.5},${ey+1.5} H${L+7.5} C${L+7.5},${ey+8} ${L-7.5},${ey+8} ${L-7.5},${ey+1.5} Z"/><path d="M${R-7.5},${ey+1.5} H${R+7.5} C${R+7.5},${ey+8} ${R-7.5},${ey+8} ${R-7.5},${ey+1.5} Z"/></g><path d="M${L+7.5},${ey+2} Q60,${ey-0.5} ${R-7.5},${ey+2}" fill="none" stroke="#a8823a" stroke-width="1.3"/>`;
+  // clothes: a fur chest under old-fashioned clothes
+  const bodyD='M12,124 C14,102 32,90 60,90 C88,90 106,102 108,124 Z';
+  let body='';
+  if(c.outfit==='waistcoat'){
+    body = F(bodyD,'#f3ece0') + F('M12,124 C14,102 30,91 47,90 L60,113 L60,124 Z',cloth) + F('M108,124 C106,102 90,91 73,90 L60,113 L60,124 Z',cloth)
+         + wash('M12,124 C14,102 30,91 47,90 L60,113 L60,124 Z') + wash('M108,124 C106,102 90,91 73,90 L60,113 L60,124 Z')
+         + `<circle cx="64" cy="116" r="1.5" fill="${ink}"/><circle cx="64" cy="121" r="1.5" fill="${ink}"/><path d="M28,108 h10 M82,108 h10" stroke="${ink}" stroke-width="1" opacity="0.6"/>`
+         + F('M60,94 L51,89 L51,99 Z',tint(cloth,-0.35)) + F('M60,94 L69,89 L69,99 Z',tint(cloth,-0.35)) + `<circle cx="60" cy="94" r="2.4" fill="${tint(cloth,-0.35)}" ${lw}/>`;
+  } else if(c.outfit==='scarf'){
+    body = F(bodyD,'#e2d4b6') + wash(bodyD) + `<path d="M30,104 v18 M90,104 v18" stroke="rgba(74,52,40,0.25)" stroke-width="1"/>`
+         + F('M40,88 C50,98 70,98 80,88 L83,97 C70,107 50,107 37,97 Z',cloth)
+         + `<path d="M43,93 C53,101 67,101 77,93" fill="none" stroke="${tint(cloth,0.55)}" stroke-width="2.4"/>`
+         + F('M64,100 L73,121 L63,123 L57,102 Z',cloth) + `<path d="M62,108 L70,106 M64,114 L72,112" stroke="${tint(cloth,0.55)}" stroke-width="2.2"/><path d="M63,123 l-1,3 M66,122.5 l-0.5,3 M69,122 l0,3 M72,121.5 l0.5,3" stroke="${cloth}" stroke-width="1.3"/>`;
+  } else if(c.outfit==='collar'){
+    body = F(bodyD,cloth) + wash(bodyD)
+         + F('M60,92 C56,101 45,102 42,93 C48,90 55,90 60,92 Z','#fbf7ee') + F('M60,92 C64,101 75,102 78,93 C72,90 65,90 60,92 Z','#fbf7ee')
+         + `<circle cx="60" cy="100" r="2.6" fill="#c4973c" ${lw} stroke-width="0.9"/>`;
+  } else { // cardigan over a cream blouse
+    body = F(bodyD,cloth) + wash(bodyD)
+         + F('M47,90 L60,112 L73,90 C68,92 52,92 47,90 Z','#f3ece0')
+         + `<path d="M47,90 L60,112 L73,90" fill="none" stroke="${tint(cloth,-0.3)}" stroke-width="3.2" stroke-linejoin="round"/>`
+         + `<circle cx="60" cy="116" r="1.7" fill="${tint(cloth,0.5)}" ${lw} stroke-width="0.7"/><circle cx="60" cy="121.5" r="1.7" fill="${tint(cloth,0.5)}" ${lw} stroke-width="0.7"/>`
+         + `<path d="M24,110 l4,0 M92,110 l4,0" stroke="${ink}" stroke-width="0.9" opacity="0.5"/>`;
+  }
+  // a soft, rounded neck that widens into the collar (no square edges)
+  const neck = `<path d="M47,93 C47,86 51,80 60,80 C69,80 73,86 73,93 C67,95.5 53,95.5 47,93 Z" fill="${c.animal==='hedgehog'?furL:fur}" ${lw}/>`;
+  // something on the head
+  let hat='';
+  const hatTop = c.animal==='hedgehog' ? 6 : 0;      // hedgehogs wear hats a little lower, over their spines
+  const H=(d,fill)=>F(d,fill,`transform="translate(0 ${hatTop})"`)+`<path d="${d}" fill="url(#${u}-w)" transform="translate(0 ${hatTop})"/>`;
+  if(c.hat==='beret') hat = H('M28,38 C30,23 52,16 71,20 C88,23 96,31 92,39 C78,45 42,46 28,38 Z',hatC) + `<path d="M62,18 l2,-6" stroke="${ink}" stroke-width="2.2" stroke-linecap="round" transform="translate(0 ${hatTop})"/>`;
+  if(c.hat==='flatcap') hat = H('M31,41 C29,24 45,18 62,18 C80,18 93,26 91,38 C78,35 46,36 31,41 Z',hatC) + H('M38,41 C50,48 74,48 87,40 C80,49 48,52 38,41 Z',tint(hatC,-0.25)) + `<circle cx="61" cy="19" r="2" fill="${tint(hatC,-0.3)}" ${lw} transform="translate(0 ${hatTop})"/>`;
+  if(c.hat==='cloche') hat = H('M29,46 C27,23 43,13 60,13 C77,13 93,23 91,46 C84,41 36,41 29,46 Z',hatC) + H('M30,39 C44,34 76,34 90,39 L90,44 C76,39 44,39 30,44 Z',tint(hatC,-0.3))
+        + `<g transform="translate(0 ${hatTop})"><circle cx="79" cy="38" r="3.4" fill="#f4ece0" ${lw} stroke-width="0.8"/><circle cx="84" cy="36.5" r="2.8" fill="#e7a9a4" ${lw} stroke-width="0.8"/><circle cx="79" cy="38" r="1" fill="#c4973c"/></g>`;
+  if(c.hat==='boater') hat = `<g transform="translate(0 ${hatTop})"><ellipse cx="60" cy="35" rx="35" ry="6.5" fill="#e3c98c" ${lw}/><path d="M42,35 L44,19 C52,16 68,16 76,19 L78,35 Z" fill="#e3c98c" ${lw}/><path d="M43,27 C52,25 68,25 77,27 L77.6,32 C68,30 52,30 42.4,32 Z" fill="${CHAR.color[c.outfitColor]}" ${lw} stroke-width="0.9"/><path d="M46,21 l28,0 M45,24 l30,0" stroke="#b8975a" stroke-width="0.6"/></g>`;
+  if(c.hat==='flower') hat = `<g transform="translate(${c.animal==='rabbit'?2:0} ${hatTop})"><path d="M78,40 l6,-6 M80,41 l8,-2" stroke="#6f8a5a" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="88" cy="35" rx="4" ry="2.4" fill="#7f9470" ${lw} stroke-width="0.8" transform="rotate(-30 88 35)"/>${[0,72,144,216,288].map(a=>{const r=a*Math.PI/180; return `<circle cx="${(79+4.2*Math.cos(r)).toFixed(1)}" cy="${(33+4.2*Math.sin(r)).toFixed(1)}" r="3" fill="#f6eee2" ${lw} stroke-width="0.8"/>`;}).join('')}<circle cx="79" cy="33" r="2.4" fill="#c4973c" ${lw} stroke-width="0.8"/></g>`;
+  if(c.hat==='bow') hat = `<g ${lw} fill="${hatC}" transform="translate(0 ${hatTop})"><path d="M80,32 L68,24 L69,40 Z"/><path d="M80,32 L92,24 L91,40 Z"/><circle cx="80" cy="32" r="3.6"/></g>`;
+  // ── full body: torso and arms in the same clothes, then legs and shoes ──
+  let tail='', full='';
+  if(pose!=='bust'){
+    const shoe='#3d2b20', paw=c.animal==='hedgehog'?furL:fur;
+    const trousers = c.outfit==='waistcoat' ? tint(cloth,-0.42) : c.outfit==='cardigan' ? '#cbb896' : '#6b4a34';
+    const sleeve = c.outfit==='waistcoat' ? '#f3ece0' : c.outfit==='scarf' ? '#e2d4b6' : cloth;
+    const torsoD='M38,92 C32,98 31,122 33,146 L87,146 C89,122 88,98 82,92 C74,88 46,88 38,92 Z';
+    let torso='';
+    if(c.outfit==='waistcoat'){
+      torso = F(torsoD,'#f3ece0') + F('M38,92 C32,98 31,122 33,146 L60,146 L60,113 L50,89 Z',cloth) + F('M82,92 C88,98 89,122 87,146 L60,146 L60,113 L70,89 Z',cloth)
+            + wash('M38,92 C32,98 31,122 33,146 L60,146 L60,113 L50,89 Z') + wash('M82,92 C88,98 89,122 87,146 L60,146 L60,113 L70,89 Z')
+            + `<circle cx="63.5" cy="120" r="1.5" fill="${ink}"/><circle cx="63.5" cy="128" r="1.5" fill="${ink}"/><circle cx="63.5" cy="136" r="1.5" fill="${ink}"/><path d="M40,124 h8 M72,124 h8" stroke="${ink}" stroke-width="0.9" opacity="0.6"/>`
+            + F('M60,95 L52,90.5 L52,99.5 Z',tint(cloth,-0.35)) + F('M60,95 L68,90.5 L68,99.5 Z',tint(cloth,-0.35)) + `<circle cx="60" cy="95" r="2.2" fill="${tint(cloth,-0.35)}" ${lw}/>`;
+    } else if(c.outfit==='scarf'){
+      torso = F(torsoD,'#e2d4b6') + wash(torsoD) + `<path d="M36,138 h48" stroke="rgba(74,52,40,0.3)" stroke-width="1"/>`
+            + F('M42,88 C51,98 69,98 78,88 L80,96 C68,105 52,105 40,96 Z',cloth) + `<path d="M44,93 C53,101 67,101 76,93" fill="none" stroke="${tint(cloth,0.55)}" stroke-width="2.2"/>`
+            + F('M63,100 L70,126 L62,128 L57,102 Z',cloth) + `<path d="M61,110 L68,108 M63,118 L70,116" stroke="${tint(cloth,0.55)}" stroke-width="2"/><path d="M62,128 l-1,3 M65,127.5 l-0.5,3 M68,127 l0,3" stroke="${cloth}" stroke-width="1.2"/>`;
+    } else if(c.outfit==='collar'){
+      torso = F(torsoD,cloth) + wash(torsoD)
+            + F('M60,93 C56,101 46,102 43,94 C49,91 55,91 60,93 Z','#fbf7ee') + F('M60,93 C64,101 74,102 77,94 C71,91 65,91 60,93 Z','#fbf7ee')
+            + `<circle cx="60" cy="101" r="2.4" fill="#c4973c" ${lw} stroke-width="0.9"/>`;
+    } else {
+      torso = F(torsoD,cloth) + wash(torsoD) + F('M49,89 L60,110 L71,89 C66,91 54,91 49,89 Z','#f3ece0')
+            + `<path d="M49,89 L60,110 L71,89" fill="none" stroke="${tint(cloth,-0.3)}" stroke-width="3" stroke-linejoin="round"/>`
+            + [116,124,132,140].map(y=>`<circle cx="60" cy="${y}" r="1.6" fill="${tint(cloth,0.5)}" ${lw} stroke-width="0.7"/>`).join('')
+            + `<path d="M34,140 h52" stroke="${tint(cloth,-0.3)}" stroke-width="2.4" opacity="0.6"/>`;
+    }
+    // arms: hanging (and swinging as they walk), or resting on the lap
+    const swing = pose==='stand' && step ? (step===1 ? 9 : -9) : 0;
+    const armL = pose==='stand'
+      ? `<g transform="rotate(${swing} 40 95)">${F('M40,93 C31,99 28,116 29,132 C32,137 38,137 39,132 C39,118 41,107 45,99 Z',sleeve)}<circle cx="33.5" cy="135" r="5.2" fill="${paw}" ${lw}/></g>`
+      : `${F('M40,93 C31,102 30,122 37,137 C40,141 47,141 48,137 C42,125 41,110 45,99 Z',sleeve)}<circle cx="47" cy="140" r="5" fill="${paw}" ${lw}/>`;
+    const armR = pose==='stand'
+      ? `<g transform="rotate(${-swing} 80 95)">${F('M80,93 C89,99 92,116 91,132 C88,137 82,137 81,132 C81,118 79,107 75,99 Z',sleeve)}<circle cx="86.5" cy="135" r="5.2" fill="${paw}" ${lw}/></g>`
+      : `${F('M80,93 C89,102 90,122 83,137 C80,141 73,141 72,137 C78,125 79,110 75,99 Z',sleeve)}<circle cx="73" cy="140" r="5" fill="${paw}" ${lw}/>`;
+    // legs
+    const dress = c.outfit==='collar';
+    let legs='';
+    if(pose==='stand'){
+      const lift=[0, -4, 0][step], liftR=[0, 0, -4][step];
+      const leg=(x0,x1,dy,col)=>`<g transform="translate(0 ${dy})">${F(`M${x0},150 L${x0+16},150 L${x0+15},${dress?176:177} L${x0+2},${dress?176:177} Z`,col)}<ellipse cx="${x0+8.5}" cy="179" rx="9" ry="4.4" fill="${shoe}" ${lw}/><path d="M${x0+3},177.5 q5.5,-2 11,0" fill="none" stroke="rgba(255,240,220,0.35)" stroke-width="1"/></g>`;
+      legs = leg(40,0,lift, dress?paw:trousers) + leg(64,0,liftR, dress?paw:trousers);
+      legs += dress ? F('M34,140 C30,152 27,162 26,168 C42,174 78,174 94,168 C93,162 90,152 86,140 Z',cloth) + wash('M34,140 C30,152 27,162 26,168 C42,174 78,174 94,168 C93,162 90,152 86,140 Z') + `<path d="M28,165 C44,170 76,170 92,165" fill="none" stroke="#fbf7ee" stroke-width="2" opacity="0.8"/>`
+                    : F('M33,142 L87,142 L86,155 L34,155 Z',trousers);
+    } else if(pose==='sit'){
+      // seen from the front: the lap comes towards us, the lower legs hang down
+      const lap = dress ? cloth : trousers;
+      legs = F('M41,152 L55,152 L54,172 L42,172 Z',dress?paw:trousers) + F('M65,152 L79,152 L78,172 L66,172 Z',dress?paw:trousers)
+           + `<ellipse cx="48" cy="175" rx="8.4" ry="4.6" fill="${shoe}" ${lw}/><ellipse cx="72" cy="175" rx="8.4" ry="4.6" fill="${shoe}" ${lw}/>`
+           + F('M32,140 C31,150 36,157 60,157 C84,157 89,150 88,140 Z',lap) + wash('M32,140 C31,150 36,157 60,157 C84,157 89,150 88,140 Z');
+    } else { // kneel: folded legs tucked under on the cushion
+      const lap = dress ? cloth : trousers;
+      legs = F('M30,140 C26,152 31,161 60,161 C89,161 94,152 90,140 Z',lap) + wash('M30,140 C26,152 31,161 60,161 C89,161 94,152 90,140 Z')
+           + `<path d="M40,158 C48,161 72,161 80,158" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="2"/>`;
+    }
+    // tails peep out at the side
+    const T=(d,fill,x='')=>F(d,fill)+x;
+    if(c.animal==='cat') tail = T('M84,140 C100,140 108,124 103,108 C101,103 96,104 97,110 C101,122 96,132 84,133 Z',fur, `<path d="M99,121 l5,1 M100,113 l5,-1" stroke="${furD}" stroke-width="1.6"/>`);
+    if(c.animal==='fox') tail = T('M82,148 C104,153 114,128 106,110 C101,124 92,133 82,137 Z',fur) + T('M106,110 C110,118 108,127 104,132 C102,124 104,116 106,110 Z',furL);
+    if(c.animal==='mouse') tail = `<path d="M84,150 C100,156 110,142 104,126 C102,121 98,122 99,126" fill="none" stroke="${ink}" stroke-width="3.6" stroke-linecap="round"/><path d="M84,150 C100,156 110,142 104,126 C102,121 98,122 99,126" fill="none" stroke="${pink}" stroke-width="2" stroke-linecap="round"/>`;
+    if(c.animal==='dog') tail = T('M83,138 C96,135 101,124 99,114 C95,119 92,126 83,131 Z',fur);
+    if(c.animal==='rabbit') tail = `<circle cx="88" cy="146" r="7" fill="${furL}" ${lw}/>`;
+    if(c.animal==='owl') tail = T('M78,146 L92,152 L86,142 Z',furD);
+    if(pose==='sit'){ /* tails tuck down beside the seat */ }
+    full = `${tail}${legs}${torso}${armL}${armR}`;
+  }
+  const isFull = pose!=='bust';
+  return `<svg class="char ${cls}" viewBox="0 0 120 ${isFull?CHAR_FULL_H:124}" role="img" aria-label="${esc(title||'café character')}">
+    <defs>
+      <filter id="${u}-p" x="-6%" y="-6%" width="112%" height="112%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05 0.07" numOctaves="2" seed="7" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="3" seed="3" result="blot"/>
+        <feColorMatrix in="blot" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.18  0 0 0 0 0.08  0 0 0 0.9 -0.42" result="b2"/>
+        <feComposite in="b2" in2="d" operator="in" result="b3"/>
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="2" result="grain"/>
+        <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.22  0 0 0 0 0.12  0 0 0 0.45 -0.15" result="g2"/>
+        <feComposite in="g2" in2="d" operator="in" result="g3"/>
+        <feMerge><feMergeNode in="d"/><feMergeNode in="b3"/><feMergeNode in="g3"/></feMerge>
+      </filter>
+      <linearGradient id="${u}-w" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#fff8e8" stop-opacity="0.22"/><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3a2416" stop-opacity="0.22"/></linearGradient>
+      <pattern id="${u}-s" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)"><path d="M0,0 V3" stroke="${ink}" stroke-width="0.8" opacity="0.4"/></pattern>
+    </defs>
+    <g filter="url(#${u}-p)">
+      <g transform="translate(0 4)">${back}</g>${isFull ? full : body}${neck}
+      <g transform="translate(0 ${c.animal==='mouse'?7:4})">${ears}${head}
+      ${blush}${eyes}${nose}${whiskers}${glasses}${hat}</g>
+    </g>
+  </svg>`;
+}
+
+// ── The café's animals ──
+// Friends appear as the animal they chose (or one picked for them). While
+// the shared timer runs everyone sits at their place; when it's paused or
+// not started they get up and wander about the room, and when the host
+// starts it again they walk back and sit down. (Each screen animates its
+// own wandering; only the seats and the timer are shared.)
+const ROAM_SPEED = 62, RETURN_SPEED = 150;          // in table units per second
+const roamingAllowed = () => !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+function sitterFloor(rec){ return { x:rec.seat.x, y: rec.seat.kneel ? rec.seat.y + 4 : rec.seat.y + 58*depthScale(rec.seat.y) }; }
+function placeSitter(rec, x, y, dur, pose){
+  const el=rec.el, standing = pose==='stand';
+  const anchor = standing ? CHAR_ANCHOR.stand : (rec.seat.kneel ? CHAR_ANCHOR.kneel : CHAR_ANCHOR.sit);
+  const sc = standing ? depthScale(y) : rec.seat.s;
+  el.style.transition = dur ? `left ${dur}s linear, top ${dur}s linear, transform ${dur}s linear` : 'none';
+  el.style.left=(x/TABLE.w*100).toFixed(2)+'%'; el.style.top=(y/TABLE.h*100).toFixed(2)+'%';
+  el.style.transform=`translate(-50%, ${(-anchor*100).toFixed(1)}%) scale(${sc.toFixed(3)})`;
+  el.style.zIndex=String(Math.round(y));
+  rec.x=x; rec.y=y;
+}
+function setSitterPose(rec, pose){            // 'seated' | 'idle' | 'walking'
+  rec.el.classList.toggle('seated', pose==='seated');
+  rec.el.classList.toggle('walking', pose==='walking');
+  rec.state=pose;
+}
+// a point on the floor that isn't under the table, isn't over your own
+// place at the front, and can be reached without walking through the table
+const inTable=(x,y)=>{ const dx=(x-TABLE.cx)/335, dy=(y-TABLE.cy-10)/150; return dx*dx+dy*dy<1; };
+const crossesTable=(a,b)=>{ for(let k=1;k<16;k++){ const f=k/16; if(inTable(a.x+(b.x-a.x)*f, a.y+(b.y-a.y)*f)) return true; } return false; };
+// the way from one place to another, going round the table rather than over it
+function routeAround(from, to){
+  if(!crossesTable(from,to)) return [to];
+  const RX=372, RY=178, cy=TABLE.cy+10;
+  const ang=p=>Math.atan2((p.y-cy)/RY, (p.x-TABLE.cx)/RX);
+  let a0=ang(from), a1=ang(to), d=a1-a0;
+  while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI;
+  const n=Math.max(1, Math.ceil(Math.abs(d)/(Math.PI/5))), pts=[];
+  for(let i=0;i<=n;i++){ const a=a0+d*i/n; pts.push({x:TABLE.cx+RX*Math.cos(a), y:cy+RY*Math.sin(a)}); }
+  return [...pts, to];
+}
+function roamTarget(from){
+  for(let t=0;t<40;t++){
+    const x=70+Math.random()*860, y=60+Math.random()*365;
+    if(inTable(x,y) || (y>318 && Math.abs(x-TABLE.cx)<220)) continue;
+    if(!crossesTable(from,{x,y})) return {x,y};
+  }
+  return from;
+}
+function sitterWalk(rec, to, speed, then){
+  clearTimeout(rec.timer);
+  const legs = rec.x==null ? [to] : routeAround({x:rec.x, y:rec.y}, to);
+  setSitterPose(rec,'walking');
+  const next=()=>{
+    const p=legs.shift(); if(!p){ then(); return; }
+    const dur=Math.max(0.12, Math.hypot(p.x-rec.x, p.y-rec.y)/speed);
+    placeSitter(rec, p.x, p.y, dur, 'stand');
+    rec.timer=setTimeout(next, dur*1000);
+  };
+  next();
+}
+function sitterWander(rec){
+  if(rec.mode!=='roam') return;
+  sitterWalk(rec, roamTarget(rec), ROAM_SPEED, ()=>{
+    if(rec.mode!=='roam') return;
+    setSitterPose(rec,'idle');
+    rec.timer=setTimeout(()=>sitterWander(rec), 1400+Math.random()*3600);
+  });
+}
+function sitterSitDown(rec, animate){
+  clearTimeout(rec.timer);
+  const sit=()=>{ setSitterPose(rec,'seated'); placeSitter(rec, rec.seat.x, rec.seat.y, 0, 'seat'); };
+  if(!animate || rec.state==='seated' || rec.x==null) return sit();
+  sitterWalk(rec, sitterFloor(rec), RETURN_SPEED, sit);
+}
+function sitterGetUp(rec){
+  clearTimeout(rec.timer);
+  const f=sitterFloor(rec);
+  setSitterPose(rec,'idle'); placeSitter(rec, f.x, f.y, 0, 'stand');
+  rec.timer=setTimeout(()=>sitterWander(rec), 300+Math.random()*1500);
+}
+function buildSitter(rec, m){
+  const look=m.look || defaultCharFor(m.user_id), name=personName(m);
+  rec.el.innerHTML =
+    `<div class="cs-pose cs-seat">${characterSVG(look,{pose:rec.seat.kneel?'kneel':'sit', title:name})}</div>`
+  + `<div class="cs-pose cs-stand"><div class="cs-step cs-s0">${characterSVG(look,{pose:'stand', title:name})}</div>`
+  + `<div class="cs-step cs-s1">${characterSVG(look,{pose:'stand', step:1, title:name})}</div>`
+  + `<div class="cs-step cs-s2">${characterSVG(look,{pose:'stand', step:2, title:name})}</div></div>`;
+}
+function syncSitters(angles, who, vibe){
+  const layer=document.getElementById('cr-sitters'); if(!layer || !S.room) return;
+  if(!S.room.sitters){ S.room.sitters=new Map(); layer.innerHTML=''; }
+  const st=S.room.sitters;
+  const running = timerState().running, roamOK = roamingAllowed();
+  const seen=new Set();
+  angles.forEach((a,i)=>{
+    const m=who[i]; if(!m) return;
+    seen.add(m.user_id);
+    const mine = m.user_id===S.user.id;
+    const seat=sitterSpot(a, vibe), here = mine || S.room.presence.has(m.user_id);
+    let rec=st.get(m.user_id), fresh=false;
+    if(!rec){ rec={uid:m.user_id, el:document.createElement('div'), mode:null, state:null, x:null, y:null}; rec.el.className='cr-sitter'+(mine?' me':''); layer.appendChild(rec.el); st.set(m.user_id, rec); fresh=true; }
+    const moved = !rec.seat || rec.seat.x!==seat.x || rec.seat.y!==seat.y || rec.seat.kneel!==seat.kneel;
+    rec.seat=seat;
+    const key=JSON.stringify(normalizeChar(m.look || defaultCharFor(m.user_id)))+(seat.kneel?'k':'c');
+    if(rec.key!==key){ rec.key=key; buildSitter(rec, m); }
+    rec.el.title = mine ? 'You' : personName(m)+(here?'':' (away)');
+    rec.el.classList.toggle('away', !here);
+    // away friends doze in their seats; everyone here wanders while the timer is off
+    const want = (running || !here || !roamOK) ? 'seated' : 'roam';
+    if(want!==rec.mode){
+      rec.mode=want;
+      if(want==='seated') sitterSitDown(rec, !fresh); else sitterGetUp(rec);
+    } else if(moved && rec.state==='seated'){ placeSitter(rec, seat.x, seat.y, 0, 'seat'); }
+  });
+  for(const [uid,rec] of st) if(!seen.has(uid)){ clearTimeout(rec.timer); rec.el.remove(); st.delete(uid); }
+}
+function clearSitters(){
+  if(!S.room?.sitters) return;
+  for(const rec of S.room.sitters.values()){ clearTimeout(rec.timer); rec.el.remove(); }
+  S.room.sitters.clear();
 }
 // Where a sitter goes for seat angle a: on the chair seat, or kneeling on the cushion.
 function sitterSpot(a, vibe){
@@ -1047,15 +1424,11 @@ function tableclothSVG(){
 function tableSVG(seatCount, vibe){
   const {cx,cy,rx,ry} = TABLE;
   const angles = seatAngles(seatCount);
-  // your own chair (the first seat, at the front) is left out, as if you're
-  // sitting in it looking across the table
-  const chairs = angles.slice(1).map(a=>{ const p=seatPoint(a, TABLE.chairRx, TABLE.chairRy); return {...p, near: Math.sin(a) > 0.05}; });
+  const chairs = angles.map(a=>{ const p=seatPoint(a, TABLE.chairRx, TABLE.chairRy); return {...p, near: Math.sin(a) > 0.05}; });
   // the tea house sits on floor cushions round a low table instead
   const tatami = vibe==='kyoto';
   const seatArt = (c)=> tatami ? zabutonSVG(c.x, c.y + (c.near ? 40 : 22), depthScale(c.y)*1.5, c.i) : chairSVG(c.x, c.y, depthScale(c.y), c.near);
-  chairs.forEach((c,i)=>{ c.i=i+1; });
-  // on the floor your own cushion shows too, just in front of the table
-  if(tatami){ const p=seatPoint(angles[0], TABLE.chairRx, TABLE.chairRy); chairs.push({...p, near:true, i:0}); }
+  chairs.forEach((c,i)=>{ c.i=i; });
   const farChairs  = chairs.filter(c=>!c.near).sort((a,b)=>a.y-b.y).map(seatArt).join('');
   const nearChairs = chairs.filter(c=> c.near).sort((a,b)=>a.y-b.y).map(seatArt).join('');
   const finish = TABLE_STYLE[vibe] || 'wood';
@@ -1102,15 +1475,16 @@ function renderSeats(force){
   const me=c.members.find(m=>m.user_id===S.user.id);
   const others=c.members.filter(m=>m!==me);
   const angles=seatAngles(seatCount);
-  // You take the front chair; friends fill the chairs nearest you and at the
-  // sides first, and the far side of the table only once it gets busy.
+  // You take the front-left seat; friends fill the seats nearest the front
+  // and at the sides first, and the far side only once it gets busy.
   const fillOrder=angles.slice(1).map((a,i)=>({a, i:i+1})).sort((p,q)=>Math.sin(q.a)-Math.sin(p.a)).map(p=>p.i);
   const who=new Array(seatCount).fill(null);
   if(me) who[0]=me;
   others.forEach((m,k)=>{ if(fillOrder[k]!=null) who[fillOrder[k]]=m; });
   const html = angles.map((a,i)=>{
     const m=who[i];
-    const p=seatPoint(a, TABLE.cupRx, TABLE.cupRy + (Math.sin(a)<0 ? 12 : 0));
+    // cups on the far side stand near the back rim, on the near side by the front edge, so tall cups never hide a name card behind them
+    const p={ x: TABLE.cx + TABLE.cupRx*Math.cos(a), y: TABLE.cy + (Math.sin(a)<0 ? 98 : 80)*Math.sin(a) };
     const s=depthScale(seatPoint(a, TABLE.chairRx, TABLE.chairRy).y);
     const pos=`left:${(p.x/TABLE.w*100).toFixed(2)}%; top:${(p.y/TABLE.h*100).toFixed(2)}%; --s:${s.toFixed(3)}; z-index:${Math.round(p.y)};`;
     if(!m) return `<div class="cr-seat open" style="${pos}" title="${c.vibe==='kyoto'?'An empty cushion':'An empty chair'} — invite a friend"></div>`;
@@ -1133,11 +1507,8 @@ function renderSeats(force){
     </div>`;
   }).join('');
   document.getElementById('cr-seats').innerHTML = html;
-  // friends sitting in their chairs (you're in the front seat, looking on)
-  document.getElementById('cr-sitters').innerHTML = angles.map((a,i)=>{
-    const m=who[i]; if(!m || i===0) return '';
-    return sitterHTML(m, sitterSpot(a, vibe), S.room.presence.has(m.user_id));
-  }).join('');
+  // friends at the table: sitting while the timer runs, wandering when it's off
+  syncSitters(angles, who, vibe);
 }
 
 function renderMyDrinkPanel(){
@@ -1244,6 +1615,7 @@ function setCafeDuration(mins){ cafeTimer('set', parseInt(mins,10)*60); }
 function tickCafeTimer(){
   const c=S.room?.cafe; if(!c) return;
   const {remaining,running}=timerState();
+  if(S.room.lastRunning!==running){ S.room.lastRunning=running; renderSeats(true); }   // sit down / get up
   renderSeats(false);
   document.getElementById('cr-time').textContent = fmtClock(remaining);
   document.getElementById('cr-steep').style.width = ((1-remaining/(c.timer_duration_secs||1))*100)+'%';
@@ -2149,7 +2521,80 @@ async function loadMyProfile(){
     if(error) throw error;
     S.profile = data || null;
     if(S.profile?.username) S.user.username = S.profile.username;
+    // a character chosen before the database could store one lives in your account details
+    if(S.profile && !S.profile.look && S.user.meta?.look) S.profile.look = S.user.meta.look;
   } catch(e){ S.profile = null; console.warn('Profile not loaded:', e.message||e); }
+}
+
+// ── The Character Studio ──
+let charDraft=null;
+const myLook = () => normalizeChar(S.profile?.look || S.user?.meta?.look || defaultCharFor(S.user?.id));
+function renderCharSticker(){
+  const el=document.getElementById('gz-char-sticker'); if(!el || !S.user) return;
+  el.innerHTML = characterSVG(myLook(), {title:'Your café character'});
+}
+function openCharStudio(){
+  if(!S.user){ openAuthModal('signin'); return; }
+  charDraft = myLook();
+  document.getElementById('char-msg').textContent='';
+  renderCharStudio();
+  document.getElementById('char-modal').classList.add('open');
+}
+function closeCharStudio(e){ if(!e || e.target===document.getElementById('char-modal')) document.getElementById('char-modal').classList.remove('open'); }
+const CHAR_ROWS = [
+  ['animal','Animal','animal'], ['fur','Fur','fur'], ['face','Expression','face'], ['glasses','Spectacles','glasses'],
+  ['hat','On the head','hat'], ['hatColor','Its colour','color'], ['outfit','Wearing','outfit'], ['outfitColor','Its colour','color'],
+];
+function sameChar(a,b){ return Object.keys(CHAR_KEYS).every(k=>a[k]===b[k] || (k==='hatColor' && a.hat===b.hat && ['none','boater','flower'].includes(a.hat))); }
+function renderCharStudio(){
+  const d=charDraft;
+  document.getElementById('char-preview').innerHTML = characterSVG(d, {title:'Your café character', pose:'stand'});
+  document.getElementById('char-presets').innerHTML = CHAR_PRESETS.map((c,i)=>{
+    const n=normalizeChar(c);
+    return `<button type="button" class="char-preset ${sameChar(n,d)?'sel':''}" onclick="pickCharPreset(${i})" aria-label="Character ${i+1}">${characterSVG(n)}</button>`;
+  }).join('');
+  document.getElementById('char-opts').innerHTML = CHAR_ROWS.map(([key,label,group])=>{
+    if(key==='hatColor' && ['none','boater','flower'].includes(d.hat)) return '';
+    const opts=Object.entries(CHAR[group]);
+    const swatch = group==='fur' || group==='color';
+    return `<div class="char-row"><span class="char-label">${label}</span><div class="char-chips">${opts.map(([v,val])=>{
+      const on=d[key]===v;
+      if(swatch){
+        const col=Array.isArray(val)?val[0]:val;
+        const nice=v.charAt(0).toUpperCase()+v.slice(1);
+        return `<button type="button" class="char-sw ${on?'sel':''}" style="--sw:${col}" onclick="setCharOpt('${key}','${v}')" title="${nice}" aria-label="${label}: ${nice}" aria-pressed="${on}"></button>`;
+      }
+      return `<button type="button" class="char-chip ${on?'sel':''}" onclick="setCharOpt('${key}','${v}')" aria-pressed="${on}">${val}</button>`;
+    }).join('')}</div></div>`;
+  }).join('');
+}
+function setCharOpt(k,v){ if(!charDraft) return; charDraft=normalizeChar({...charDraft, [k]:v}); renderCharStudio(); }
+function pickCharPreset(i){ charDraft=normalizeChar(CHAR_PRESETS[i]); renderCharStudio(); }
+function shuffleChar(){
+  const pick=g=>{ const k=Object.keys(CHAR[g]); return k[Math.floor(Math.random()*k.length)]; };
+  const c={}; for(const [k,g] of Object.entries(CHAR_KEYS)) c[k]=pick(g);
+  if(Math.random()<0.4) c.hat='none'; if(Math.random()<0.65) c.glasses='none';
+  charDraft=normalizeChar(c); renderCharStudio();
+}
+async function saveChar(){
+  if(!S.user || !charDraft) return;
+  const btn=document.getElementById('char-save'), msg=document.getElementById('char-msg');
+  const look={...charDraft}; if(['none','boater','flower'].includes(look.hat)) delete look.hatColor;
+  btn.disabled=true; msg.textContent='Saving…'; msg.className='char-msg';
+  let stored=false;
+  try{
+    const { data, error } = await supabaseClient.rpc('set_my_character', { p_character: look });
+    if(error) throw error;
+    stored = data==='ok';
+  } catch(e){ console.warn('Character not stored in profile:', e.message||e); }
+  // keep a copy in your account too, so it survives even if the café database is behind
+  try{ await supabaseClient.auth.updateUser({ data:{ look } }); S.user.meta={...(S.user.meta||{}), look}; } catch(e){}
+  S.profile={...(S.profile||{}), look};
+  btn.disabled=false;
+  renderCharSticker();
+  if(S.room?.cafe){ attachPeople(S.room.cafe.members).then(()=>renderSeats(true)); }
+  if(stored){ msg.textContent=''; closeCharStudio(); showToast('Your character has taken their seat'); }
+  else { msg.textContent='Saved on this account. Friends will see it once the café database is updated (supabase/profiles.sql).'; msg.className='char-msg warn'; }
 }
 
 function renderProfilePage(){
@@ -2163,6 +2608,7 @@ function renderProfilePage(){
   const username=p.username || S.user.username || '';
   document.getElementById('gz-name').textContent = displayNameOf();
   document.getElementById('gz-handle').textContent = username;
+  renderCharSticker();
   // the portrait
   const img=document.getElementById('gz-avatar');
   const empty=document.getElementById('gz-avatar-empty');

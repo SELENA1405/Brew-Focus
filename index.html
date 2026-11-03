@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611031121" />
+<link rel="stylesheet" href="style.css?v=202611031407" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -421,6 +421,7 @@
 
       <section class="gz-box gz-portrait">
         <h2 class="gz-headline">Portrait of a Studious Mind</h2>
+        <div class="gz-photo-wrap">
         <figure class="gz-photo" id="gz-photo">
           <img id="gz-avatar" alt="Your profile picture" hidden>
           <div class="gz-photo-empty" id="gz-avatar-empty">
@@ -428,6 +429,8 @@
             <span>Portrait to follow</span>
           </div>
         </figure>
+        <button type="button" class="gz-char-sticker" id="gz-char-sticker" onclick="openCharStudio()" title="Your café character: tap to change" aria-label="Choose your café character"></button>
+        </div>
         <p class="gz-caption"><b id="gz-name"></b>, known about the café as <i>@<span id="gz-handle"></span></i>.</p>
         <div class="gz-bio">
           <label class="gz-bio-label" for="gz-bio">In their own words</label>
@@ -439,6 +442,7 @@
             Submit a new portrait
           </label>
           <button type="button" class="gz-link" id="gz-remove-photo" onclick="removeAvatar()" hidden>remove</button>
+          <button type="button" class="gz-link" onclick="openCharStudio()">café character</button>
         </div>
       </section>
 
@@ -782,6 +786,30 @@
   </div>
 </div>
 
+<!-- The Character Studio: choose who sits at café tables for you -->
+<div class="modal-bg" id="char-modal" onclick="closeCharStudio(event)">
+  <div class="modal char-modal" role="dialog" aria-labelledby="char-title">
+    <button class="modal-close" onclick="closeCharStudio()" aria-label="Close">×</button>
+    <h3 id="char-title">The Character Studio</h3>
+    <p class="char-sub">Choose who sits at the café table for you.</p>
+    <div class="char-studio">
+      <div class="char-left">
+        <div class="char-preview" id="char-preview"></div>
+        <button type="button" class="btn-s char-shuffle vbtn" onclick="shuffleChar()">Surprise me</button>
+      </div>
+      <div class="char-right">
+        <div class="char-label">Ready to sit</div>
+        <div class="char-presets" id="char-presets"></div>
+        <div class="char-opts" id="char-opts"></div>
+      </div>
+    </div>
+    <div class="char-foot">
+      <span class="char-msg" id="char-msg" role="status" aria-live="polite"></span>
+      <button type="button" class="btn-p vbtn" id="char-save" onclick="saveChar()">Take my seat</button>
+    </div>
+  </div>
+</div>
+
 <div class="leave-modal-bg" id="leave-modal">
   <div class="leave-modal">
     <h3>Your brew is still warm.</h3>
@@ -882,6 +910,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611031121"></script>
+<script src="script.js?v=202611031407"></script>
 </body>
 </html>

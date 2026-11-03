@@ -833,19 +833,29 @@ body::after {
 .cr-zabuton .zb-tuft { stroke:#e8d6a8; stroke-width:2.2; stroke-linecap:round; }
 .cr-chair .ch-shadow { fill:rgba(0,0,0,0.28); stroke:none; }
 .cr-seats { position:absolute; inset:0; }
-/* friends sitting at the table: portrait head over coat-and-collar shoulders */
+/* friends at the table: their chosen animals, sitting or wandering about */
 .cr-sitters { position:absolute; inset:0; pointer-events:none; }
-.cr-sitter { position:absolute; width:8.4cqw; display:flex; flex-direction:column; align-items:center;
-  transform:translate(-50%, -100%) scale(var(--s)); transform-origin:50% 100%; pointer-events:auto;
-  filter:drop-shadow(0 4px 5px rgba(0,0,0,0.35)); transition:opacity .4s, filter .4s; }
-.cr-sitter .sitter-head { position:relative; z-index:1; width:5cqw; height:5cqw; border-radius:50%; overflow:hidden; margin-bottom:-0.9cqw;
-  background:radial-gradient(circle at 40% 35%, #fbf3e2, #e8d6b4); border:0.28cqw solid #c7a86d; box-shadow:0 0 0 0.1cqw rgba(58,34,18,0.6);
-  display:flex; align-items:center; justify-content:center; }
-.cr-sitter .sitter-head img { width:100%; height:100%; object-fit:cover; display:block; filter:sepia(0.18) saturate(0.9); }
-.cr-sitter .sitter-head span { font-family:'Playfair Display', serif; font-style:italic; font-weight:500; font-size:2.7cqw; line-height:1; color:#5a2a2a; }
-.cr-sitter .sitter-body { display:block; width:8.4cqw; height:auto; }
-.cr-sitter.kneel .sitter-body { width:9cqw; }
-.cr-sitter.away { opacity:0.78; filter:grayscale(0.55) drop-shadow(0 4px 5px rgba(0,0,0,0.25)); }
+.cr-sitter { position:absolute; width:10cqw; transform-origin:50% 100%; pointer-events:auto; will-change:left, top, transform;
+  filter:drop-shadow(0 4px 4px rgba(0,0,0,0.32)); }
+.cr-sitter .char { display:block; width:100%; height:auto; }
+.cr-sitter .cs-seat { display:none; }
+.cr-sitter.seated .cs-seat { display:block; }
+.cr-sitter.seated .cs-stand { display:none; }
+.cr-sitter .cs-stand { position:relative; }
+.cr-sitter .cs-step { visibility:hidden; }
+.cr-sitter .cs-s0 { visibility:visible; }
+.cr-sitter .cs-s1, .cr-sitter .cs-s2 { position:absolute; inset:0; }
+/* walking: the two steps take turns, with a little bob */
+.cr-sitter.walking .cs-s0 { visibility:hidden; }
+.cr-sitter.walking .cs-s1 { animation:stepA .5s steps(1) infinite; }
+.cr-sitter.walking .cs-s2 { animation:stepB .5s steps(1) infinite; }
+.cr-sitter.walking .cs-stand { animation:walkBob .25s ease-in-out infinite alternate; }
+@keyframes stepA { 0% { visibility:visible; } 50% { visibility:hidden; } }
+@keyframes stepB { 0% { visibility:hidden; } 50% { visibility:visible; } }
+@keyframes walkBob { from { transform:translateY(0); } to { transform:translateY(-3%); } }
+/* a little shadow on the floor under anyone standing */
+.cr-sitter:not(.seated)::after { content:''; position:absolute; left:22%; right:22%; bottom:-1%; height:4%; border-radius:50%; background:rgba(0,0,0,0.25); z-index:-1; }
+.cr-sitter.away { opacity:0.78; filter:grayscale(0.55) drop-shadow(0 4px 4px rgba(0,0,0,0.25)); }
 .cr-seat { position:absolute; display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -88%) scale(var(--s)); transform-origin:50% 88%; width:14cqw; }
 .cr-seat .cr-cup { height:auto; display:flex; align-items:flex-end; justify-content:center; }
 .cr-seat .cr-cup svg { display:block; width:9.2cqw; height:auto; filter:drop-shadow(0 8px 10px rgba(0,0,0,0.4)); }
@@ -912,8 +922,7 @@ body::after {
   .cr-floor { top:200px; }
   .cr-tablewrap { margin-top:-10%; }
   .cr-seat { width:18cqw; }
-  .cr-sitter { width:10.5cqw; } .cr-sitter .sitter-head { width:6.4cqw; height:6.4cqw; margin-bottom:-1.1cqw; }
-  .cr-sitter .sitter-head span { font-size:3.4cqw; } .cr-sitter .sitter-body { width:10.5cqw; } .cr-sitter.kneel .sitter-body { width:11.2cqw; }
+  .cr-sitter { width:13cqw; }
   .cr-seat .cr-cup svg { width:12cqw; }
   .cr-seat .cr-card { font-size:0.72rem; max-width:30cqw; }
   .cr-seat .cr-host { display:none; }   /* the timer already says who's keeping time */
@@ -1998,3 +2007,54 @@ body::after {
 .rc-ings li.rc-more { font-family:'Caveat',cursive; font-style:normal; color:var(--warm-brown); }
 .rc-ings li.rc-more::before { display:none; }
 .rc-note { flex-shrink:1 !important; min-height:0; overflow:hidden; }
+
+/* ── Café character: sticker on the Gazette portrait, and the studio ── */
+.gz-photo-wrap { position:relative; }
+.gz-char-sticker { position:absolute; right:-12px; bottom:4px; width:76px; height:78px; padding:5px 5px 0; border:none; cursor:pointer;
+  background:#fbf6ea; border-radius:50% 50% 8px 8px; box-shadow:0 0 0 1.5px #7a2e3a, 0 0 0 4px #fbf6ea, 0 0 0 5px rgba(122,46,58,0.45), 0 6px 12px rgba(0,0,0,0.3);
+  transform:rotate(4deg); transition:transform .2s; overflow:hidden; }
+.gz-char-sticker:hover { transform:rotate(0) scale(1.05); }
+.gz-char-sticker:focus-visible { outline:2px solid var(--gold); outline-offset:4px; }
+.gz-char-sticker .char { width:100%; height:auto; display:block; }
+.gz-char-sticker:empty { display:none; }
+
+.modal.char-modal { max-width:820px; width:94%; padding:2rem 2.2rem 1.6rem; max-height:92vh; overflow:auto; }
+.char-modal h3 { margin-bottom:0.1rem; }
+.char-sub { font-family:'Caveat',cursive; font-size:1.15rem; color:var(--warm-brown); margin-bottom:1.1rem; }
+.char-studio { display:grid; grid-template-columns:230px 1fr; gap:1.6rem; align-items:start; }
+.char-left { position:sticky; top:0; display:flex; flex-direction:column; align-items:center; gap:0.8rem; }
+.char-preview { position:relative; width:200px; aspect-ratio:200/280; border-radius:100px 100px 6px 6px; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; padding-bottom:14px;
+  background:radial-gradient(ellipse at 50% 92%, rgba(90,60,30,0.22) 0 18%, transparent 19%), radial-gradient(circle at 50% 35%, #fffaf0, #efe2c8 75%);
+  box-shadow:inset 0 0 0 1.5px rgba(122,46,58,0.55), inset 0 0 0 6px #fbf6ea, inset 0 0 0 7px rgba(199,168,109,0.7); }
+.char-preview .char { width:72%; height:auto; display:block; }
+.char-label { display:block; font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--warm-brown); margin-bottom:0.35rem; }
+.char-presets { display:grid; grid-template-columns:repeat(9, 1fr); gap:0.35rem; margin-bottom:1rem; }
+.char-preset { aspect-ratio:1; padding:3px 3px 0; border:1px solid rgba(107,79,58,0.25); border-radius:50%; background:#fbf6ea; cursor:pointer; overflow:hidden; display:flex; align-items:flex-end; transition:transform .15s, border-color .15s; }
+.char-preset:hover { transform:translateY(-2px); border-color:var(--burgundy); }
+.char-preset.sel { border:2px solid var(--burgundy); box-shadow:0 0 0 2px rgba(122,46,58,0.15); }
+.char-preset .char { width:100%; height:auto; display:block; }
+.char-row { display:grid; grid-template-columns:7.5rem 1fr; align-items:center; gap:0.6rem; padding:0.35rem 0; border-top:1px dotted rgba(58,34,18,0.22); }
+.char-row .char-label { margin:0; }
+.char-chips { display:flex; flex-wrap:wrap; gap:0.35rem; }
+.char-chip { font-family:'Lora',serif; font-size:0.72rem; color:var(--coffee); background:transparent; border:1px solid rgba(58,34,18,0.3); border-radius:2px; padding:0.32rem 0.6rem; cursor:pointer; }
+.char-chip:hover { border-color:var(--burgundy); color:var(--burgundy); }
+.char-chip.sel { background:var(--burgundy); border-color:var(--burgundy); color:#f6ead2; }
+.char-sw { width:24px; height:24px; border-radius:50%; border:1px solid rgba(58,34,18,0.35); background:var(--sw); cursor:pointer; box-shadow:inset 0 -3px 0 rgba(0,0,0,0.12); }
+.char-sw.sel { box-shadow:0 0 0 2px #fbf6ea, 0 0 0 4px var(--burgundy); }
+.char-sw:focus-visible, .char-chip:focus-visible, .char-preset:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.char-foot { display:flex; justify-content:flex-end; align-items:center; gap:1rem; margin-top:1.1rem; padding-top:0.9rem; border-top:1px solid rgba(58,34,18,0.2); }
+.char-msg { flex:1; font-family:'Caveat',cursive; font-size:1.05rem; color:var(--warm-brown); }
+.char-msg.warn { color:var(--burgundy); }
+@media(max-width:700px){
+  .char-studio { grid-template-columns:1fr; gap:1rem; }
+  .char-left { position:static; flex-direction:row; justify-content:center; }
+  .char-preview { width:110px; padding-bottom:8px; }
+  .char-presets { grid-template-columns:repeat(6, 1fr); }
+  .char-row { grid-template-columns:1fr; gap:0.3rem; }
+  .gz-char-sticker { width:62px; height:64px; right:-6px; bottom:4px; }
+}
+.char-modal .char-shuffle { color:var(--coffee); border:1px solid rgba(58,34,18,0.4); background:transparent; padding:0.55rem 1.1rem; font-family:'Lora',serif; font-size:0.7rem; letter-spacing:0.14em; text-transform:uppercase; }
+.char-modal .char-shuffle:hover { color:var(--burgundy); border-color:var(--burgundy); }
+/* a little handwritten "you" over your own animal */
+.cr-sitter.me::before { content:'you'; position:absolute; left:50%; top:101%; transform:translateX(-50%); font-family:'Caveat',cursive; font-size:max(0.8rem, 1.6cqw); line-height:1; color:#f3d98e; text-shadow:0 1px 2px rgba(0,0,0,0.75); white-space:nowrap; }
+.cr-sitter.me.seated::before { top:99%; }
