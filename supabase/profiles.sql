@@ -12,6 +12,8 @@
 
 alter table public.profiles add column if not exists display_name text;
 alter table public.profiles add column if not exists avatar_url  text;
+-- the little storybook animal who sits at café tables for you
+alter table public.profiles add column if not exists look        jsonb;
 
 -- ── Profile pictures ────────────────────────────────────────────────────
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -49,7 +51,7 @@ begin
   select * into p from public.profiles where id = auth.uid();
   select created_at into joined from auth.users where id = auth.uid();
   return json_build_object('username', p.username, 'display_name', p.display_name,
-                           'avatar_url', p.avatar_url, 'joined', joined);
+                           'avatar_url', p.avatar_url, 'look', p.look, 'joined', joined);
 end $$;
 
 -- Change your name and/or username. Returns 'ok', 'taken' (someone else has
@@ -88,18 +90,43 @@ begin
   return 'ok';
 end $$;
 
+-- Choose your café character: a storybook animal in café clothes, as a
+-- small set of named choices (animal, fur, outfit, hat…); anything that isn't a short lowercase word is refused.
+create or replace function public.set_my_character(p_character jsonb)
+returns text language plpgsql security definer set search_path = public as $$
+declare k text; v jsonb;
+begin
+  if auth.uid() is null then raise exception 'Please sign in first'; end if;
+  if p_character is not null then
+    if jsonb_typeof(p_character) <> 'object' or length(p_character::text) > 400 then return 'invalid'; end if;
+    for k, v in select * from jsonb_each(p_character) loop
+      if k not in ('animal','fur','outfit','outfitColor','hat','hatColor','glasses','face')
+         or jsonb_typeof(v) <> 'string' or (v #>> '{}') !~ '^[a-z]{1,16}$' then
+        return 'invalid';
+      end if;
+    end loop;
+  end if;
+  insert into public.profiles (id, username, look)
+    values (auth.uid(), (select coalesce(nullif(btrim(raw_user_meta_data->>'username'), ''), split_part(email, '@', 1)) from auth.users where id = auth.uid()), p_character)
+  on conflict (id) do update set look = excluded.look;
+  -- nudge your café seats so friends see your new look straight away
+  update public.cafe_members set username = username where user_id = auth.uid();
+  return 'ok';
+end $$;
+
 -- Names and pictures of the people you share a café with (or who invited
 -- you to one), so tables show "Selena Sun" and her portrait rather than a
 -- bare username. Nobody else's profile is visible this way.
-create or replace function public.cafe_people(p_ids uuid[])
-returns table (id uuid, username text, display_name text, avatar_url text)
+drop function if exists public.cafe_people(uuid[]);   -- (its columns grew a look)
+create function public.cafe_people(p_ids uuid[])
+returns table (id uuid, username text, display_name text, avatar_url text, look jsonb)
 language sql stable security definer set search_path = public as $$
   -- (someone who signed in with Google and hasn't set a name shows their Google name)
   select p.id, p.username,
          coalesce(nullif(btrim(p.display_name), ''),
                   nullif(btrim(u.raw_user_meta_data->>'full_name'), ''),
                   nullif(btrim(u.raw_user_meta_data->>'name'), '')) as display_name,
-         p.avatar_url
+         p.avatar_url, p.look
   from public.profiles p
   left join auth.users u on u.id = p.id
   where p.id = any(p_ids)
@@ -116,7 +143,9 @@ revoke execute on function public.get_my_profile()            from public, anon;
 revoke execute on function public.set_my_profile(text, text)  from public, anon;
 revoke execute on function public.set_my_avatar(text)         from public, anon;
 revoke execute on function public.cafe_people(uuid[])         from public, anon;
+revoke execute on function public.set_my_character(jsonb)     from public, anon;
 grant  execute on function public.get_my_profile()            to authenticated;
 grant  execute on function public.set_my_profile(text, text)  to authenticated;
 grant  execute on function public.set_my_avatar(text)         to authenticated;
 grant  execute on function public.cafe_people(uuid[])         to authenticated;
+grant  execute on function public.set_my_character(jsonb)     to authenticated;
