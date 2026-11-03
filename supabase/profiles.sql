@@ -2,6 +2,7 @@
 --  Brew & Focus — profile page (name, username, profile picture)
 --
 --  Run once in Supabase → SQL Editor → New query → Run. Safe to run again.
+--  Needs supabase/cafes.sql to have been run first.
 --
 --  Adds a display name to profiles, a public "avatars" storage bucket where
 --  each person can only upload into their own folder, and functions to read
@@ -82,12 +83,40 @@ begin
   insert into public.profiles (id, username, avatar_url)
     values (auth.uid(), (select coalesce(nullif(btrim(raw_user_meta_data->>'username'), ''), split_part(email, '@', 1)) from auth.users where id = auth.uid()), p_url)
   on conflict (id) do update set avatar_url = excluded.avatar_url;
+  -- nudge your café seats so friends at the table see the new picture straight away
+  update public.cafe_members set username = username where user_id = auth.uid();
   return 'ok';
 end $$;
+
+-- Names and pictures of the people you share a café with (or who invited
+-- you to one), so tables show "Selena Sun" and her portrait rather than a
+-- bare username. Nobody else's profile is visible this way.
+create or replace function public.cafe_people(p_ids uuid[])
+returns table (id uuid, username text, display_name text, avatar_url text)
+language sql stable security definer set search_path = public as $$
+  -- (someone who signed in with Google and hasn't set a name shows their Google name)
+  select p.id, p.username,
+         coalesce(nullif(btrim(p.display_name), ''),
+                  nullif(btrim(u.raw_user_meta_data->>'full_name'), ''),
+                  nullif(btrim(u.raw_user_meta_data->>'name'), '')) as display_name,
+         p.avatar_url
+  from public.profiles p
+  left join auth.users u on u.id = p.id
+  where p.id = any(p_ids)
+    and auth.uid() is not null
+    and ( p.id = auth.uid()
+       or exists (select 1 from public.cafe_members mine
+                  join public.cafe_members theirs on theirs.cafe_id = mine.cafe_id
+                  where mine.user_id = auth.uid() and theirs.user_id = p.id)
+       or exists (select 1 from public.cafe_invites i
+                  where i.to_user = auth.uid() and i.from_user = p.id) );
+$$;
 
 revoke execute on function public.get_my_profile()            from public, anon;
 revoke execute on function public.set_my_profile(text, text)  from public, anon;
 revoke execute on function public.set_my_avatar(text)         from public, anon;
+revoke execute on function public.cafe_people(uuid[])         from public, anon;
 grant  execute on function public.get_my_profile()            to authenticated;
 grant  execute on function public.set_my_profile(text, text)  to authenticated;
 grant  execute on function public.set_my_avatar(text)         to authenticated;
+grant  execute on function public.cafe_people(uuid[])         to authenticated;

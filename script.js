@@ -614,6 +614,30 @@ const VIBE_KEYS = Object.keys(CAFE_VIBES);
 // (cafés opened as the old Fireside Cabin are shown as the Beach Café)
 const vibeOf = key => CAFE_VIBES[key==='cabin' ? 'beach' : key] || CAFE_VIBES.parisian;
 const myCafeName = () => S.user?.username || (S.user?.email||'').split('@')[0] || 'Friend';
+// What to call someone at a café: their name if they've set one, else their username.
+const personName = m => (m && (m.name || m.username)) || 'Friend';
+
+// Names and portraits for café people (from public.cafe_people). If that
+// function isn't in the database yet, seats simply fall back to usernames.
+let peopleRpcMissing = false;
+async function attachPeople(members){
+  const ids=[...new Set(members.map(m=>m.user_id || m.from_user).filter(Boolean))];
+  let rows=[];
+  if(ids.length && !peopleRpcMissing){
+    const { data, error } = await CafeDB.sb.rpc('cafe_people', {p_ids:ids});
+    if(error){ if(/cafe_people|function/i.test(error.message||'')) peopleRpcMissing=true; console.warn('Café names not loaded:', error.message); }
+    else rows = Array.isArray(data) ? data : (data ? [data] : []);
+  }
+  const byId=Object.fromEntries(rows.map(r=>[r.id, r]));
+  // your own name and picture are always to hand, even before cafe_people exists
+  if(S.user && S.profile) byId[S.user.id] = {...(byId[S.user.id]||{}), display_name:S.profile.display_name, avatar_url:S.profile.avatar_url, username:S.profile.username};
+  members.forEach(m=>{
+    const p=byId[m.user_id || m.from_user]; if(!p) return;
+    m.name = p.display_name || null;
+    m.avatar = p.avatar_url || null;
+  });
+  return members;
+}
 
 // ── Data layer: every Supabase call the café makes ──
 const CafeDB = {
@@ -626,12 +650,14 @@ const CafeDB = {
     if(!ids.length) return [];
     const cafes = this.check(await this.sb.from('cafes').select('*').in('id', ids).order('created_at', {ascending:false}));
     const members = this.check(await this.sb.from('cafe_members').select('*').in('cafe_id', ids).order('joined_at'));
+    await attachPeople(members);
     return cafes.map(c=>({...c, members: members.filter(m=>m.cafe_id===c.id)}));
   },
   async listInvites(){
     return this.check(await this.sb.from('cafe_invites')
-      .select('id, cafe_id, from_username, created_at, cafes(name, vibe, invite_code)')
-      .eq('to_user', S.user.id).order('created_at', {ascending:false}));
+      .select('id, cafe_id, from_user, from_username, created_at, cafes(name, vibe, invite_code)')
+      .eq('to_user', S.user.id).order('created_at', {ascending:false}))
+      .map(inv=>({...inv, user_id:inv.from_user, username:inv.from_username}));
   },
   async create(name, vibe){ return this.check(await this.sb.rpc('create_cafe', {p_name:name, p_vibe:vibe, p_username:myCafeName()})); },
   async joinByCode(code){ return this.check(await this.sb.rpc('join_cafe', {p_code:code, p_username:myCafeName()})); },
@@ -640,6 +666,7 @@ const CafeDB = {
     const cafe = this.check(await this.sb.from('cafes').select('*').eq('id', id).maybeSingle());
     if(!cafe) return null;
     const members = this.check(await this.sb.from('cafe_members').select('*').eq('cafe_id', id).order('joined_at'));
+    await attachPeople(members);
     return {...cafe, members};
   },
   async setDrink(cafeId, drink){
@@ -697,13 +724,14 @@ async function renderCafeList(){
   const invitesEl=document.getElementById('cafe-invites');
   try{
     const [cafes, invites] = await Promise.all([CafeDB.listMine(), CafeDB.listInvites()]);
+    await attachPeople(invites);
     S.cafes = cafes;
     invitesEl.hidden = !invites.length;
     invitesEl.innerHTML = invites.length ? `<h3 class="cafe-section-h"><span>Invitations</span></h3>` + invites.map(inv=>{
       const v=vibeOf(inv.cafes?.vibe);
       return `<div class="invite-card">
         <span class="vibe-swatch vibe-${esc(inv.cafes?.vibe)}" aria-hidden="true"></span>
-        <div class="invite-text"><strong>${esc(inv.from_username)}</strong> invited you to <em>${esc(inv.cafes?.name||'a café')}</em>
+        <div class="invite-text"><strong>${esc(personName(inv))}</strong> invited you to <em>${esc(inv.cafes?.name||'a café')}</em>
           <span class="invite-vibe">${v.label}</span></div>
         <div class="invite-actions">
           <button class="btn-p vbtn" onclick="acceptInvite('${esc(inv.cafes?.invite_code||'')}')">${vicon('door')}Join</button>
@@ -723,7 +751,7 @@ function cafeCardHTML(c){
     <div class="member-slot">
       ${m.drink ? buildCupSVG({size:64,fillFraction:1,steam:false,cup:m.drink.cup||'mug',base:m.drink.base||'coffee',drink:m.drink.drink,addons:m.drink.addons||[]})
                 : `<div class="seat-empty-mini" aria-hidden="true"></div>`}
-      <span class="member-name">${esc(m.username)}</span>
+      <span class="member-name">${esc(personName(m))}</span>
     </div>`).join('');
   return `<div class="room-card">
     <div class="room-card-vibe"><span class="vibe-swatch vibe-${esc(c.vibe)}" aria-hidden="true"></span>${v.label}</div>
@@ -933,6 +961,53 @@ function chairSVG(x, y, s, near){
   return `<g class="cr-chair ${near?'near':'far'}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(3)})">${body}</g>`;
 }
 
+// A zabuton floor cushion for the tea house, where everyone sits on the
+// tatami instead of on chairs. Puffy square, stitched edge and a centre tuft.
+const ZABUTON_COLOURS = ['var(--chair-seat)', '#3f5470', '#a8553a', '#6a5a7a'];
+function zabutonSVG(x, y, s, i){
+  const col = ZABUTON_COLOURS[i % ZABUTON_COLOURS.length];
+  return `<g class="cr-zabuton" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(3)})">
+    <ellipse class="zb-shadow" cx="2" cy="16" rx="50" ry="10"/>
+    <path class="zb-side" style="fill:${col}" d="M-44,0 Q-46,10 -38,15 Q0,19 38,15 Q46,10 44,0 Z"/>
+    <path class="zb-side-shade" d="M-44,0 Q-46,10 -38,15 Q0,19 38,15 Q46,10 44,0 Z"/>
+    <path class="zb-top" style="fill:${col}" d="M-34,-15 Q0,-19 34,-15 Q40,-14 42,-8 Q46,0 44,2 Q0,9 -44,2 Q-46,0 -42,-8 Q-40,-14 -34,-15 Z"/>
+    <path class="zb-sheen" d="M-30,-12 Q0,-15 30,-12 Q4,-9 -30,-12 Z"/>
+    <path class="zb-stitch" d="M-34,-10 Q0,-13 34,-10 Q38,-4 38,-1 Q0,4 -38,-1 Q-38,-4 -34,-10 Z"/>
+    <path class="zb-tuft" d="M-4,-6 L4,-2 M4,-6 L-4,-2"/>
+  </g>`;
+}
+
+// A low chabudai tea table: thick round top on four short legs.
+function lowTableSVG(){
+  const {cx,cy,rx,ry}=TABLE;
+  const leg = (dx)=>`<path d="M${cx+dx-9},${cy+60} L${cx+dx-7},${cy+112} Q${cx+dx},${cy+117} ${cx+dx+7},${cy+112} L${cx+dx+9},${cy+60} Z" fill="var(--table-2)"/>
+    <path d="M${cx+dx-3},${cy+66} L${cx+dx-2},${cy+108}" stroke="rgba(255,255,255,0.12)" stroke-width="3"/>`;
+  return `<ellipse cx="${cx}" cy="${cy+112}" rx="${rx-10}" ry="30" fill="rgba(0,0,0,0.3)"/>
+    ${leg(-170)}${leg(170)}
+    <ellipse cx="${cx}" cy="${cy+22}" rx="${rx}" ry="${ry}" fill="var(--table-2)"/>`;
+}
+
+// Someone sitting at the table: their portrait (or initial) above a pair
+// of shoulders in a coat, placed on their chair or floor cushion.
+const COATS = ['#7a2e3a', '#2f5a4a', '#34405a', '#8a5a2a', '#5a3a5a', '#4a5a3a', '#6a3a24', '#2e4a5a'];
+function coatFor(id){ let h=2166136261; for(const ch of String(id)){ h^=ch.charCodeAt(0); h=Math.imul(h, 16777619)>>>0; } return COATS[(h ^ (h>>>13)) % COATS.length]; }
+function sitterHTML(m, spot, here){
+  const name=personName(m);
+  const face = m.avatar
+    ? `<img src="${esc(m.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:${esc(JSON.stringify((name[0]||'?').toUpperCase()))}}))">`
+    : `<span>${esc((name[0]||'?').toUpperCase())}</span>`;
+  return `<div class="cr-sitter ${here?'here':'away'} ${spot.kneel?'kneel':''}" style="left:${(spot.x/TABLE.w*100).toFixed(2)}%; top:${(spot.y/TABLE.h*100).toFixed(2)}%; --s:${spot.s.toFixed(3)}; --coat:${coatFor(m.user_id)}; z-index:${Math.round(spot.y)};" title="${esc(name)}${here?'':' (away)'}">
+    <div class="sitter-head">${face}</div>
+    <svg class="sitter-body" viewBox="0 0 60 34" aria-hidden="true"><path d="M2,34 C2,18 8,10 20,8 Q30,13 40,8 C52,10 58,18 58,34 Z" fill="var(--coat)"/><path d="M20,8 Q30,13 40,8 L36,8 Q30,11 24,8 Z" fill="#f2e6cf"/><path d="M30,12 L27,24 L30,30 L33,24 Z" fill="rgba(0,0,0,0.22)"/><path d="M6,30 C8,20 12,15 18,13" stroke="rgba(255,255,255,0.15)" stroke-width="2" fill="none"/></svg>
+  </div>`;
+}
+// Where a sitter goes for seat angle a: on the chair seat, or kneeling on the cushion.
+function sitterSpot(a, vibe){
+  const p=seatPoint(a, TABLE.chairRx, TABLE.chairRy), ds=depthScale(p.y);
+  if(vibe==='kyoto'){ const near=Math.sin(a)>0.05; return { x:p.x, y:p.y + (near?40:22) - 6*ds, s:ds*1.08, kneel:true }; }
+  return { x:p.x, y:p.y - 3*ds, s:ds, kneel:false };
+}
+
 // The centrepiece goes in the gap between the two seats furthest back, so
 // nobody's drink stands in front of it.
 function centrepieceSpot(seatCount){
@@ -975,8 +1050,14 @@ function tableSVG(seatCount, vibe){
   // your own chair (the first seat, at the front) is left out, as if you're
   // sitting in it looking across the table
   const chairs = angles.slice(1).map(a=>{ const p=seatPoint(a, TABLE.chairRx, TABLE.chairRy); return {...p, near: Math.sin(a) > 0.05}; });
-  const farChairs  = chairs.filter(c=>!c.near).sort((a,b)=>a.y-b.y).map(c=>chairSVG(c.x, c.y, depthScale(c.y), false)).join('');
-  const nearChairs = chairs.filter(c=> c.near).sort((a,b)=>a.y-b.y).map(c=>chairSVG(c.x, c.y, depthScale(c.y), true)).join('');
+  // the tea house sits on floor cushions round a low table instead
+  const tatami = vibe==='kyoto';
+  const seatArt = (c)=> tatami ? zabutonSVG(c.x, c.y + (c.near ? 40 : 22), depthScale(c.y)*1.5, c.i) : chairSVG(c.x, c.y, depthScale(c.y), c.near);
+  chairs.forEach((c,i)=>{ c.i=i+1; });
+  // on the floor your own cushion shows too, just in front of the table
+  if(tatami){ const p=seatPoint(angles[0], TABLE.chairRx, TABLE.chairRy); chairs.push({...p, near:true, i:0}); }
+  const farChairs  = chairs.filter(c=>!c.near).sort((a,b)=>a.y-b.y).map(seatArt).join('');
+  const nearChairs = chairs.filter(c=> c.near).sort((a,b)=>a.y-b.y).map(seatArt).join('');
   const finish = TABLE_STYLE[vibe] || 'wood';
   return `<svg class="cr-furniture" viewBox="0 0 ${TABLE.w} ${TABLE.h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
     <defs>
@@ -988,12 +1069,12 @@ function tableSVG(seatCount, vibe){
       <pattern id="top-linen" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#f7f2e7"/><path d="M0 6h12M6 0v12" stroke="#ece4d2" stroke-width="0.8"/></pattern>
       <pattern id="top-leather" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#2f5a40"/><circle cx="2" cy="2" r="0.7" fill="#244834"/><circle cx="6" cy="6" r="0.7" fill="#3a6a4c"/></pattern>
     </defs>
-    <ellipse cx="${cx}" cy="${cy+196}" rx="250" ry="26" fill="rgba(0,0,0,0.32)"/>
+    ${tatami ? '' : `<ellipse cx="${cx}" cy="${cy+196}" rx="250" ry="26" fill="rgba(0,0,0,0.32)"/>`}
     ${farChairs}
-    <path d="M${cx-26},${cy+20} C${cx-20},${cy+90} ${cx-30},${cy+150} ${cx-40},${cy+186} L${cx+40},${cy+186} C${cx+30},${cy+150} ${cx+20},${cy+90} ${cx+26},${cy+20}z" fill="var(--table-2)"/>
+    ${tatami ? lowTableSVG() : `<path d="M${cx-26},${cy+20} C${cx-20},${cy+90} ${cx-30},${cy+150} ${cx-40},${cy+186} L${cx+40},${cy+186} C${cx+30},${cy+150} ${cx+20},${cy+90} ${cx+26},${cy+20}z" fill="var(--table-2)"/>
     <path d="M${cx-8},${cy+30} C${cx-6},${cy+90} ${cx-10},${cy+150} ${cx-14},${cy+184}" stroke="rgba(255,255,255,0.12)" stroke-width="5" fill="none"/>
     <ellipse cx="${cx}" cy="${cy+190}" rx="92" ry="16" fill="var(--table-2)"/>
-    <ellipse cx="${cx}" cy="${cy+16}" rx="${rx}" ry="${ry}" fill="var(--table-2)"/>
+    <ellipse cx="${cx}" cy="${cy+16}" rx="${rx}" ry="${ry}" fill="var(--table-2)"/>`}
     ${finish==='linen' ? tableclothSVG() : ''}
     <ellipse class="cr-tabletop" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#top-${finish})"/>
     <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#top-sheen)"/>
@@ -1032,7 +1113,7 @@ function renderSeats(force){
     const p=seatPoint(a, TABLE.cupRx, TABLE.cupRy + (Math.sin(a)<0 ? 12 : 0));
     const s=depthScale(seatPoint(a, TABLE.chairRx, TABLE.chairRy).y);
     const pos=`left:${(p.x/TABLE.w*100).toFixed(2)}%; top:${(p.y/TABLE.h*100).toFixed(2)}%; --s:${s.toFixed(3)}; z-index:${Math.round(p.y)};`;
-    if(!m) return `<div class="cr-seat open" style="${pos}" title="An empty chair — invite a friend"></div>`;
+    if(!m) return `<div class="cr-seat open" style="${pos}" title="${c.vibe==='kyoto'?'An empty cushion':'An empty chair'} — invite a friend"></div>`;
     const here=S.room.presence.has(m.user_id);
     const mine=m.user_id===S.user.id;
     const cupArt = m.drink
@@ -1046,12 +1127,17 @@ function renderSeats(force){
     return `<div class="cr-seat ${here?'here':'away'} ${mine?'me':''}" style="${pos}">
       <div class="cr-cup">${cup}</div>
       <div class="cr-card">
-        <span class="cr-dot" title="${here?'Here now':'Away'}"></span><span class="cr-who">${esc(m.username)}</span>${m.user_id===c.owner_id?'<span class="cr-host">host</span>':''}
+        <span class="cr-dot" title="${here?'Here now':'Away'}"></span><span class="cr-who">${esc(personName(m))}</span>${m.user_id===c.owner_id?'<span class="cr-host">host</span>':''}
       </div>
       ${m.drink ? `<div class="cr-drinkname">${esc(m.drink.label||'')}</div>` : (mine ? '' : `<div class="cr-drinkname">deciding\u2026</div>`)}
     </div>`;
   }).join('');
   document.getElementById('cr-seats').innerHTML = html;
+  // friends sitting in their chairs (you're in the front seat, looking on)
+  document.getElementById('cr-sitters').innerHTML = angles.map((a,i)=>{
+    const m=who[i]; if(!m || i===0) return '';
+    return sitterHTML(m, sitterSpot(a, vibe), S.room.presence.has(m.user_id));
+  }).join('');
 }
 
 function renderMyDrinkPanel(){
@@ -1128,7 +1214,7 @@ function renderCafeTimer(){
   const {remaining,total,running}=timerState();
   document.getElementById('cr-time').textContent = fmtClock(remaining);
   document.getElementById('cr-steep').style.width = ((1-remaining/total)*100)+'%';
-  const host=c.members.find(m=>m.user_id===c.owner_id)?.username || 'the host';
+  const hostM=c.members.find(m=>m.user_id===c.owner_id); const host=hostM ? personName(hostM) : 'the host';
   const status=document.getElementById('cr-timer-status');
   const ctrl=document.getElementById('cr-timer-ctrl');
   if(isHost()){
@@ -1177,7 +1263,7 @@ function finishCafeSession(){
       const recipe={id:Date.now(), _ts:Date.now(), name:d.label||'Café Brew', cup:d.cup, base:d.base, drink:d.drink, addons:[...(d.addons||[])],
         subject:c.name, task:`Studied together at ${c.name}`, duration:mins,
         date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
-        username:me.username, favorite:false, shared:true};
+        username:personName(me), favorite:false, shared:true};
       S.sharedRecipes.unshift(recipe); saveRecipeLists();
       showToast('Session complete — saved to Shared Brews in your recipe book');
     } else {
@@ -1253,7 +1339,6 @@ function resetRecipeBookCover(){
   }
   document.querySelectorAll('.cover-flip-stage').forEach(el=>el.remove());
   if(cover) cover.style.visibility='';
-  closeFilterDrawer();
   const byline=document.getElementById('cover-byline-name');
   if(byline) byline.textContent = S.user ? displayNameOf() : (S.username || 'You');
 }
@@ -1275,8 +1360,7 @@ function setBookState(open, shift){
   const content=document.getElementById('book-content');
   const chrome=document.getElementById('book-reader-chrome');
   const bookObject=document.querySelector('.book-object');
-  const drawer=document.getElementById('filter-drawer');
-  const els=[bookObject, content, openView, chrome, drawer].filter(Boolean);
+  const els=[bookObject, content, openView, chrome].filter(Boolean);
   els.forEach(el=>el.style.transition='none');
   cover.style.display = open ? 'none' : '';
   openView.style.display = open ? 'block' : 'none';
@@ -1410,16 +1494,11 @@ function settleTransforms(bookObject, stage, g){
   };
 }
 
-// The reader's bits that aren't printed on the page — bookmark ribbon and
-// page controls — slip in after the book is open and out before it closes.
+// The reader's page controls slip in after the book is open and out
+// before it closes.
 function readerExtras(show){
-  const bm=document.getElementById('filter-toggle-btn');
   const chrome=document.getElementById('book-reader-chrome');
   const out=[];
-  const hidden={opacity:0, transform:'translateX(-50%) translateY(-14px)'};
-  const shown={opacity:1, transform:'translateX(-50%) translateY(0)'};
-  if(bm) out.push(bm.animate(show ? [hidden, shown] : [shown, hidden],
-    {duration: show ? 380 : 220, easing:'cubic-bezier(0.2,0.8,0.2,1)', fill: show ? 'none' : 'forwards'}));
   if(chrome) out.push(chrome.animate(show ? [{opacity:0},{opacity:1}] : [{opacity:1},{opacity:0}],
     {duration: show ? 400 : 220, fill: show ? 'none' : 'forwards'}));
   return out;
@@ -1509,14 +1588,12 @@ async function closeRecipeBook(){
   playPageSound('close');
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduceMotion || !Element.prototype.animate){
-    closeFilterDrawer(); setBookState(false, 0); cover.dataset.animating='0'; return;
+    setBookState(false, 0); cover.dataset.animating='0'; return;
   }
 
   // Tuck away the bookmark and page controls first.
   const extras = readerExtras(false);
   await Promise.all(extras.map(a=>a.finished.catch(()=>{})));
-  closeFilterDrawer();
-  setBookState(true, 0); // snaps the drawer shut without its slide
 
   // Snapshot the spread as it is now, and measure the closed book.
   const spread = snapshotSpread();
@@ -1577,42 +1654,17 @@ async function closeRecipeBook(){
   cover.dataset.animating='0';
 }
 
-const ICON_SEARCH='<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12.6 12.6l4.4 4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-const ICON_CLOSE='<svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-
-// Bookmark-ribbon-as-button: tucks the tabs/search/filters away by default,
-// slides them out when tapped — nothing floats outside the book.
-function toggleFilterDrawer(){
-  const drawer=document.getElementById('filter-drawer');
-  const btn=document.getElementById('filter-toggle-btn');
-  if(!drawer || !btn) return;
-  const willOpen = !drawer.classList.contains('open');
-  drawer.classList.toggle('open', willOpen);
-  btn.setAttribute('aria-expanded', String(willOpen));
-  btn.querySelector('span').innerHTML = willOpen ? ICON_CLOSE : ICON_SEARCH;
-  playPageSound('turn');
-}
-function closeFilterDrawer(){
-  const drawer=document.getElementById('filter-drawer');
-  const btn=document.getElementById('filter-toggle-btn');
-  if(drawer) drawer.classList.remove('open');
-  if(btn){ btn.setAttribute('aria-expanded','false'); const s=btn.querySelector('span'); if(s) s.innerHTML=ICON_SEARCH; }
-}
 
 function setRecipeTab(tab){
   S.recipeTab=tab;
   S.recipePage=0;
   S.quickTab='all';
-  document.querySelectorAll('.rtab-pill').forEach(t=>t.classList.remove('active'));
-  document.getElementById('rtab-'+tab).classList.add('active');
-  const pill=document.querySelector('.rtabs-pill');
-  if(pill) pill.classList.toggle('tab-shared', tab==='shared');
+  document.querySelectorAll('.ri-tab').forEach(t=>{ const on=t.id==='rtab-'+tab; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); });
   renderRecipes();
 }
 
 const addonNames={whipped:'Whipped Cream',caramel:'Caramel',honey:'Honey',cinnamon:'Cinnamon',marshmallow:'Marshmallows',boba:'Boba',vanilla:'Vanilla Foam'};
 const baseNames={coffee:'Coffee',matcha:'Matcha',tea:'Tea',chocolate:'Hot Chocolate',chai:'Chai',earlgrey:'Earl Grey',hibiscus:'Hibiscus',golden:'Golden Milk'};
-const sortLabels={newest:'Newest ↓', oldest:'Oldest ↑', favorite:'Favorites ★'};
 function recipeListRaw(){ return S.recipeTab==='mine' ? S.recipes : S.sharedRecipes; }
 function filteredRecipes(){
   let list=[...recipeListRaw()];
@@ -1633,17 +1685,44 @@ function updateRecipeFilters(){
   S.recipeSubject=document.getElementById('filter-subject')?.value||'';
   S.recipePage=0; renderRecipes();
 }
-// Tap-to-cycle sort button — one control instead of a dropdown, keeps the
-// toolbar to a single tidy row.
-function cycleSort(){
-  const order=['newest','oldest','favorite'];
-  S.recipeSort = order[(order.indexOf(S.recipeSort)+1) % order.length];
-  const btn=document.getElementById('sort-btn');
-  if(btn) btn.textContent = sortLabels[S.recipeSort];
+function setRecipeSort(v){
+  S.recipeSort = ['newest','oldest','favorite'].includes(v) ? v : 'newest';
   S.recipePage=0; renderRecipes();
 }
+function clearRecipeFilters(){
+  const q=document.getElementById('recipe-search'); if(q) q.value='';
+  const sub=document.getElementById('filter-subject'); if(sub) sub.value='';
+  S.recipeSearch=''; S.recipeSubject=''; S.quickTab='all'; S.recipePage=0;
+  renderRecipes();
+}
 function setQuickTab(tab){
-  S.quickTab=tab; S.recipePage=0; renderRecipes();
+  S.quickTab=tab||'all'; S.recipePage=0; renderRecipes();
+}
+// The bell cord: a tug rings the bell and lowers (or lifts) the index card.
+function toggleRecipeFilters(force){
+  const drop=document.getElementById('ri-drop'), pull=document.getElementById('bell-pull');
+  if(!drop || !pull) return;
+  const open = typeof force==='boolean' ? force : !drop.classList.contains('open');
+  drop.classList.toggle('open', open);
+  pull.setAttribute('aria-expanded', String(open));
+  if(typeof force!=='boolean'){
+    pull.classList.remove('tugged'); void pull.offsetWidth; pull.classList.add('tugged');
+    playBell();
+    if(open) setTimeout(()=>document.getElementById('recipe-search')?.focus({preventScroll:true}), 450);
+  }
+}
+// A small brass shop bell: two bright partials ringing out over a second.
+function playBell(){
+  initAudio(); if(!S.soundOn || !audioCtx) return;
+  const t=audioCtx.currentTime;
+  [[1568,0.16,1.2],[2349,0.07,0.8],[3136,0.04,0.5],[1568,0.08,1.0,0.16]].forEach(([f,v,d,delay=0])=>{
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type='sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001, t+delay);
+    g.gain.exponentialRampToValueAtTime(v, t+delay+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+delay+d);
+    o.connect(g); g.connect(masterGain); o.start(t+delay); o.stop(t+delay+d+0.05);
+  });
 }
 function saveRecipeLists(){
   localStorage.setItem('bf_recipes',JSON.stringify(S.recipes));
@@ -1658,10 +1737,10 @@ function toggleFavorite(id,event){
     if(S.user && S.recipes.includes(r)) updateRecipeFavoriteCloud(r);
   }
 }
+const drinkLabel = k => DRINKS[k]?.label || baseNames[k] || k;
 function refreshRecipeTools(list){
   const subjectSel=document.getElementById('filter-subject');
-  const tabs=document.getElementById('journal-tabs');
-  const sortBtn=document.getElementById('sort-btn');
+  const sortSel=document.getElementById('sort-select');
   const raw=recipeListRaw();
   if(subjectSel){
     const current=subjectSel.value;
@@ -1669,11 +1748,24 @@ function refreshRecipeTools(list){
     subjectSel.innerHTML='<option value="">All subjects</option>'+subjects.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
     subjectSel.value=subjects.includes(current)?current:'';
   }
-  if(sortBtn) sortBtn.textContent = sortLabels[S.recipeSort];
-  if(tabs){
-    const common=['all','favorites','cappuccino','matcha-latte','caramel-latte','honey-tea'];
-    tabs.innerHTML=common.map(t=>`<button class="journal-tab ${S.quickTab===t?'active':''}" onclick="setQuickTab('${t}')">${t==='all'?'All':t==='favorites'?'★ Favorites':(DRINKS[t]?.label||t)}</button>`).join('');
+  if(sortSel) sortSel.value = S.recipeSort;
+  const drinkSel=document.getElementById('filter-drink');
+  if(drinkSel){
+    // the drinks actually in this book, most brewed first
+    const counts={};
+    raw.forEach(r=>{ const k=r.drink||r.base; if(k) counts[k]=(counts[k]||0)+1; });
+    const drinks=Object.keys(counts).sort((a,b)=>counts[b]-counts[a] || drinkLabel(a).localeCompare(drinkLabel(b)));
+    const favs=raw.filter(r=>r.favorite).length;
+    drinkSel.innerHTML = `<option value="all">All drinks</option><option value="favorites">Favourites only (${favs})</option>`
+      + (drinks.length ? `<optgroup label="Drinks">${drinks.map(k=>`<option value="${esc(k)}">${esc(drinkLabel(k))} (${counts[k]})</option>`).join('')}</optgroup>` : '');
+    if(S.quickTab!=='all' && S.quickTab!=='favorites' && !counts[S.quickTab]) S.quickTab='all';
+    drinkSel.value = S.quickTab;
   }
+  const filtering = !!(S.recipeSearch || S.recipeSubject || S.quickTab!=='all');
+  const countEl=document.getElementById('ri-count');
+  if(countEl) countEl.textContent = !raw.length ? (S.recipeTab==='mine' ? 'Your book is waiting for its first recipe' : 'No shared brews yet')
+    : filtering ? `${list.length} of ${raw.length} recipe${raw.length===1?'':'s'} match` : `${raw.length} recipe${raw.length===1?'':'s'} in this book`;
+  const clr=document.getElementById('ri-clear'); if(clr) clr.hidden=!filtering;
 }
 
 // Recipe cards now show a full-sized, accurate cup that mirrors exactly
@@ -2275,7 +2367,7 @@ async function renderGazetteSociety(){
     const cafes = await CafeDB.listMine();
     if(!document.getElementById('page-profile').classList.contains('active')) return;
     el.innerHTML = cafes.length
-      ? cafes.slice(0,4).map(c=>`<div class="gz-soc"><b>${esc(c.name)}</b> <span>${vibeOf(c.vibe).label}</span><p>${c.members.map(m=>esc(m.username)).join(', ')}${c.owner_id===S.user.id?' — hosted by our subject':''}.</p></div>`).join('')
+      ? cafes.slice(0,4).map(c=>`<div class="gz-soc"><b>${esc(c.name)}</b> <span>${vibeOf(c.vibe).label}</span><p>${c.members.map(m=>esc(personName(m))).join(', ')}${c.owner_id===S.user.id?' — hosted by our subject':''}.</p></div>`).join('')
       : `<p class="gz-small">Our subject has not yet been seen at a shared table. Readers wishing to study together may send an invitation.</p>`;
   } catch(e){
     el.innerHTML = `<p class="gz-small">The society pages are being typeset. Check back shortly.</p>`;
