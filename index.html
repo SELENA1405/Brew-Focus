@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611031056" />
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=202611031121" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -648,7 +648,9 @@
     </button>
     <div class="ri-drop" id="ri-drop">
       <div class="ri-drop-inner">
+        <div class="ri-hang">
         <section class="recipe-index" aria-label="Find a recipe">
+          <div class="ri-board-title">today's recipe board</div>
           <div class="ri-tabs" role="tablist" aria-label="Which recipes">
             <button class="ri-tab active" id="rtab-mine" role="tab" aria-selected="true" onclick="setRecipeTab('mine')">My Recipes</button>
             <span class="ri-tabs-orn" aria-hidden="true">&#10086;</span>
@@ -678,6 +680,7 @@
           </div>
           <div class="ri-foot"><span id="ri-count"></span><button type="button" class="ri-clear" id="ri-clear" onclick="clearRecipeFilters()" hidden>clear filters</button></div>
         </section>
+        </div>
       </div>
     </div>
   </div>
@@ -696,85 +699,61 @@
              aria-label="Open your recipe book">
           <div class="cover-face">
             <div class="cover-pages-edge"></div>
-            <div class="cover-stitches" aria-hidden="true"></div>
-            <div class="cover-border" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-            <div class="cover-kicker">The Brew &amp; Focus</div>
-            <h2 class="cover-title">Recipe Book</h2>
-            <div class="cover-subtitle">A JOURNAL OF BREWS</div>
-            <svg class="cover-art" viewBox="0 0 240 220" aria-hidden="true">
-              <defs>
-                <filter id="cv-paint" x="-10%" y="-10%" width="120%" height="120%">
-                  <feTurbulence type="fractalNoise" baseFrequency="0.035 0.05" numOctaves="2" seed="5" result="n"/>
-                  <feDisplacementMap in="SourceGraphic" in2="n" scale="3.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
-                  <!-- pigment pooling and paper grain inside the painted shapes -->
-                  <feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="3" seed="8" result="blot"/>
-                  <feColorMatrix in="blot" type="matrix" values="0 0 0 0 0.28  0 0 0 0 0.14  0 0 0 0 0.05  0 0 0 1.1 -0.45" result="b2"/>
-                  <feComposite in="b2" in2="d" operator="in" result="b3"/>
-                  <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="2" result="grain"/>
-                  <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.2  0 0 0 0 0.1  0 0 0 0.6 -0.2" result="g2"/>
-                  <feComposite in="g2" in2="d" operator="in" result="g3"/>
-                  <feMerge><feMergeNode in="d"/><feMergeNode in="b3"/><feMergeNode in="g3"/></feMerge>
-                </filter>
-                <linearGradient id="cv-leaf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a6b98c"/><stop offset="0.55" stop-color="#6f8a5a"/><stop offset="1" stop-color="#4a6238"/></linearGradient>
-                <radialGradient id="cv-cherry" cx="35%" cy="32%" r="70%"><stop offset="0" stop-color="#d0606a"/><stop offset="0.55" stop-color="#9a2e3a"/><stop offset="1" stop-color="#5a1620"/></radialGradient>
-                <pattern id="cv-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><path d="M0,0 V4" stroke="#6b4f3a" stroke-width="0.7"/></pattern>
-                <filter id="cv-wash" x="-20%" y="-20%" width="140%" height="140%">
-                  <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="3" seed="9" result="n"/>
-                  <feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G" result="d"/>
-                  <feGaussianBlur in="d" stdDeviation="2.2"/>
-                </filter>
-                <radialGradient id="cv-cup" cx="38%" cy="35%" r="75%"><stop offset="0" stop-color="#fffaf0"/><stop offset="0.6" stop-color="#f1e4c8"/><stop offset="1" stop-color="#cdb48a"/></radialGradient>
-                <radialGradient id="cv-coffee" cx="45%" cy="40%" r="70%"><stop offset="0" stop-color="#9a6a3e"/><stop offset="1" stop-color="#4a2a16"/></radialGradient>
-                <linearGradient id="cv-gold" x1="0" x2="1"><stop offset="0" stop-color="#8a6a2c"/><stop offset="0.45" stop-color="#e6cd8a"/><stop offset="1" stop-color="#9a7a36"/></linearGradient>
-              </defs>
-              <!-- a watercolour wash behind the vignette -->
-              <ellipse cx="120" cy="116" rx="94" ry="86" fill="#d9b98a" opacity="0.45" filter="url(#cv-wash)"/>
-              <ellipse cx="134" cy="96" rx="60" ry="48" fill="#b67c87" opacity="0.22" filter="url(#cv-wash)"/>
-              <!-- engraved oval frame -->
-              <ellipse cx="120" cy="114" rx="98" ry="92" fill="none" stroke="#7a2e3a" stroke-width="1.3" opacity="0.75"/>
-              <ellipse cx="120" cy="114" rx="92" ry="86" fill="none" stroke="#c7a86d" stroke-width="0.9" opacity="0.9"/>
-              <g filter="url(#cv-paint)">
-                <!-- coffee branch: leaves and ripe cherries -->
-                <path d="M32,170 C60,150 74,118 108,96 C136,78 168,70 206,52" stroke="#5a4028" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-                <path d="M74,128 C66,112 50,104 36,106 C46,120 60,128 74,128 Z" fill="url(#cv-leaf)"/>
-                <path d="M74,128 C60,118 48,110 36,106" stroke="#46603a" stroke-width="0.9" fill="none"/>
-                <path d="M96,104 C98,86 92,70 80,62 C76,78 82,94 96,104 Z" fill="url(#cv-leaf)"/>
-                <path d="M96,104 C90,88 84,74 80,62" stroke="#46603a" stroke-width="0.9" fill="none"/>
-                <path d="M150,76 C166,62 186,60 198,66 C184,78 166,82 150,76 Z" fill="url(#cv-leaf)"/>
-                <path d="M150,76 C168,70 184,66 198,66" stroke="#46603a" stroke-width="0.9" fill="none"/>
-                <path d="M176,62 C176,46 186,32 200,28 C200,44 190,56 176,62 Z" fill="url(#cv-leaf)"/>
-                <path d="M52,154 C38,150 26,156 20,166 C34,170 46,164 52,154 Z" fill="url(#cv-leaf)"/>
-                <g>
-                  <circle cx="122" cy="92" r="6.4" fill="url(#cv-cherry)"/><circle cx="131" cy="96" r="6" fill="url(#cv-cherry)"/><circle cx="126" cy="101" r="5.6" fill="url(#cv-cherry)"/>
-                  <circle cx="120.5" cy="90" r="1.6" fill="#f3c6b8" opacity="0.7"/><circle cx="129.5" cy="94" r="1.4" fill="#f3c6b8" opacity="0.7"/>
-                  <circle cx="64" cy="140" r="5.4" fill="url(#cv-cherry)"/><circle cx="71" cy="143" r="5" fill="url(#cv-cherry)"/>
-                  <circle cx="63" cy="138.5" r="1.3" fill="#f3c6b8" opacity="0.7"/>
-                </g>
-                <!-- steam -->
-                <path d="M108,122 C100,110 114,104 106,92 M122,120 C116,106 130,100 122,86 M136,122 C130,112 142,106 136,96" stroke="#fffaf0" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.7"/>
-                <!-- saucer -->
-                <ellipse cx="122" cy="186" rx="62" ry="13" fill="#e4d3b0"/>
-                <ellipse cx="122" cy="183" rx="62" ry="12" fill="url(#cv-cup)" stroke="#9a7a46" stroke-width="0.8"/>
-                <ellipse cx="122" cy="183" rx="54" ry="9" fill="none" stroke="url(#cv-gold)" stroke-width="1.6"/>
-                <ellipse cx="122" cy="181" rx="32" ry="5.5" fill="#cdb48a" opacity="0.55"/>
-                <!-- cup -->
-                <path d="M164,142 C182,140 188,154 180,164 C174,171 162,172 154,168" fill="none" stroke="#e9dcc0" stroke-width="7" stroke-linecap="round"/>
-                <path d="M164,142 C182,140 188,154 180,164 C174,171 162,172 154,168" fill="none" stroke="#9a7a46" stroke-width="1" opacity="0.6"/>
-                <path d="M80,128 L164,128 C164,154 154,176 122,180 C90,176 80,154 80,128 Z" fill="url(#cv-cup)" stroke="#9a7a46" stroke-width="1"/>
-                <path d="M83,140 C110,146 136,146 161,140 L159.5,148 C136,154 108,154 84.5,148 Z" fill="#7a2e3a" opacity="0.88"/>
-                <path d="M84.5,149 C108,155 136,155 159.5,149" stroke="url(#cv-gold)" stroke-width="1.3" fill="none"/>
-                <path d="M83,139 C110,145 136,145 161,139" stroke="url(#cv-gold)" stroke-width="1.3" fill="none"/>
-                <path d="M130,129 L164,128 C164,154 154,176 122,180 C142,168 148,150 140,130 Z" fill="url(#cv-hatch)" opacity="0.32"/>
-                <path d="M60,186 C80,195 164,195 184,186 C170,192 74,192 60,186 Z" fill="url(#cv-hatch)" opacity="0.4"/>
-                <path d="M92,156 C96,166 104,172 112,175" stroke="#fffaf0" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
-                <ellipse cx="122" cy="128" rx="42" ry="8" fill="#f6ecd6" stroke="url(#cv-gold)" stroke-width="1.8"/>
-                <ellipse cx="122" cy="129" rx="37" ry="5.8" fill="url(#cv-coffee)"/>
-                <path d="M116,127.5 C116,125 120,124.6 122,127 C124,124.6 128,125 128,127.5 C128,130 124,131.5 122,132.5 C120,131.5 116,130 116,127.5 Z" fill="#f2e2c4" opacity="0.9"/>
-              </g>
-            </svg>
-            <div class="cover-tagline">every cup, a little <span>memory</span></div>
-            <div class="cover-orn" aria-hidden="true">&#10086;</div>
-            <div class="cover-byline">brewed by <span id="cover-byline-name">You</span></div>
+            <div class="cover-oval">
+              <svg class="cover-oval-frame" viewBox="0 0 300 420" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M150.0,24.0 Q159.5,17.4 168.0,25.7 Q178.3,21.0 185.6,30.9 Q196.5,28.1 202.6,39.4 Q213.9,38.6 218.6,51.1 Q230.2,52.3 233.3,65.7 Q244.9,68.9 246.5,83.0 Q257.8,88.2 257.8,102.7 Q268.8,109.7 267.2,124.4 Q277.5,133.1 274.4,147.7 Q283.8,157.9 279.2,172.2 Q287.7,183.7 281.7,197.3 Q289.0,210.0 281.7,222.7 Q287.7,236.3 279.2,247.8 Q283.8,262.1 274.4,272.3 Q277.5,286.9 267.2,295.6 Q268.8,310.3 257.8,317.3 Q257.8,331.8 246.5,337.0 Q244.9,351.1 233.3,354.3 Q230.2,367.7 218.6,368.9 Q213.9,381.4 202.6,380.6 Q196.5,391.9 185.6,389.1 Q178.3,399.0 168.0,394.3 Q159.5,402.6 150.0,396.0 Q140.5,402.6 132.0,394.3 Q121.7,399.0 114.4,389.1 Q103.5,391.9 97.4,380.6 Q86.1,381.4 81.4,368.9 Q69.8,367.7 66.7,354.3 Q55.1,351.1 53.5,337.0 Q42.2,331.8 42.2,317.3 Q31.2,310.3 32.8,295.6 Q22.5,286.9 25.6,272.3 Q16.2,262.1 20.8,247.8 Q12.3,236.3 18.3,222.7 Q11.0,210.0 18.3,197.3 Q12.3,183.7 20.8,172.2 Q16.2,157.9 25.6,147.7 Q22.5,133.1 32.8,124.4 Q31.2,109.7 42.2,102.7 Q42.2,88.2 53.5,83.0 Q55.1,68.9 66.7,65.7 Q69.8,52.3 81.4,51.1 Q86.1,38.6 97.4,39.4 Q103.5,28.1 114.4,30.9 Q121.7,21.0 132.0,25.7 Q140.5,17.4 150.0,24.0 Z" fill="#fbf6ea" stroke="#7a2e3a" stroke-width="1.6"/>
+    <ellipse cx="150" cy="210" rx="124" ry="178" fill="none" stroke="#7a2e3a" stroke-width="0.9"/>
+    <ellipse cx="150" cy="210" rx="119" ry="173" fill="none" stroke="#7a2e3a" stroke-width="0.5" stroke-dasharray="1.5 3"/>
+    <g transform="translate(150 22) scale(1 1)" fill="none" stroke="#7a2e3a" stroke-width="1.3" stroke-linecap="round">
+      <path d="M0,-14 C5,-8 5,-2 0,4 C-5,-2 -5,-8 0,-14 Z" fill="#7a2e3a"/>
+      <path d="M-2,2 C-10,-2 -16,2 -14,8 C-12,12 -6,10 -7,6"/><path d="M2,2 C10,-2 16,2 14,8 C12,12 6,10 7,6"/>
+      <path d="M-9,10 H9"/><circle cx="0" cy="15" r="1.6" fill="#7a2e3a" stroke="none"/>
+    </g>
+    <g transform="translate(150 398) scale(1 -1)" fill="none" stroke="#7a2e3a" stroke-width="1.3" stroke-linecap="round">
+      <path d="M0,-14 C5,-8 5,-2 0,4 C-5,-2 -5,-8 0,-14 Z" fill="#7a2e3a"/>
+      <path d="M-2,2 C-10,-2 -16,2 -14,8 C-12,12 -6,10 -7,6"/><path d="M2,2 C10,-2 16,2 14,8 C12,12 6,10 7,6"/>
+      <path d="M-9,10 H9"/><circle cx="0" cy="15" r="1.6" fill="#7a2e3a" stroke="none"/>
+    </g>
+  </svg>
+              <div class="cover-oval-in">
+                <div class="cover-love">Brewed with love</div>
+                <svg class="cover-heart" viewBox="0 0 60 12" aria-hidden="true" fill="none" stroke="#7a2e3a" stroke-width="1" stroke-linecap="round"><path d="M2,6 C12,6 18,2 24,6"/><path d="M58,6 C48,6 42,2 36,6"/><path d="M30,10 C26,7 25,4 27.5,3 C29,2.4 30,4 30,4 C30,4 31,2.4 32.5,3 C35,4 34,7 30,10 Z" fill="#7a2e3a"/></svg>
+                <svg class="cover-sketch" viewBox="0 0 200 110" aria-hidden="true" fill="none" stroke="#7a2e3a" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <!-- left sprig -->
+      <path d="M30,100 C26,78 28,52 40,26"/>
+      <path d="M29,88 C20,86 15,80 14,73 C22,74 27,80 29,88 Z"/><path d="M29,88 C35,82 41,80 46,81 C42,87 36,89 29,88 Z"/>
+      <path d="M28,70 C19,67 16,60 16,53 C24,56 28,62 28,70 Z"/><path d="M29,68 C35,62 41,61 45,62 C41,68 35,70 29,68 Z"/>
+      <path d="M32,50 C25,46 23,39 24,33 C31,37 33,43 32,50 Z"/><path d="M33,48 C38,43 43,42 47,43 C43,48 38,50 33,48 Z"/>
+      <path d="M40,26 C37,21 37,17 40,13 C43,17 43,21 40,26 Z"/>
+      <!-- right sprig -->
+      <path d="M170,100 C174,78 172,52 160,26"/>
+      <path d="M171,88 C180,86 185,80 186,73 C178,74 173,80 171,88 Z"/><path d="M171,88 C165,82 159,80 154,81 C158,87 164,89 171,88 Z"/>
+      <path d="M172,70 C181,67 184,60 184,53 C176,56 172,62 172,70 Z"/><path d="M171,68 C165,62 159,61 155,62 C159,68 165,70 171,68 Z"/>
+      <path d="M168,50 C175,46 177,39 176,33 C169,37 167,43 168,50 Z"/><path d="M167,48 C162,43 157,42 153,43 C157,48 162,50 167,48 Z"/>
+      <path d="M160,26 C163,21 163,17 160,13 C157,17 157,21 160,26 Z"/>
+      <!-- cup and saucer -->
+      <ellipse cx="100" cy="94" rx="40" ry="7"/>
+      <ellipse cx="100" cy="93" rx="22" ry="3.4" stroke-width="0.9"/>
+      <path d="M70,58 C70,78 82,90 100,90 C118,90 130,78 130,58"/>
+      <ellipse cx="100" cy="58" rx="30" ry="6.5"/>
+      <path d="M76,59.5 C84,63 116,63 124,59.5" stroke-width="0.8"/>
+      <path d="M129,64 C142,62 145,74 136,80 C133,82 128,83 124,82"/>
+      <path d="M128,68 C135,68 136,75 131,77" stroke-width="0.9"/>
+      <!-- painted flowers on the cup -->
+      <g stroke-width="0.9">
+        <circle cx="100" cy="74" r="1.6" fill="#7a2e3a"/>
+        <path d="M100,72.2 C98.4,69.4 101.6,69.4 100,72.2 M101.7,73.4 C104.6,72 104.6,75.2 101.7,74.4 M101,75.8 C102.6,78.6 99.4,78.6 99,75.8 M98.3,74.4 C95.4,75.2 95.4,72 98.3,73.4"/>
+        <path d="M96,76 C92,77 88,76 86,73 C89,72 93,73 96,76 Z M104,76 C108,77 112,76 114,73 C111,72 107,73 104,76 Z"/>
+      </g>
+      <!-- steam -->
+      <path d="M92,48 C88,42 96,38 92,30 M101,46 C97,38 106,34 101,24 M110,48 C106,42 114,38 110,32" stroke-width="1.1"/>
+    </svg>
+                <div class="cover-owner"><span id="cover-byline-name">Your</span></div>
+                <svg class="cover-rule" viewBox="0 0 140 10" aria-hidden="true" fill="none" stroke="#7a2e3a" stroke-width="1" stroke-linecap="round"><path d="M4,5 H58"/><path d="M82,5 H136"/><path d="M70,1 L74,5 L70,9 L66,5 Z" fill="#7a2e3a"/><circle cx="62" cy="5" r="1.2" fill="#7a2e3a"/><circle cx="78" cy="5" r="1.2" fill="#7a2e3a"/></svg>
+                <h2 class="cover-title">Recipe Book</h2>
+                <svg class="cover-swirl" viewBox="0 0 90 16" aria-hidden="true" fill="none" stroke="#7a2e3a" stroke-width="1.1" stroke-linecap="round"><path d="M45,8 C38,2 30,2 28,7 C26,12 33,13 34,9"/><path d="M45,8 C52,2 60,2 62,7 C64,12 57,13 56,9"/><path d="M45,8 C40,13 22,14 6,9"/><path d="M45,8 C50,13 68,14 84,9"/></svg>
+              </div>
+            </div>
           </div>
           <div class="cover-hint">tap to open</div>
         </div>
@@ -903,6 +882,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611031056"></script>
+<script src="script.js?v=202611031121"></script>
 </body>
 </html>

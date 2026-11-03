@@ -1339,8 +1339,7 @@ function resetRecipeBookCover(){
   }
   document.querySelectorAll('.cover-flip-stage').forEach(el=>el.remove());
   if(cover) cover.style.visibility='';
-  const byline=document.getElementById('cover-byline-name');
-  if(byline) byline.textContent = S.user ? displayNameOf() : (S.username || 'You');
+  setCoverOwner();
 }
 
 // Waits for a specific CSS transition to actually finish on an element
@@ -1738,6 +1737,19 @@ function toggleFavorite(id,event){
   }
 }
 const drinkLabel = k => DRINKS[k]?.label || baseNames[k] || k;
+// The cover reads "Selena's Recipe Book" (or "My Recipe Book" before signing in).
+function setCoverOwner(){
+  const el=document.getElementById('cover-byline-name'); if(!el) return;
+  const name=(S.user ? displayNameOf() : '').trim();
+  const text = name ? (/s$/i.test(name) ? name+'\u2019' : name+'\u2019s') : 'My';
+  el.textContent=text;
+  el.parentElement.classList.toggle('long', text.length>11);
+  el.parentElement.classList.toggle('xlong', text.length>17);
+}
+function toRoman(n){
+  const t=[[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let out=''; for(const [v,r] of t) while(n>=v){ out+=r; n-=v; } return out || 'I';
+}
 function refreshRecipeTools(list){
   const subjectSel=document.getElementById('filter-subject');
   const sortSel=document.getElementById('sort-select');
@@ -1803,40 +1815,37 @@ function renderRecipes(){
   grid.innerHTML = spread.map((r,i)=>{
     const drinkKey=r.drink||r.base;
     const drinkLabel=DRINKS[drinkKey]?.label||baseNames[r.base]||'Custom Brew';
-    // Always drawn as the tall glass silhouette (matching the Brew page
-    // preview) for a consistent look across the book, regardless of which
-    // vessel was actually used that session — the liquid, foam, and
-    // add-ons still reflect exactly what was brewed.
-    const fullCup=buildCupSVG({size:130,fillFraction:1,steam:true,cup:'glass',base:r.base,drink:drinkKey,addons:r.addons||[]});
-    const ings=[drinkLabel,...(r.addons||[]).filter(a=>a!=='ice').map(a=>addonNames[a]||a)].join(', ');
+    // the cup it was actually brewed in, painted as on the Brew page
+    const fullCup=buildCupSVG({size:104,fillFraction:1,steam:true,cup:r.cup||'glass',base:r.base,drink:drinkKey,addons:r.addons||[]});
+    const ings=[drinkLabel,...(r.addons||[]).filter(a=>a!=='ice').map(a=>addonNames[a]||a)];
     const pageNo=S.recipePage*per+i+1;
+    const row=(k,v)=>`<div class="rc-row"><dt>${k}</dt><dd>${v}</dd></div>`;
     return `<div class="recipe-card ${r.favorite?'favorite-page':''}" onclick="changeRecipePage(${per===1||i===1?1:-1})">
       ${r.shared?'<div class="rc-badge">shared brew</div>':''}
-      <div class="rc-top">
-        <div class="rc-headline">
-          <div class="rc-name">${esc(r.name)}</div>
-          <dl class="rc-meta">
-            <div><dt>Subject</dt><dd>${esc(r.subject)}</dd></div>
-            <div><dt>Task</dt><dd>${esc(r.task)}</dd></div>
-            <div><dt>Steeped</dt><dd>${r.duration} min · ${r.date}</dd></div>
-            ${r.username?`<div><dt>Brewed by</dt><dd>${esc(r.username)}</dd></div>`:''}
-          </dl>
-        </div>
-        <div class="rc-cup-frame">
-          <div class="rc-cup-label">${drinkLabel}</div>
-          ${fullCup}
-        </div>
+      <div class="rc-kicker">Recipe No. ${toRoman(pageNo)}</div>
+      <div class="rc-name">${esc(r.name)}</div>
+      <div class="rc-sub">a ${esc(drinkLabel)}${r.subject?`, brewed for ${esc(r.subject)}`:''}</div>
+      <div class="rc-vignette" aria-hidden="true">${fullCup}</div>
+      <div class="rc-sec"><h4 class="rc-h"><span>I.</span>In the cup</h4>
+        <ul class="rc-ings">${ings.slice(0,4).map(x=>`<li>${esc(x)}</li>`).join('')}${ings.length>4?`<li class="rc-more">+ ${ings.length-4} more</li>`:''}</ul>
       </div>
-      <div class="rc-ingredients">${ings}</div>
-      <div class="rc-note">I brewed this while studying ${esc(r.subject)}. The cup kept time, and the page kept the feeling.</div>
+      <div class="rc-sec"><h4 class="rc-h"><span>II.</span>The session</h4>
+        <dl class="rc-ledger">
+          ${row('Subject', esc(r.subject||'—'))}
+          ${r.task?row('Task', esc(r.task)):''}
+          ${row('Steeped', `${r.duration} min · ${esc(r.date||'')}`)}
+          ${r.username?row('Brewed by', esc(r.username)):''}
+        </dl>
+      </div>
+      <div class="rc-note">The cup kept time, and the page kept the feeling.</div>
       <div class="rc-foot">
-        <span class="rc-folio">No. ${pageNo}</span>
-        <button class="fav-btn ${r.favorite?'':'off'}" onclick="toggleFavorite('${r.id}',event)" title="Favorite recipe" aria-label="Favorite recipe">★</button>
+        <span class="rc-folio">— ${pageNo} —</span>
+        <button class="fav-btn ${r.favorite?'':'off'}" onclick="toggleFavorite('${r.id}',event)" title="${r.favorite?'Remove from favourites':'Add to favourites'}" aria-label="Favourite recipe" aria-pressed="${!!r.favorite}"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 2.2l2.3 5 5.4.5-4.1 3.6 1.2 5.3L10 13.9l-4.8 2.7 1.2-5.3-4.1-3.6 5.4-.5z" fill="currentColor" stroke="currentColor" stroke-width="0.6" stroke-linejoin="round"/></svg></button>
       </div>
     </div>`;
   }).join('');
   if(spread.length===1 && per===2){
-    grid.innerHTML += `<div class="recipe-card empty-state"><p>This side of the spread is still untouched.</p><div class="rc-note">A future recipe belongs here.</div></div>`;
+    grid.innerHTML += `<div class="recipe-card empty-state"><div class="rc-orn" aria-hidden="true">&#10086;</div><p>This side of the spread is still untouched.</p><div class="rc-note">A future recipe belongs here.</div></div>`;
   }
   if(prevBtn) prevBtn.disabled=S.recipePage===0;
   if(nextBtn) nextBtn.disabled=S.recipePage>=maxPage;
@@ -2759,8 +2768,7 @@ function renderAuthUI(){
   } else {
     nav.innerHTML = `<a onclick="openAuthModal('signin')" id="nl-signin">Sign In</a>`;
   }
-  const byline=document.getElementById('cover-byline-name');
-  if(byline) byline.textContent = S.user ? displayNameOf() : (S.username || 'You');
+  setCoverOwner();
 }
 
 // ── Recipe cloud sync ────────────────────────────────────────────────────

@@ -31,24 +31,50 @@ body::after {
 }
 
 /* ── NAV ── */
+/* ── The café's sign: a walnut band between gold rules, brass rivets at
+   each end, and a brass plaque on the page you're in ── */
 .nav {
   position:fixed; top:0; left:0; right:0; z-index:200;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:1rem 2.5rem;
-  background:linear-gradient(to bottom, rgba(44,26,16,0.96) 0%, transparent 100%);
+  display:flex; align-items:center; justify-content:space-between; gap:1.5rem;
+  padding:0.7rem 2.6rem;
+  background:
+    linear-gradient(180deg, rgba(255,226,170,0.07), transparent 40%, rgba(0,0,0,0.22)),
+    repeating-linear-gradient(178deg, rgba(0,0,0,0.10) 0 2px, transparent 2px 7px, rgba(255,214,160,0.04) 7px 9px, transparent 9px 15px),
+    linear-gradient(90deg, #2e1a0e, #4a2c18 18%, #3e2414 50%, #4a2c18 82%, #2e1a0e);
+  border-bottom:1px solid #8a6a2c;
+  box-shadow:0 1px 0 rgba(0,0,0,0.6), 0 3px 0 -1px rgba(199,168,109,0.55), 0 10px 22px rgba(0,0,0,0.45), inset 0 1px 0 rgba(199,168,109,0.45);
 }
+/* brass rivets at the two ends of the sign */
+.nav::before, .nav::after { content:''; position:absolute; top:50%; width:9px; height:9px; margin-top:-4.5px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #fff0c0, #d9b66a 35%, #8a6a2c 75%, #5a4218);
+  box-shadow:0 1px 1px rgba(0,0,0,0.6); }
+.nav::before { left:0.9rem; } .nav::after { right:0.9rem; }
 .nav-logo {
-  font-family:'Playfair Display',serif; font-size:1.45rem;
-  color:var(--cream); font-style:italic; letter-spacing:0.03em; cursor:pointer;
+  font-family:'Playfair Display',serif; font-size:1.42rem;
+  color:#f3e2bd; font-style:italic; letter-spacing:0.03em; cursor:pointer; white-space:nowrap;
+  text-shadow:0 1px 0 rgba(0,0,0,0.7), 0 -1px 0 rgba(255,232,180,0.15);
 }
 .nav-logo span { color:var(--gold); }
-.nav-links { display:flex; gap:2rem; }
+.nav-links { display:flex; align-items:center; gap:1rem; }
 .nav-links a {
-  font-family:'Lora',serif; font-size:0.8rem; color:var(--beige);
-  text-decoration:none; letter-spacing:0.1em; text-transform:uppercase;
-  opacity:0.75; cursor:pointer; transition:all 0.2s;
+  position:relative; display:inline-flex; align-items:center;
+  font-family:'Lora',serif; font-size:0.74rem; color:#ecd9b4;
+  text-decoration:none; letter-spacing:0.16em; text-transform:uppercase; white-space:nowrap;
+  padding:0.42rem 0.95rem; border-radius:2px; cursor:pointer; transition:color .2s, background .2s;
+  text-shadow:0 1px 0 rgba(0,0,0,0.6);
 }
-.nav-links a:hover, .nav-links a.active { opacity:1; color:var(--gold); }
+/* a small gold diamond between the names, like a painted sign */
+.nav-links a + a::before { content:''; position:absolute; left:calc(-0.5rem - 2.5px); top:50%; width:5px; height:5px; margin-top:-2.5px;
+  transform:rotate(45deg); background:var(--gold); opacity:0.7; }
+.nav-links a:hover { color:#f6dc95; }
+.nav-links a.active {
+  color:#2c1a10; text-shadow:0 1px 0 rgba(255,240,200,0.55);
+  background:
+    radial-gradient(circle at 7px 50%, #5a4218 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 7px) 50%, #5a4218 0 1.6px, transparent 2.2px),
+    linear-gradient(180deg, #f0d898, #d1aa5a 45%, #b48a3a 55%, #d9b66a);
+  box-shadow:inset 0 0 0 1px rgba(90,66,24,0.7), inset 0 1px 0 rgba(255,245,210,0.7), 0 2px 4px rgba(0,0,0,0.45);
+}
 .nav.focus-locked .nav-links a { opacity:0.28; cursor:not-allowed; }
 .sound-toggle {
   position:fixed; right:1.2rem; bottom:1.2rem; z-index:220;
@@ -61,11 +87,12 @@ body::after {
 /* ── NAV AUTH ── */
 .nav-auth { display:flex; align-items:center; gap:0.9rem; }
 .nav-auth a {
-  font-family:'Lora',serif; font-size:0.76rem; letter-spacing:0.09em; text-transform:uppercase;
-  color:var(--gold); border:1px solid rgba(199,168,109,0.4); padding:0.42rem 1rem;
-  border-radius:20px; cursor:pointer; transition:all 0.2s; white-space:nowrap;
+  font-family:'Lora',serif; font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase;
+  color:#f0d898; border:1px solid rgba(199,168,109,0.7); padding:0.42rem 1rem;
+  border-radius:2px; cursor:pointer; transition:all 0.2s; white-space:nowrap;
+  box-shadow:inset 0 0 0 2px rgba(44,26,16,0.6), inset 0 0 0 3px rgba(199,168,109,0.25);
 }
-.nav-auth a:hover { background:rgba(199,168,109,0.14); color:var(--cream); }
+.nav-auth a:hover { background:rgba(199,168,109,0.16); color:#fff3d6; }
 .nav-user { display:flex; align-items:center; gap:0.7rem; }
 .nav-user-name {
   font-family:'Caveat',cursive; font-size:1.15rem; color:var(--cream); opacity:0.92;
@@ -1392,6 +1419,18 @@ body::after {
   perspective:2400px; perspective-origin:left center;
   display:flex; flex-direction:column; align-items:center;
 }
+/* The book rests on a walnut café table, lit by a warm lamp, with the
+   wood fading away into the room at its edges. */
+.book-shelf-scene::before { content:''; position:absolute; left:50%; transform:translateX(-50%); pointer-events:none; z-index:-1;
+  top:-30px; height:calc(var(--book-h) + 90px); width:min(1240px, 100vw);
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(255,214,150,0.16), transparent 55%),
+    repeating-linear-gradient(180deg, transparent 0 92px, rgba(0,0,0,0.32) 92px 94px, rgba(255,214,160,0.05) 94px 95px),
+    repeating-linear-gradient(177deg, rgba(0,0,0,0.10) 0 2px, transparent 2px 9px, rgba(255,214,160,0.035) 9px 11px, transparent 11px 19px),
+    linear-gradient(90deg, #3a2214, #4a2c1a 50%, #3a2214);
+  -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);
+          mask-image:radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);
+}
 .book-object {
   display:flex; align-items:stretch;
   border-radius:4px 8px 8px 4px;
@@ -1409,13 +1448,12 @@ body::after {
    it unfolds/folds — the two together read as one continuous motion. */
 .book-object.sliding-with-pages { transition:transform 0.85s cubic-bezier(0.45,0.05,0.35,1); }
 .book-spine-fixed {
-  /* a softcover journal: the spine is a strip of burgundy cloth tape */
+  /* the striped cover wraps round the spine, a little shaded */
   flex:none; width:24px; border-radius:3px 0 0 3px;
   background:
-    repeating-linear-gradient(0deg, rgba(255,235,220,0.06) 0 1px, transparent 1px 3px),
-    repeating-linear-gradient(90deg, rgba(0,0,0,0.10) 0 1px, transparent 1px 3px),
-    linear-gradient(90deg, #4a1820, #7a2e3a 40%, #6a2630 70%, #521c24);
-  box-shadow:inset -3px 0 5px rgba(0,0,0,0.35), inset 1px 0 0 rgba(255,220,200,0.12);
+    linear-gradient(90deg, rgba(90,60,30,0.32), rgba(255,250,238,0.12) 55%, rgba(90,60,30,0.22)),
+    repeating-linear-gradient(90deg, #efe6d4 0 6px, #e0d2b8 6px 12px);
+  box-shadow:inset -3px 0 5px rgba(90,60,30,0.3), inset 1px 0 0 rgba(255,255,255,0.35);
 }
 .book-content {
   position:relative; width:var(--page-w); overflow:hidden;
@@ -1475,66 +1513,48 @@ body::after {
   box-shadow:inset -10px 0 18px rgba(60,35,20,0.2), inset 0 0 0 12px rgba(242,230,204,0.5), inset 0 0 0 13px rgba(122,46,58,0.25);
 }
 
-/* A softcover journal printed like an old engraved title page: aged cream
-   paper with foxing and a watercolour wash, an inked double border, and a
-   hand-painted vignette of a cup on a coffee branch. */
+/* A softcover in cream-and-oat ticking stripes, with an ornate oval
+   cartouche drawn in burgundy ink: "Brewed with love", a sketched cup
+   between two sprigs, the owner's name in calligraphy and RECIPE BOOK. */
 .cover-face {
   flex:1; position:relative; overflow:hidden; border-radius:0 4px 4px 0;
   background:
-    radial-gradient(circle at 14% 82%, rgba(150,95,40,0.16) 0 2px, transparent 3px),
-    radial-gradient(circle at 78% 12%, rgba(150,95,40,0.14) 0 3px, transparent 4px),
-    radial-gradient(circle at 88% 64%, rgba(150,95,40,0.12) 0 2px, transparent 3px),
-    radial-gradient(circle at 30% 30%, rgba(150,95,40,0.10) 0 1.5px, transparent 2.5px),
-    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(132,89,43,0.30) 100%),
-    radial-gradient(circle at 70% 20%, rgba(182,124,135,0.12), transparent 45%),
-    radial-gradient(circle at 25% 75%, rgba(199,168,109,0.20), transparent 50%),
-    repeating-radial-gradient(circle at 37% 61%, rgba(120,80,40,0.035) 0 1px, transparent 1px 4px),
-    linear-gradient(168deg, #f6ecd8, #ead9b8 60%, #e0caa2);
-  box-shadow:inset 10px 0 12px -6px rgba(60,30,10,0.38);
-  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-  padding:2.7rem 2.1rem 4.4rem 2.6rem; text-align:center; color:var(--ink);
+    linear-gradient(100deg, rgba(255,250,238,0.35), transparent 35%, rgba(120,90,50,0.10) 100%),
+    radial-gradient(ellipse at 50% 45%, transparent 60%, rgba(120,90,50,0.16) 100%),
+    repeating-radial-gradient(circle at 37% 61%, rgba(120,90,50,0.025) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, #f4ede0 0 13px, #e8dcc6 13px 26px);
+  box-shadow:inset 10px 0 12px -6px rgba(90,60,30,0.32);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:2.2rem 1.8rem 3.6rem 2.4rem; text-align:center; color:var(--burgundy);
   height:100%;
 }
-/* the soft fold where the paper cover bends at the spine */
-.cover-face::before { content:''; position:absolute; top:0; bottom:0; left:20px; width:3px; pointer-events:none;
-  background:linear-gradient(90deg, rgba(90,50,20,0.18), rgba(255,250,235,0.5)); }
-.cover-stitches { position:absolute; top:26px; bottom:26px; left:9px; width:2px; pointer-events:none;
-  background:repeating-linear-gradient(180deg, #7a2e3a 0 9px, transparent 9px 18px); opacity:0.75; }
+/* the soft fold where the cover bends at the spine */
+.cover-face::before { content:''; position:absolute; top:0; bottom:0; left:18px; width:3px; pointer-events:none;
+  background:linear-gradient(90deg, rgba(90,60,30,0.16), rgba(255,252,242,0.55)); }
 .cover-pages-edge {
   position:absolute; top:6px; right:0; bottom:6px; width:4px;
-  background:repeating-linear-gradient(180deg, #efe3c8 0 2px, #d6c39c 2px 3px);
-  box-shadow:-2px 0 3px rgba(0,0,0,0.15) inset; opacity:0.85;
+  background:repeating-linear-gradient(180deg, #f6eedd 0 2px, #dccdb0 2px 3px);
+  box-shadow:-2px 0 3px rgba(0,0,0,0.12) inset; opacity:0.85;
 }
-/* inked double border with little diamond corners, as on an old title page */
-.cover-border { position:absolute; inset:18px 20px 18px 34px; pointer-events:none;
-  border:1px solid rgba(122,46,58,0.55); outline:1px solid rgba(199,168,109,0.8); outline-offset:-5px; }
-.cover-border i { position:absolute; width:8px; height:8px; background:#f2e6cc; border:1px solid rgba(122,46,58,0.7); transform:rotate(45deg); }
-.cover-border i:nth-child(1) { left:-5px; top:-5px; } .cover-border i:nth-child(2) { right:-5px; top:-5px; }
-.cover-border i:nth-child(3) { left:-5px; bottom:-5px; } .cover-border i:nth-child(4) { right:-5px; bottom:-5px; }
-.cover-kicker { font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.38em; text-transform:uppercase; color:var(--warm-brown); margin-bottom:0.55rem; }
+.cover-oval { position:relative; width:min(325px, 88%); aspect-ratio:300/420; filter:drop-shadow(0 2px 3px rgba(90,60,30,0.18)); }
+.cover-oval-frame { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.cover-oval-in { position:absolute; inset:9% 14% 10%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.cover-love { font-family:'Pinyon Script', 'Caveat', cursive; font-size:1.35rem; line-height:1; color:var(--burgundy); }
+.cover-heart { width:58px; height:12px; margin:0.15rem 0 0.35rem; }
+.cover-sketch { width:100%; max-width:190px; height:auto; margin:0.1rem 0 0.35rem; }
+.cover-owner { font-family:'Pinyon Script', 'Caveat', cursive; font-size:2.35rem; line-height:1.15; color:var(--burgundy);
+  max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 0.1em; }
+.cover-owner.long { font-size:1.85rem; }
+.cover-owner.xlong { font-size:1.45rem; }
+.cover-rule { width:120px; height:10px; margin:0.15rem 0 0.4rem; }
 .cover-title {
-  font-family:'Playfair Display',serif; font-style:italic; font-weight:600; font-size:2.65rem; line-height:1.02;
-  color:var(--burgundy); margin-bottom:0.5rem; text-shadow:0 1px 0 rgba(255,250,235,0.6);
+  font-family:'Playfair Display',serif; font-style:normal; font-weight:500; font-size:1rem; line-height:1;
+  letter-spacing:0.28em; text-transform:uppercase; color:var(--burgundy); margin:0 0 0.45rem 0.28em; text-shadow:none;
 }
-.cover-subtitle {
-  font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.34em; color:var(--warm-brown);
-  display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-bottom:0.4rem;
-}
-.cover-subtitle::before, .cover-subtitle::after { content:'\25C6'; font-size:0.45rem; color:var(--gold); }
-.cover-art { width:min(345px, 100%); height:auto; display:block; margin:0.5rem 0 0.6rem; overflow:visible; }
-.cover-tagline {
-  font-family:'Playfair Display',serif; font-style:italic; font-size:1.05rem; color:var(--coffee); margin-bottom:0.2rem;
-}
-.cover-tagline span { text-decoration:underline; text-decoration-color:rgba(122,46,58,0.5); text-underline-offset:3px; }
-.cover-orn { color:var(--gold); font-size:1rem; line-height:1; }
-.cover-byline {
-  font-family:'Lora',serif; font-size:0.62rem; letter-spacing:0.24em; text-transform:uppercase;
-  color:var(--warm-brown); margin-top:auto;
-}
-.cover-byline span { font-weight:600; color:var(--burgundy); }
+.cover-swirl { width:84px; height:15px; }
 .cover-hint {
   position:absolute; left:0; right:0; bottom:2.3rem; text-align:center;
-  font-family:'Caveat',cursive; font-size:1.1rem; color:var(--burgundy);
+  font-family:'Caveat',cursive; font-size:1.1rem; color:var(--burgundy); bottom:1.5rem;
   animation:coverHintPulse 3.6s ease-in-out infinite;
 }
 @keyframes coverHintPulse { 0%,100% { opacity:0.45; } 50% { opacity:0.95; } }
@@ -1588,48 +1608,83 @@ body::after {
 @keyframes bellTug { 0% { transform:translateY(0); } 35% { transform:translateY(22px) scaleY(1.06); } 70% { transform:translateY(-4px); } 100% { transform:translateY(0); } }
 @keyframes bellRing { 0% { transform:rotate(0); } 15% { transform:rotate(16deg); } 32% { transform:rotate(-13deg); } 50% { transform:rotate(9deg); } 68% { transform:rotate(-5deg); } 84% { transform:rotate(2deg); } 100% { transform:rotate(0); } }
 
-/* the card drops down from above and pushes the book along with it */
-.ri-drop { position:relative; z-index:1; display:grid; grid-template-rows:0fr; transition:grid-template-rows .55s cubic-bezier(.4,0,.2,1), margin-bottom .55s ease; }
+/* The bell lowers a café chalkboard on two brass chains; it swings a
+   little as it settles, and pushes the book down to make room. */
+.ri-drop { position:relative; z-index:1; display:grid; grid-template-rows:0fr; transition:grid-template-rows .6s cubic-bezier(.4,0,.2,1), margin-bottom .6s ease; }
 .ri-drop.open { grid-template-rows:1fr; margin-bottom:2.2rem; }
-.ri-drop-inner { min-height:0; overflow:hidden; padding:0 14px 26px; margin:0 -14px -26px; }
-.recipe-index {
-  position:relative; padding:1.3rem 2rem 1rem; color:var(--ink); border-radius:3px;
+.ri-drop-inner { min-height:0; overflow:hidden; padding:0 18px 30px; margin:0 -18px -30px; }
+.ri-hang { position:relative; padding-top:46px; transform-origin:50% 0; opacity:0; transform:translateY(-40px); transition:opacity .35s ease; }
+.ri-drop.open .ri-hang { opacity:1; animation:boardDrop .9s cubic-bezier(.3,.7,.3,1) both; }
+@keyframes boardDrop { 0% { transform:translateY(-40px) rotate(0); } 45% { transform:translateY(0) rotate(1.4deg); } 70% { transform:rotate(-0.8deg); } 88% { transform:rotate(0.3deg); } 100% { transform:none; } }
+/* two brass chains with hooks at the top */
+.ri-hang::before { content:''; position:absolute; top:0; left:0; right:0; height:48px; pointer-events:none;
   background:
-    radial-gradient(circle at 12% 8%, rgba(255,255,255,0.4), transparent 40%),
-    radial-gradient(circle at 92% 95%, rgba(132,89,43,0.16), transparent 50%),
-    linear-gradient(172deg, #f5ead5, #e8d5b2);
-  box-shadow:0 16px 34px rgba(0,0,0,0.42);
-  transform:translateY(-24px); opacity:0; transition:transform .55s cubic-bezier(.3,.7,.3,1), opacity .35s ease;
-}
-.ri-drop.open .recipe-index { transform:none; opacity:1; }
-.recipe-index::before { content:''; position:absolute; inset:7px; pointer-events:none; border:1px solid rgba(107,79,58,0.3); }
+    radial-gradient(ellipse 3.6px 5.4px at 50% 50%, transparent 0 1.9px, #d9b66a 2.2px 3.2px, transparent 3.6px) 14% 4px / 9px 9px repeat-y,
+    radial-gradient(ellipse 3.6px 5.4px at 50% 50%, transparent 0 1.9px, #d9b66a 2.2px 3.2px, transparent 3.6px) 86% 4px / 9px 9px repeat-y;
+  filter:drop-shadow(1px 2px 1px rgba(0,0,0,0.5)); }
+.ri-hang::after { content:''; position:absolute; top:-3px; left:0; right:0; height:9px; pointer-events:none;
+  background:
+    radial-gradient(circle at 14% 50%, #f0d898 0 3px, #8a6a2c 4px, transparent 5px),
+    radial-gradient(circle at 86% 50%, #f0d898 0 3px, #8a6a2c 4px, transparent 5px); }
 
-.ri-tabs { display:flex; align-items:center; justify-content:center; gap:1rem; margin-bottom:0.9rem; }
-.ri-tab {
-  background:none; border:none; cursor:pointer; padding:0.1rem 0.1rem 0.25rem; position:relative;
-  font-family:'Playfair Display',serif; font-style:italic; font-size:1.18rem; color:rgba(58,34,18,0.45); transition:color .2s;
+.recipe-index {
+  position:relative; padding:1.25rem 2.1rem 1rem; color:#f3eee2;
+  /* slate, rubbed with old chalk */
+  background:
+    radial-gradient(ellipse at 22% 30%, rgba(255,255,255,0.07), transparent 40%),
+    radial-gradient(ellipse at 75% 70%, rgba(255,255,255,0.05), transparent 45%),
+    radial-gradient(ellipse at 60% 15%, rgba(255,255,255,0.04), transparent 30%),
+    repeating-linear-gradient(8deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 6px),
+    linear-gradient(170deg, #2f3a34, #232b27 60%, #1d2420);
+  /* walnut frame */
+  border:13px solid transparent;
+  border-image:linear-gradient(135deg, #6b4428, #4a2c18 25%, #7a5032 50%, #4a2c18 75%, #6b4428) 13;
+  box-shadow:0 18px 34px rgba(0,0,0,0.5), inset 0 0 22px rgba(0,0,0,0.55);
 }
-.ri-tab::after { content:''; position:absolute; left:10%; right:10%; bottom:0; height:1px; background:var(--burgundy); transform:scaleX(0); transition:transform .3s ease; }
-.ri-tab:hover { color:var(--coffee); }
-.ri-tab.active { color:var(--ink); }
+/* a faint chalk border drawn just inside the frame */
+.recipe-index::before { content:''; position:absolute; inset:7px; pointer-events:none;
+  border:1.5px dashed rgba(243,238,226,0.22); border-radius:6px; }
+.ri-board-title { text-align:center; font-family:'Caveat',cursive; font-size:1.05rem; color:#f3d98e; opacity:0.9; margin-bottom:0.15rem; letter-spacing:0.04em; }
+.ri-board-title::before, .ri-board-title::after { content:'~'; margin:0 0.5em; color:#e8a6b0; }
+
+.ri-tabs { display:flex; align-items:center; justify-content:center; gap:1rem; margin-bottom:0.95rem; }
+.ri-tab {
+  background:none; border:none; cursor:pointer; padding:0.05rem 0.15rem 0.3rem; position:relative;
+  font-family:'Caveat',cursive; font-size:1.6rem; line-height:1.1; color:rgba(243,238,226,0.45); transition:color .2s;
+  text-shadow:0 0 1px rgba(255,255,255,0.4);
+}
+/* chalk underline, a little wobbly */
+.ri-tab::after { content:''; position:absolute; left:4%; right:4%; bottom:0.05rem; height:6px; transform:scaleX(0); transition:transform .3s ease;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 6' preserveAspectRatio='none'%3E%3Cpath d='M1,4 C20,1 35,5 52,3 S82,1 99,3.5' stroke='%23f3d98e' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat; }
+.ri-tab:hover { color:rgba(243,238,226,0.75); }
+.ri-tab.active { color:#f6f2e8; }
 .ri-tab.active::after { transform:scaleX(1); }
-.ri-tab:focus-visible { outline:2px solid var(--gold); outline-offset:3px; }
-.ri-tabs-orn { color:var(--gold); font-size:0.95rem; }
+.ri-tab:focus-visible { outline:1.5px dashed #f3d98e; outline-offset:3px; }
+.ri-tabs-orn { color:#e8a6b0; font-size:0.95rem; opacity:0.85; }
 
 .ri-fields { display:grid; grid-template-columns:minmax(0,1.6fr) repeat(3, minmax(0,1fr)); gap:0.8rem 1.6rem; align-items:end; }
+.recipe-index .slip-label { color:rgba(243,238,226,0.55); font-size:0.58rem; letter-spacing:0.22em; }
+.recipe-index .slip-in {
+  font-family:'Caveat',cursive; font-size:1.25rem; line-height:1.2; color:#f6f2e8; padding:0.15rem 0 0.2rem;
+  border-bottom:1.5px dashed rgba(243,238,226,0.4); text-shadow:0 0 1px rgba(255,255,255,0.35);
+}
+.recipe-index .slip-in::placeholder { color:rgba(243,238,226,0.35); font-style:normal; }
+.recipe-index .slip-in:focus { border-bottom:1.5px solid #f3d98e; }
+.recipe-index .slip-sel { width:100%;
+  background-image:linear-gradient(45deg, transparent 50%, #f3eee2 50%), linear-gradient(135deg, #f3eee2 50%, transparent 50%); }
+.recipe-index .slip-sel option, .recipe-index .slip-sel optgroup { background:#2a332e; color:#f3eee2; font-family:'Lora',serif; font-size:0.9rem; }
 .ri-search-in { position:relative; }
-.ri-search-icon { position:absolute; left:0; top:50%; transform:translateY(-50%); color:var(--warm-brown); opacity:0.75; display:flex; pointer-events:none; }
+.ri-search-icon { position:absolute; left:0; top:50%; transform:translateY(-50%); color:rgba(243,238,226,0.6); display:flex; pointer-events:none; }
 .ri-search-in .slip-in { padding-left:1.45rem; }
-.recipe-index .slip-sel { width:100%; }
 
-.ri-foot { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; margin-top:0.85rem; padding-top:0.6rem; border-top:1px dashed rgba(107,79,58,0.3); }
-#ri-count { font-family:'Caveat',cursive; font-size:1.05rem; color:var(--warm-brown); }
-.ri-clear { background:none; border:none; cursor:pointer; padding:0; font-family:'Lora',serif; font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--burgundy); border-bottom:1px solid rgba(122,46,58,0.4); }
-.ri-clear:hover { border-bottom-color:var(--burgundy); }
+.ri-foot { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; margin-top:0.8rem; padding-top:0.5rem; border-top:1.5px dashed rgba(243,238,226,0.18); }
+#ri-count { font-family:'Caveat',cursive; font-size:1.15rem; color:#f3d98e; }
+.ri-clear { background:none; border:none; cursor:pointer; padding:0; font-family:'Caveat',cursive; font-size:1.1rem; color:#e8a6b0; border-bottom:1.5px dashed rgba(232,166,176,0.5); }
+.ri-clear:hover { color:#f4c4cc; }
 
 @media (prefers-reduced-motion: reduce) {
   .book-content, .book-cover-closed, .book-open-view,
-  .book-reader-chrome, .cover-hint, .ri-tab::after, .ri-drop, .recipe-index, .bell-pull .bp-bell, .bell-pull .bp-pull,
+  .book-reader-chrome, .cover-hint, .ri-tab::after, .ri-drop, .ri-hang, .bell-pull .bp-bell, .bell-pull .bp-pull,
   .book-object.sliding-solo, .book-object.sliding-with-pages {
     transition-duration:0.01ms !important; animation-duration:0.01ms !important;
   }
@@ -1682,39 +1737,42 @@ body::after {
 .book-object.is-open { box-shadow:none; }
 .recipe-card:hover { transform:translateY(-3px); box-shadow:0 4px 0 rgba(107,79,58,0.08), 0 18px 34px rgba(20,10,5,0.18); }
 
-.rc-top { display:flex; align-items:center; justify-content:space-between; gap:1.2rem; margin-bottom:1.1rem; }
-.rc-cup-frame {
-  flex:none; width:126px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-}
-.rc-cup-frame svg { filter:drop-shadow(0 12px 22px rgba(74,52,40,0.38)); }
-.rc-cup-label {
-  font-family:'Caveat',cursive; font-size:0.92rem; color:var(--warm-brown); opacity:0.85;
-  margin-bottom:0.15rem; white-space:nowrap;
-}
-.rc-headline { flex:1; min-width:0; }
-.fav-btn {
-  border:none; background:transparent;
-  color:var(--burgundy); font-size:1.3rem; cursor:pointer; line-height:1;
-  padding:0.2rem;
-}
-.fav-btn.off { opacity:0.3; }
-.rc-name { font-family:'Playfair Display',serif; font-size:clamp(1.3rem,2.6vw,1.7rem); color:var(--ink); font-style:italic; line-height:1.2; margin-bottom:0.5rem; }
-.rc-meta { margin:0.2rem 0 0; }
-.rc-meta div { display:flex; align-items:baseline; gap:0.6rem; min-width:0; line-height:1.75; }
-.rc-meta dt {
-  flex:none; width:4.6rem; font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.16em; text-transform:uppercase;
-  color:var(--warm-brown); opacity:0.85;
-}
-.rc-meta dd { margin:0; min-width:0; font-family:'Lora',serif; font-size:0.84rem; color:var(--coffee); line-height:1.45; overflow-wrap:anywhere; }
-.rc-meta div + div { margin-top:0.2rem; }
-.rc-ingredients {
-  font-family:'Lora',serif; font-style:italic; font-size:0.86rem; color:var(--coffee); border-top:1px dashed rgba(107,79,58,0.3);
-  padding-top:0.8rem; margin-top:0.4rem; line-height:1.7;
-}
-.rc-note {
-  margin-top:auto; padding-top:1.1rem; font-family:'Caveat',cursive; font-size:1.15rem;
-  color:rgba(58,34,18,0.7);
-}
+/* A recipe page set like a printed café recipe plate: centred heading,
+   the cup in a painted oval, then numbered sections as on the Brew menu. */
+.recipe-card:not(.empty-state) { text-align:center; padding:1.9rem clamp(1.4rem,2.8vw,2.3rem) 1.4rem; height:570px; }
+.recipe-card > * { flex-shrink:0; }
+.rc-kicker { font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.32em; text-transform:uppercase; color:var(--warm-brown);
+  display:flex; align-items:center; justify-content:center; gap:0.7rem; }
+.rc-kicker::before, .rc-kicker::after { content:''; width:34px; height:1px; background:rgba(107,79,58,0.4); }
+.rc-name { font-family:'Playfair Display',serif; font-size:clamp(1.35rem,2.6vw,1.75rem); color:var(--burgundy); font-style:italic; line-height:1.15; margin:0.35rem 0 0.15rem; overflow-wrap:anywhere; }
+.rc-sub { font-family:'Caveat',cursive; font-size:1.05rem; color:var(--warm-brown); }
+.rc-vignette { position:relative; width:190px; height:150px; min-height:84px; flex-shrink:1 !important; margin:0.7rem auto 0.9rem; display:flex; align-items:flex-end; justify-content:center; }
+/* a watercolour wash in an inked oval, like the cover */
+.rc-vignette::before { content:''; position:absolute; inset:4px 6px 10px; border-radius:50%;
+  background:radial-gradient(ellipse at 40% 40%, rgba(182,124,135,0.22), transparent 60%), radial-gradient(ellipse at 60% 65%, rgba(199,168,109,0.35), transparent 70%), rgba(236,217,184,0.5);
+  border:1px solid rgba(122,46,58,0.45); box-shadow:inset 0 0 0 4px rgba(248,238,219,0.6), inset 0 0 0 5px rgba(199,168,109,0.7); }
+.rc-vignette svg { position:relative; width:auto; height:calc(100% + 26px); margin-bottom:-14px; filter:drop-shadow(0 8px 10px rgba(74,52,40,0.32)); }
+
+.rc-sec { text-align:left; margin-top:0.55rem; }
+.rc-h { font-family:'Playfair Display',serif; font-weight:500; font-size:0.92rem; letter-spacing:0.05em; color:var(--ink);
+  margin:0 0 0.35rem; display:flex; align-items:baseline; gap:0.5rem; }
+.rc-h span { font-style:italic; color:var(--burgundy); }
+.rc-h::after { content:''; flex:1; height:1px; background:rgba(58,34,18,0.22); align-self:center; }
+.rc-ings { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:0.15rem 1.1rem; }
+.rc-ings li { display:flex; align-items:center; gap:0.5rem; font-family:'Playfair Display',serif; font-style:italic; font-size:0.95rem; color:var(--coffee); }
+.rc-ings li::before { content:''; width:6px; height:6px; transform:rotate(45deg); border:1px solid var(--burgundy); }
+.rc-ings li:first-child::before { background:var(--burgundy); }
+.rc-ledger { margin:0; }
+.rc-row { display:flex; align-items:baseline; gap:0.4rem; line-height:1.55; }
+.rc-row dt { flex:none; font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--warm-brown); }
+.rc-row::after { content:''; order:1; flex:1; min-width:1rem; border-bottom:1px dotted rgba(58,34,18,0.35); transform:translateY(-0.25em); }
+.rc-row dd { order:2; margin:0; max-width:64%; text-align:right; font-family:'Lora',serif; font-size:0.84rem; color:var(--coffee); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rc-note { margin-top:auto; padding-top:0.7rem; font-family:'Caveat',cursive; font-size:1.08rem; color:rgba(58,34,18,0.66); }
+.fav-btn { border:none; background:transparent; color:var(--burgundy); cursor:pointer; line-height:0; padding:0.2rem; transition:transform .2s, opacity .2s; }
+.fav-btn:hover { transform:scale(1.12); }
+.fav-btn.off { color:transparent; }
+.fav-btn.off svg path { stroke:rgba(122,46,58,0.55); }
+.rc-orn { color:var(--gold); font-size:1.6rem; margin-bottom:0.6rem; }
 .rc-badge {   /* a rubber stamp */
   position:absolute; top:0.9rem; right:0.9rem; z-index:2; transform:rotate(7deg);
   font-family:'Lora',serif; font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase; font-weight:500;
@@ -1722,10 +1780,12 @@ body::after {
   padding:2px 8px; border-radius:2px; opacity:0.78;
 }
 .rc-foot {
-  display:flex; align-items:center; justify-content:space-between; margin-top:0.9rem; padding-top:0.5rem;
+  position:relative; display:flex; align-items:center; justify-content:center; margin-top:0.55rem; padding-top:0.45rem;
   border-top:1px solid rgba(107,79,58,0.2);
 }
-.rc-folio { font-family:'Playfair Display',serif; font-style:italic; font-size:0.85rem; color:var(--warm-brown); opacity:0.8; }
+.rc-foot .fav-btn { position:absolute; right:0; top:50%; transform:translateY(-35%); }
+.rc-foot .fav-btn:hover { transform:translateY(-35%) scale(1.12); }
+.rc-folio { font-family:'Playfair Display',serif; font-style:italic; font-size:0.85rem; color:var(--warm-brown); opacity:0.85; }
 .empty-state {
   text-align:center; padding:4rem 2rem; grid-column:1/-1; align-self:center;
 }
@@ -1738,11 +1798,11 @@ body::after {
   color:var(--beige); font-family:'Playfair Display',serif; font-style:italic; font-size:0.98rem;
 }
 .page-btn {
-  width:40px; height:40px; border-radius:2px; border:1px solid rgba(199,168,109,0.5);
-  background:rgba(44,26,16,0.4); color:var(--cream); cursor:pointer; font-family:'Playfair Display',serif; font-size:1.25rem; line-height:1;
-  transition:all 0.2s; box-shadow:0 10px 24px rgba(0,0,0,0.22);
+  width:40px; height:40px; border-radius:2px; border:1px solid rgba(199,168,109,0.7);
+  background:linear-gradient(180deg, #4a2c18, #3a2214); color:#f0d898; cursor:pointer; font-family:'Playfair Display',serif; font-size:1.25rem; line-height:1;
+  transition:all 0.2s; box-shadow:inset 0 0 0 2px rgba(44,26,16,0.6), inset 0 0 0 3px rgba(199,168,109,0.25), 0 8px 18px rgba(0,0,0,0.35);
 }
-.page-btn:hover:not(:disabled) { background:var(--gold); color:var(--dark); transform:translateY(-2px); }
+.page-btn:hover:not(:disabled) { color:#2c1a10; background:linear-gradient(180deg, #f0d898, #d1aa5a 45%, #b48a3a 55%, #d9b66a); transform:translateY(-2px); }
 .page-btn:disabled { opacity:0.35; cursor:not-allowed; }
 
 /* ── Realistic 3D page-flip (built in changeRecipePage) ── */
@@ -1887,27 +1947,36 @@ body::after {
   .hero-rule::after { width:90px; }
   .hero-ritual { margin-left:auto; margin-right:auto; }
   .hero-scene { width:min(340px, 88vw); }
-  .nav-links { display:none; }
-  .nav-auth a, .nav-user-name { font-size:0.7rem; }
+  /* phones: the sign gets a second row with the page names */
+  .nav { flex-wrap:wrap; padding:0.55rem 1.1rem 0.45rem; row-gap:0.35rem; }
+  .nav::before, .nav::after { display:none; }
+  .nav-logo { font-size:1.2rem; }
+  .nav-links { order:3; width:100%; justify-content:center; gap:0.45rem; padding-top:0.35rem; border-top:1px solid rgba(199,168,109,0.35); }
+  .nav-links a { font-size:0.6rem; letter-spacing:0.1em; padding:0.34rem 0.5rem; }
+  .nav-links a.active { background:linear-gradient(180deg, #f0d898, #d1aa5a 45%, #b48a3a 55%, #d9b66a); }
+  .nav-links a + a::before { left:calc(-0.225rem - 2px); width:4px; height:4px; margin-top:-2px; }
+  .nav-auth a, .nav-user-name { font-size:0.66rem; }
+  .nav-auth a { padding:0.34rem 0.7rem; }
   #page-recipes { padding-left:0.75rem; padding-right:0.75rem; }
   .book-spine-fixed { width:18px; }
   /* Phones: a single-page book — the same size closed and open, with the
      spine staying on the left as the binding. */
   .book-shelf-scene { --book-h:540px; }
+  .book-shelf-scene::before { width:calc(100% + 3rem); top:-24px; height:calc(var(--book-h) + 60px); }
   .book-content, .book-content.is-open { width:min(340px,84vw); }
   .book-object.is-open .book-spine-fixed { display:block; }
   .book-open-view { min-width:0; }
-  .cover-title { font-size:2.1rem; }
-  .cover-border { inset:14px 14px 14px 28px; }
+  .cover-owner { font-size:2rem; } .cover-owner.long { font-size:1.6rem; } .cover-owner.xlong { font-size:1.25rem; }
+  .cover-love { font-size:1.15rem; }
   .cover-face { padding:2rem 1.2rem 4.2rem; }
-  .rc-meta dt { width:3.9rem; font-size:0.56rem; letter-spacing:0.12em; }
-  .rc-meta dd { font-size:0.8rem; }
-  .rc-top { gap:0.6rem; }
+  .rc-vignette { width:150px; height:118px; }
+  .recipe-card:not(.empty-state) { height:calc(var(--book-h) - 14px); padding:1.5rem 1.2rem 1.1rem; }
+  .rc-row dd { font-size:0.8rem; }
   .ri-dock { width:100%; }
   .bell-pull { right:-6px; top:-190px; transform:scale(0.66); }
   .bell-pull-tag { display:none; }
-  .recipe-index { padding:1.1rem 1.1rem 0.9rem; }
-  .ri-tab { font-size:1.05rem; }
+  .recipe-index { padding:0.9rem 1rem 0.8rem; border-width:10px; }
+  .ri-tab { font-size:1.35rem; }
   .ri-fields { grid-template-columns:1fr 1fr; gap:0.75rem 1.1rem; }
   .ri-search { grid-column:1 / -1; }
   .flipbook-shell { padding:4px 9px 10px 0; }
@@ -1918,6 +1987,14 @@ body::after {
     box-shadow:1px 1px 0 #efe3c8, 2px 2px 0 #d8c59f, 3px 3px 0 #ede0c3, 4px 4px 0 #d2bd95, 5px 5px 0 #e9dabb, 6px 6px 0 #c9b38a, 8px 14px 26px rgba(10,4,0,0.45); }
   /* the binding becomes a stitched linen tape rather than a leather spine */
   .book-object.is-open .book-spine-fixed { box-shadow:inset -3px 0 5px rgba(0,0,0,0.35), -4px 12px 22px rgba(10,4,0,0.4); }
-  .rc-cup-frame { width:96px; }
   .book-binding { display:none; }
 }
+/* Recipe pages keep a fixed size (so the book always closes neatly); long
+   names, drinks and notes give way rather than pushing the footer off. */
+.rc-name { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.rc-sub { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rc-ings { max-height:3rem; overflow:hidden; }
+.rc-ings li { line-height:1.5; }
+.rc-ings li.rc-more { font-family:'Caveat',cursive; font-style:normal; color:var(--warm-brown); }
+.rc-ings li.rc-more::before { display:none; }
+.rc-note { flex-shrink:1 !important; min-height:0; overflow:hidden; }
