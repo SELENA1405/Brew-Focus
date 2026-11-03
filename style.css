@@ -2067,3 +2067,66 @@ body::after {
 /* a little handwritten "you" over your own animal */
 .cr-sitter.me::before { content:'you'; position:absolute; left:50%; top:101%; transform:translateX(-50%); font-family:'Caveat',cursive; font-size:max(0.8rem, 1.6cqw); line-height:1; color:#f3d98e; text-shadow:0 1px 2px rgba(0,0,0,0.75); white-space:nowrap; }
 .cr-sitter.me.seated::before { top:99%; }
+
+/* ── Study Café page: painted atmospheres, a café awning, cameo guests ── */
+/* the "Open a café" card wears a striped café awning */
+.reserve-card { padding-top:3.2rem; }
+.cafe-awning { position:absolute; left:-14px; right:-14px; top:-16px; height:46px; z-index:2; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), transparent 40%, rgba(0,0,0,0.18)) 0 0/100% 100%,
+    repeating-linear-gradient(90deg, #7a2e3a 0 34px, #f3e6d0 34px 68px) calc(50% - 17px) 0/68px 100%;
+  -webkit-mask:radial-gradient(circle at 17px 0, #000 17.5px, transparent 18px) calc(50% - 17px) 28px/34px 18px repeat-x, linear-gradient(#000,#000) 0 0/100% 29px no-repeat;
+          mask:radial-gradient(circle at 17px 0, #000 17.5px, transparent 18px) calc(50% - 17px) 28px/34px 18px repeat-x, linear-gradient(#000,#000) 0 0/100% 29px no-repeat;
+  filter:drop-shadow(0 6px 5px rgba(0,0,0,0.35)); }
+.cafe-awning::before { content:''; position:absolute; left:0; right:0; top:0; height:7px; background:#4a1820; }
+
+/* the atmosphere picker: a row of painted postcards */
+.vibe-picker { grid-template-columns:repeat(3, 1fr); gap:1rem; }
+.vibe-tile { position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0.1rem;
+  padding:7px 7px 0.6rem; border:none; border-radius:2px; cursor:pointer;
+  background:#fbf6ea; box-shadow:0 1px 0 rgba(58,34,18,0.12), 0 6px 14px rgba(58,34,18,0.18), inset 0 0 0 1px rgba(58,34,18,0.16);
+  transition:transform .2s, box-shadow .2s; }
+.vibe-tile:nth-child(3n+1) { transform:rotate(-0.6deg); } .vibe-tile:nth-child(3n) { transform:rotate(0.5deg); }
+.vibe-tile:hover { transform:translateY(-3px) rotate(0); box-shadow:0 1px 0 rgba(58,34,18,0.12), 0 12px 22px rgba(58,34,18,0.25), inset 0 0 0 1px rgba(58,34,18,0.25); }
+.vibe-tile .vibe-pic { display:block; width:100%; aspect-ratio:160/110; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(58,34,18,0.35); margin-bottom:0.4rem; }
+.vibe-pic .vibe-art { display:block; width:100%; height:100%; }
+.vibe-tile.sel { background:#fffaf0; box-shadow:0 0 0 2px var(--burgundy), 0 10px 20px rgba(58,34,18,0.25); transform:translateY(-2px) rotate(0); }
+.vibe-tile.sel .vibe-pic { box-shadow:inset 0 0 0 1px var(--burgundy); }
+/* a burgundy wax seal on the one you've chosen */
+.vibe-seal { position:absolute; top:-9px; right:-9px; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  color:#f6e2b8; background:radial-gradient(circle at 35% 30%, #a8485a, #7a2e3a 60%, #561c28); box-shadow:0 2px 4px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(0,0,0,0.12);
+  transform:scale(0) rotate(-30deg); transition:transform .25s cubic-bezier(.3,1.6,.5,1); }
+.vibe-tile.sel .vibe-seal { transform:scale(1) rotate(-8deg); }
+.vibe-name { font-size:1rem; }
+.vibe-tag { font-size:0.95rem; }
+
+/* invitations show a little painting of the café */
+.invite-pic { flex:none; width:78px; aspect-ratio:160/110; padding:3px; background:#fbf6ea; box-shadow:0 2px 5px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(58,34,18,0.2); transform:rotate(-2deg); }
+.invite-pic .vibe-art { display:block; width:100%; height:100%; }
+
+/* your cafés: a painted header, then who's at the table */
+.room-card { padding:0.8rem 0.8rem 1.1rem; }
+.room-card-art { position:relative; display:block; aspect-ratio:160/88; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(58,34,18,0.35); }
+.room-card-art .vibe-art { display:block; width:100%; height:100%; }
+.room-card-label { position:relative; z-index:1; display:flex; justify-content:center; margin:-0.85rem 0 0.7rem; }
+.room-card-label .room-card-vibe { margin:0; white-space:nowrap; padding:0.32rem 1rem; background:#fbf6ea; box-shadow:0 2px 5px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(122,46,58,0.4); }
+.room-card > *:not(.room-card-art):not(.room-card-label) { margin-left:0.7rem; margin-right:0.7rem; }
+.room-card .room-join-btn { width:calc(100% - 1.4rem); }
+.room-people { display:flex; flex-wrap:wrap; justify-content:center; gap:0.9rem 0.6rem; padding:0.9rem 0.4rem 0.8rem; margin-bottom:1rem;
+  border-top:1px dashed rgba(58,34,18,0.3); border-bottom:1px dashed rgba(58,34,18,0.3); }
+.room-people .member-slot { position:relative; width:76px; }
+.member-cameo { width:56px; height:56px; margin:0 auto; border-radius:50%; overflow:hidden; background:radial-gradient(circle at 50% 40%, #fffaf0, #efe2c8 75%);
+  box-shadow:inset 0 0 0 1.5px rgba(122,46,58,0.5), inset 0 0 0 4px #fbf6ea, inset 0 0 0 5px rgba(199,168,109,0.6); display:flex; align-items:flex-end; justify-content:center; }
+.member-cameo .char { width:86%; height:auto; display:block; margin-bottom:-1px; }
+.member-cup { position:absolute; right:2px; top:30px; width:28px; }
+.member-cup svg { width:100%; height:auto; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,0.25)); }
+.room-people .member-name { display:block; margin-top:0.25rem; background:none; box-shadow:none; padding:0; font-size:0.9rem; color:var(--coffee); }
+.rooms-grid .empty-state { border:1.5px dashed rgba(199,168,109,0.4); border-radius:3px; padding:2.6rem 2rem; }
+.rooms-grid .empty-state p { color:var(--beige); opacity:0.8; }
+.toast:not(.show) { opacity:0; }
+@media(max-width:700px){
+  .vibe-picker { grid-template-columns:repeat(2, 1fr); gap:0.8rem; }
+  .vibe-tag { font-size:0.85rem; }
+  .cafe-awning { left:-8px; right:-8px; }
+  .reserve-card { padding-top:3rem; }
+}

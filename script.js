@@ -696,6 +696,126 @@ const CafeDB = {
   },
 };
 
+// ── Painted atmosphere vignettes ──────────────────────────────────────────
+// A small watercolour of each café type, in the same hand as the café rooms:
+// soft washes, wobbly ink, paper grain. Used on the picker, invitations and
+// café cards.
+let vibeArtUid=0;
+function vibeArtSVG(key, {cls=''}={}){
+  const k = key==='cabin' ? 'beach' : (CAFE_VIBES[key] ? key : 'parisian');
+  const u='va'+(++vibeArtUid), dark = k==='midnight' || k==='library';
+  const ink='#4a3428', L=`stroke="${ink}" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"`;
+  const W=(d,fill,op=1)=>`<path d="${d}" fill="${fill}" opacity="${op}"/>`;
+  let scene='';
+  switch(k){
+    case 'parisian': {
+      const stripes=[...Array(9)].map((_,i)=>`<path d="M${18+i*14},20 L${32+i*14},20 L${32+i*14},36 Q${25+i*14},42 ${18+i*14},36 Z" fill="${i%2?'#f4e9d6':'#8e2f3c'}" ${L} stroke-width="0.7"/>`).join('');
+      scene = `<rect width="160" height="110" fill="#ecd3bf"/>${W('M0,0 H160 V110 H0 Z','url(#'+u+'-g)')}
+        <rect x="0" y="86" width="160" height="24" fill="#b88f6a"/><path d="M0,86 H160" stroke="#8a6448" stroke-width="1.4"/>
+        <rect x="14" y="14" width="132" height="8" fill="#5a2a2a" ${L}/>
+        ${stripes}
+        <rect x="26" y="40" width="50" height="46" fill="#f6c98a" ${L}/><rect x="26" y="40" width="50" height="46" fill="url(#${u}-glow)"/>
+        <path d="M51,40 V86 M26,60 H76" ${L} stroke-width="1.6"/>
+        <rect x="88" y="40" width="40" height="46" fill="#7a4a34" ${L}/><circle cx="121" cy="64" r="1.6" fill="#e3c27a"/>
+        <rect x="92" y="44" width="32" height="18" fill="#f6c98a" opacity="0.8" ${L} stroke-width="0.7"/>
+        <ellipse cx="44" cy="94" rx="14" ry="3" fill="#e8dcc8" ${L}/><path d="M44,94 V106 M38,108 H50" ${L} stroke-width="1.4"/>
+        <path d="M60,108 L62,92 Q66,82 70,92 L72,108 M61,98 H71" fill="none" ${L} stroke-width="1.3"/>
+        <path d="M134,86 L132,74 H146 L144,86 Z" fill="#a4553f" ${L}/><circle cx="139" cy="68" r="8" fill="#6f8a5a" ${L}/><circle cx="134" cy="64" r="2" fill="#d77a7a"/><circle cx="143" cy="66" r="2" fill="#f2e3b0"/>
+        <rect x="64" y="25" width="0" height="0"/>`;
+      break; }
+    case 'bookstore': {
+      const spines=(x,y,n)=>[...Array(n)].map((_,i)=>`<rect x="${x+i*6}" y="${y+(i%3)}" width="5" height="${13-(i%3)}" fill="${['#7a2e3a','#3f5a6e','#c4973c','#5f7a4a','#8a5a3a','#6a4a6a'][i%6]}"/>`).join('');
+      scene = `<rect width="160" height="110" fill="#4a3a30"/>
+        <rect x="8" y="8" width="58" height="80" fill="#5a4636" ${L}/>${[22,40,58,76].map(y=>`<path d="M8,${y} H66" stroke="#2e2218" stroke-width="2"/>`).join('')}
+        ${spines(11,9,9)}${spines(11,27,9)}${spines(11,45,9)}${spines(11,63,8)}
+        <rect x="76" y="10" width="76" height="62" fill="#8ea3ae" ${L}/>
+        <rect x="76" y="10" width="76" height="62" fill="url(#${u}-rain)"/>
+        <path d="M114,10 V72 M76,41 H152" stroke="#3a2a20" stroke-width="2.4"/>
+        <path d="M80,72 C96,62 128,66 150,58 L152,72 Z" fill="#5f727c" opacity="0.6"/>
+        ${[[84,18],[100,30],[126,22],[140,48],[92,54],[132,60]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.4" fill="#e4eef2" opacity="0.8"/>`).join('')}
+        <rect x="0" y="88" width="160" height="22" fill="#6b4a32"/><path d="M0,88 H160" stroke="#3a2a20" stroke-width="1.4"/>
+        <path d="M96,88 L100,78 H118 L122,88 Z" fill="#f2e6cf" ${L}/><path d="M109,78 V88" ${L} stroke-width="0.8"/>
+        <circle cx="140" cy="80" r="14" fill="url(#${u}-lamp)"/><path d="M134,84 L137,76 H143 L146,84 Z" fill="#c4973c" ${L}/>
+        <rect x="128" y="88" width="8" height="10" rx="1" fill="#f3ead8" ${L}/><path d="M131,86 q1,-3 0,-5" fill="none" stroke="#fffaf0" stroke-width="0.8"/>`;
+      break; }
+    case 'kyoto': {
+      const grid=[...Array(5)].map((_,i)=>`<path d="M${52+i*18},10 V82" stroke="#6b4f3a" stroke-width="1.3"/>`).join('')+[...Array(4)].map((_,i)=>`<path d="M44,${24+i*16} H124" stroke="#6b4f3a" stroke-width="1.3"/>`).join('');
+      scene = `<rect width="160" height="110" fill="#efe3c6"/>
+        <rect x="44" y="8" width="80" height="76" fill="#fbf4e2" stroke="#4a3424" stroke-width="3"/>${grid}
+        <path d="M128,70 C132,52 140,40 154,30" fill="none" stroke="#4a3424" stroke-width="1.6"/>
+        ${[[140,42],[148,34],[134,56],[152,48]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="3.2" fill="#f0b4bc" opacity="0.9"/>`).join('')}
+        <path d="M22,6 V16" stroke="${ink}" stroke-width="1"/><ellipse cx="22" cy="32" rx="12" ry="15" fill="#c8453a" ${L}/>
+        <path d="M11,26 H33 M10,32 H34 M11,38 H33" stroke="#9a2f28" stroke-width="0.8"/><rect x="18" y="15" width="8" height="3" fill="#2e2016"/><rect x="18" y="46" width="8" height="3" fill="#2e2016"/>
+        <rect x="0" y="84" width="160" height="26" fill="#c9c18a"/>${[0,40,80,120].map(x=>`<path d="M${x},84 V110" stroke="#5a4a2a" stroke-width="1.2"/>`).join('')}<path d="M0,84 H160" stroke="#5a4a2a" stroke-width="1.6"/>
+        <ellipse cx="80" cy="92" rx="34" ry="6" fill="#4a3424" ${L}/><path d="M56,94 V100 M104,94 V100" stroke="#2e2016" stroke-width="2.2"/>
+        <path d="M72,88 C72,82 88,82 88,88 Z" fill="#7d9468" ${L}/><path d="M88,85 l6,-2" ${L}/><circle cx="80" cy="81" r="1.4" fill="#7d9468"/>
+        <rect x="20" y="96" width="22" height="8" rx="2" fill="#7a2e3a" ${L}/><rect x="118" y="96" width="22" height="8" rx="2" fill="#3f5470" ${L}/>`;
+      break; }
+    case 'midnight': {
+      scene = `<rect width="160" height="110" fill="#1d1a2e"/>
+        <path d="M46,88 V30 C46,14 60,6 80,6 C100,6 114,14 114,30 V88 Z" fill="#1b2350" ${L}/>
+        <path d="M46,88 V30 C46,14 60,6 80,6 C100,6 114,14 114,30 V88 Z" fill="url(#${u}-sky)"/>
+        <circle cx="98" cy="24" r="7" fill="#f5e6b8"/><circle cx="101" cy="22" r="6" fill="#1f2754"/>
+        ${[[60,22],[72,14],[86,30],[64,40],[106,44]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="0.9" fill="#fff8e0"/>`).join('')}
+        <path d="M46,88 V66 H54 V58 H62 V70 H70 V52 H78 V64 H88 V56 H96 V68 H104 V60 H114 V88 Z" fill="#0b0d1c"/>
+        ${[[57,62],[73,58],[81,70],[91,62],[99,72],[108,66]].map(([x,y])=>`<rect x="${x}" y="${y}" width="2" height="2" fill="#f3d58a"/>`).join('')}
+        <path d="M80,6 V88 M46,48 H114" stroke="#c4973c" stroke-width="1.2" opacity="0.8"/>
+        <path d="M30,0 C34,20 34,60 40,92 L20,92 C24,60 22,20 30,0 Z" fill="#6a1e2e" ${L}/><path d="M130,0 C126,20 126,60 120,92 L140,92 C136,60 138,20 130,0 Z" fill="#6a1e2e" ${L}/>
+        <rect x="0" y="92" width="160" height="18" fill="#15121e"/><path d="M0,92 H160" stroke="#c4973c" stroke-width="1"/>
+        <circle cx="80" cy="88" r="20" fill="url(#${u}-candle)"/><rect x="77" y="80" width="6" height="12" rx="1" fill="#efe3c6" ${L} stroke-width="0.8"/><path d="M80,72 C83,76 82,79 80,80 C78,79 77,76 80,72 Z" fill="#f6c45a"/>
+        <rect x="122" y="90" width="24" height="12" fill="#5a3420" ${L}/><ellipse cx="134" cy="90" rx="11" ry="2.4" fill="#1a1414" ${L} stroke-width="0.7"/>
+        <path d="M136,89 L140,74" stroke="#d9b66a" stroke-width="1.6"/><path d="M140,76 C142,66 148,58 156,52 C158,60 156,70 150,76 C147,79 142,79 140,76 Z" fill="#d9b66a" ${L}/><path d="M146,66 C150,64 154,58 156,52" fill="none" stroke="#a8823a" stroke-width="0.8"/>`;
+      break; }
+    case 'library': {
+      const shelf=(x)=>`<rect x="${x}" y="6" width="44" height="82" fill="#3a2a1e" ${L}/>`+[20,38,56,74].map(y=>`<path d="M${x},${y} H${x+44}" stroke="#1e140c" stroke-width="2"/>`).join('')
+        +[7,25,43,61].map(y=>[...Array(7)].map((_,i)=>`<rect x="${x+2+i*6}" y="${y+(i%2)}" width="5" height="${12-(i%2)}" fill="${['#7a2e3a','#2f5a40','#c4973c','#5a3a24','#3e4a6a','#8a6a3a'][(i+y)%6]}"/>`).join('')).join('');
+      scene = `<rect width="160" height="110" fill="#2b4436"/>${shelf(4)}${shelf(112)}
+        <path d="M56,6 H104 V88 H56 Z" fill="#355443"/><rect x="62" y="12" width="36" height="28" fill="#d9c8a0" stroke="#c4973c" stroke-width="2"/><path d="M62,32 C70,26 76,30 82,26 C88,22 94,28 98,26 V40 H62 Z" fill="#6f8a5a"/><circle cx="88" cy="20" r="3" fill="#f3d58a"/>
+        <rect x="0" y="88" width="160" height="22" fill="#5a3a24"/><path d="M0,88 H160" stroke="#2a1a10" stroke-width="1.4"/>
+        <circle cx="80" cy="82" r="32" fill="url(#${u}-lamp)"/>
+        <path d="M66,66 H94 L90,58 H70 Z" fill="#2f6a4a" ${L}/><path d="M80,66 V86" stroke="#c4973c" stroke-width="2"/><ellipse cx="80" cy="88" rx="9" ry="2.4" fill="#c4973c" ${L} stroke-width="0.8"/>
+        <path d="M100,92 C108,88 116,88 124,92 C132,88 140,88 148,92 L148,100 C140,96 132,96 124,100 C116,96 108,96 100,100 Z" fill="#f3ead8" ${L} stroke-width="0.8"/><path d="M124,92 V100" ${L} stroke-width="0.7"/>`;
+      break; }
+    default: { // beach
+      scene = `<rect width="160" height="110" fill="#bfe0ef"/><rect width="160" height="58" fill="url(#${u}-sky)"/>
+        <circle cx="122" cy="20" r="9" fill="#fff4cc" opacity="0.9"/>
+        <path d="M0,46 C30,40 60,44 90,40 C120,36 140,42 160,40 V60 H0 Z" fill="#7aa36a" opacity="0.7"/>
+        <rect x="0" y="54" width="160" height="22" fill="#3f86bf"/>${[62,68].map(y=>`<path d="M6,${y} q6,-2 12,0 M40,${y} q6,-2 12,0 M80,${y+2} q6,-2 12,0 M118,${y} q6,-2 12,0" fill="none" stroke="#d8ecf6" stroke-width="0.9"/>`).join('')}
+        <path d="M96,60 L100,46 L104,60 Z" fill="#fff" ${L} stroke-width="0.6"/><path d="M94,61 H108 L106,64 H96 Z" fill="#7a3a2a"/>
+        <rect x="0" y="76" width="160" height="34" fill="#c8683c"/><path d="M0,90 H160 M40,76 L30,110 M80,76 V110 M120,76 L130,110" stroke="#a9502c" stroke-width="0.9"/>
+        <path d="M0,76 H160" stroke="#fffaf0" stroke-width="3"/>${[...Array(17)].map((_,i)=>`<path d="M${4+i*10},66 V76" stroke="#fffaf0" stroke-width="2.2"/>`).join('')}<path d="M0,66 H160" stroke="#fffaf0" stroke-width="2.4"/>
+        <path d="M36,104 V40" stroke="#efe3c6" stroke-width="2"/>
+        <path d="M8,42 Q36,14 64,42 Z" fill="#c0392b" ${L}/>${[0,1,2,3,4,5,6].map(i=>`<path d="M36,22 L${12+i*8},42" stroke="${i%2?'#f6ead6':'#a52f25'}" stroke-width="${i%2?2.4:0.6}"/>`).join('')}<path d="M8,42 Q36,14 64,42" fill="none" ${L}/>
+        <path d="M128,104 L124,86 H148 L144,104 Z" fill="#b5532f" ${L}/>
+        ${[[130,78],[140,74],[136,84],[146,82],[126,86]].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="${5+i%2}" fill="${i%2?'#e0648a':'#c94a74'}" opacity="0.9"/>`).join('')}<circle cx="136" cy="90" r="4" fill="#6f8a5a"/>
+        <ellipse cx="80" cy="100" rx="14" ry="3" fill="#fffaf0" ${L}/><path d="M80,100 V108" ${L} stroke-width="1.4"/>`;
+    }
+  }
+  return `<svg class="vibe-art ${cls}" viewBox="0 0 160 110" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <filter id="${u}-p" x="-3%" y="-3%" width="106%" height="106%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.045 0.06" numOctaves="2" seed="11" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="5" result="blot"/>
+        <feColorMatrix in="blot" type="matrix" values="0 0 0 0 ${dark?'0.85':'0.25'}  0 0 0 0 ${dark?'0.75':'0.15'}  0 0 0 0 ${dark?'0.55':'0.06'}  0 0 0 ${dark?'0.35':'0.6'} -0.3" result="b2"/>
+        <feComposite in="b2" in2="d" operator="in" result="b3"/>
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain"/>
+        <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.22  0 0 0 0 0.12  0 0 0 0.35 -0.1" result="g2"/>
+        <feComposite in="g2" in2="d" operator="in" result="g3"/>
+        <feMerge><feMergeNode in="d"/><feMergeNode in="b3"/><feMergeNode in="g3"/></feMerge>
+      </filter>
+      <radialGradient id="${u}-glow" cx="50%" cy="60%" r="70%"><stop offset="0" stop-color="#fff2c8" stop-opacity="0.8"/><stop offset="1" stop-color="#e2a060" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${u}-lamp"><stop offset="0" stop-color="#ffe6a8" stop-opacity="0.75"/><stop offset="1" stop-color="#ffe6a8" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${u}-candle"><stop offset="0" stop-color="#ffd890" stop-opacity="0.6"/><stop offset="1" stop-color="#ffd890" stop-opacity="0"/></radialGradient>
+      <linearGradient id="${u}-sky" x1="0" y1="0" x2="0" y2="1">${k==='midnight' ? '<stop offset="0" stop-color="#0e1330"/><stop offset="1" stop-color="#2b3a74"/>' : '<stop offset="0" stop-color="#9fd0ea"/><stop offset="1" stop-color="#f3e3c4"/>'}</linearGradient>
+      <linearGradient id="${u}-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.12"/><stop offset="1" stop-color="#5a3020" stop-opacity="0.18"/></linearGradient>
+      <pattern id="${u}-rain" width="9" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(12)"><path d="M3,0 V7" stroke="#eef5f8" stroke-width="0.7" opacity="0.7"/></pattern>
+    </defs>
+    <g filter="url(#${u}-p)">${scene}</g>
+    <rect width="160" height="110" fill="url(#${u}-g)" opacity="0.6"/>
+  </svg>`;
+}
+
 // ── The café list (Study Café page) ──
 let selectedVibe = 'midnight';
 let unsubInvites = null;
@@ -706,9 +826,10 @@ function renderVibePicker(){
   el.innerHTML = VIBE_KEYS.map(k=>{
     const v=CAFE_VIBES[k];
     return `<button type="button" class="vibe-tile ${k===selectedVibe?'sel':''}" onclick="pickVibe('${k}')" aria-pressed="${k===selectedVibe}">
-      <span class="vibe-swatch vibe-${k}" aria-hidden="true"></span>
+      <span class="vibe-pic">${vibeArtSVG(k)}</span>
       <span class="vibe-name">${v.label}</span>
       <span class="vibe-tag">${v.tagline}</span>
+      <span class="vibe-seal" aria-hidden="true"><svg viewBox="0 0 20 20" width="13" height="13"><path d="M5 10.5l3.2 3.2L15 6.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     </button>`;
   }).join('');
 }
@@ -731,7 +852,7 @@ async function renderCafeList(){
     invitesEl.innerHTML = invites.length ? `<h3 class="cafe-section-h"><span>Invitations</span></h3>` + invites.map(inv=>{
       const v=vibeOf(inv.cafes?.vibe);
       return `<div class="invite-card">
-        <span class="vibe-swatch vibe-${esc(inv.cafes?.vibe)}" aria-hidden="true"></span>
+        <span class="invite-pic">${vibeArtSVG(inv.cafes?.vibe)}</span>
         <div class="invite-text"><strong>${esc(personName(inv))}</strong> invited you to <em>${esc(inv.cafes?.name||'a café')}</em>
           <span class="invite-vibe">${v.label}</span></div>
         <div class="invite-actions">
@@ -748,18 +869,20 @@ async function renderCafeList(){
 }
 function cafeCardHTML(c){
   const v=vibeOf(c.vibe);
-  const cups=c.members.map(m=>`
-    <div class="member-slot">
-      ${m.drink ? buildCupSVG({size:64,fillFraction:1,steam:false,cup:m.drink.cup||'mug',base:m.drink.base||'coffee',drink:m.drink.drink,addons:m.drink.addons||[]})
-                : `<div class="seat-empty-mini" aria-hidden="true"></div>`}
+  // who's at the table: each person's animal in a little cameo, with their drink beside them
+  const people=c.members.slice(0,8).map(m=>`
+    <div class="member-slot" title="${esc(personName(m))}${m.drink?' — '+esc(m.drink.label||''):''}">
+      <span class="member-cameo">${characterSVG(m.look || defaultCharFor(m.user_id))}</span>
+      ${m.drink ? `<span class="member-cup">${buildCupSVG({size:40,fillFraction:1,steam:false,cup:m.drink.cup||'mug',base:m.drink.base||'coffee',drink:m.drink.drink,addons:m.drink.addons||[]})}</span>` : ''}
       <span class="member-name">${esc(personName(m))}</span>
     </div>`).join('');
   return `<div class="room-card">
-    <div class="room-card-vibe"><span class="vibe-swatch vibe-${esc(c.vibe)}" aria-hidden="true"></span>${v.label}</div>
+    <div class="room-card-art">${vibeArtSVG(c.vibe)}</div>
+    <div class="room-card-label"><span class="room-card-vibe">${v.label}</span></div>
     <div class="room-card-name">${esc(c.name)}</div>
     <div class="room-card-meta"><span>${c.members.length} seated</span><i></i><span>${c.owner_id===S.user.id?'you host':'guest'}</span></div>
     <div class="room-card-date">${v.tagline}</div>
-    <div class="room-table"><div class="room-cups">${cups}</div></div>
+    <div class="room-people">${people}</div>
     <button class="room-join-btn vbtn" onclick="enterCafe('${esc(c.id)}')">${vicon('door')}Enter café</button>
   </div>`;
 }
