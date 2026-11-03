@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611022346" />
+<link rel="stylesheet" href="style.css?v=202611030803" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -46,16 +46,118 @@
       </ol>
     </div>
 
-    <!-- An arched café window with today's cup on the shelf -->
-    <div class="hero-display" aria-hidden="true">
-      <div class="hero-window">
-        <div class="hero-fanlight"></div>
-        <div class="hero-sign">Warm cups <i></i> Quiet pages</div>
-        <div class="hero-shelf"></div>
-        <div class="hero-cup" id="hero-cup"></div>
-        <div class="bean-trail"></div>
-      </div>
-      <div class="desk-note">today's ritual:<br>one warm cup,<br>one quiet page</div>
+    <!-- A painted café table: today's paper and a cup of coffee -->
+    <div class="hero-display" aria-hidden="false">
+      <figure class="hero-scene">
+    <svg class="hero-table" viewBox="-150 36 606 570" role="img" aria-label="A cup of coffee and a morning newspaper on a teal café table">
+      <defs>
+        <filter id="hero-paint" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02 0.035" numOctaves="2" seed="11" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="4.5" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <radialGradient id="hero-top" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#a8485a"/><stop offset="0.55" stop-color="#7a2e3a"/><stop offset="1" stop-color="#561c28"/></radialGradient>
+        <linearGradient id="hero-edge" x1="0" x2="1"><stop offset="0" stop-color="#3a1018"/><stop offset="0.35" stop-color="#5e2230"/><stop offset="0.7" stop-color="#4a1824"/><stop offset="1" stop-color="#2e0c14"/></linearGradient>
+        <linearGradient id="hero-iron" x1="0" x2="1"><stop offset="0" stop-color="#4a3520"/><stop offset="0.45" stop-color="#9a7a4a"/><stop offset="1" stop-color="#3e2c1a"/></linearGradient>
+        <radialGradient id="hero-ground"><stop offset="0" stop-color="#0d0805" stop-opacity="0.6"/><stop offset="1" stop-color="#0d0805" stop-opacity="0"/></radialGradient>
+        <radialGradient id="hero-coffee" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="#b8743a"/><stop offset="0.55" stop-color="#7a4220"/><stop offset="1" stop-color="#4a2410"/></radialGradient>
+        <linearGradient id="hero-cupside" x1="0" x2="1"><stop offset="0" stop-color="#cdbf9f"/><stop offset="0.3" stop-color="#fbf6ec"/><stop offset="0.65" stop-color="#efe5d2"/><stop offset="1" stop-color="#bfae8c"/></linearGradient>
+      </defs>
+      <ellipse cx="240" cy="576" rx="190" ry="20" fill="url(#hero-ground)"/>
+      <g filter="url(#hero-paint)">
+        <!-- a bistro chair standing apart, to the left of the table, turned toward it -->
+        <ellipse cx="-44" cy="578" rx="88" ry="13" fill="url(#hero-ground)"/>
+        <g fill="none" stroke-linecap="round">
+          <!-- back legs -->
+          <path d="M-94,410 L-104,566 M4,402 L14,558" stroke="#6b5034" stroke-width="6.5"/>
+          <!-- back frame rising from the rear of the seat -->
+          <path d="M-96,404 C-110,320 -106,232 -78,192 C-52,156 -6,160 8,206 C18,244 14,330 6,398" stroke="#7a5c3a" stroke-width="8"/>
+          <path d="M-96,404 C-110,320 -106,232 -78,192 C-52,156 -6,160 8,206" stroke="#e2c88e" stroke-opacity="0.8" stroke-width="2.2" transform="translate(-2,-2)"/>
+          <g stroke="#d9b66a" stroke-width="3.6">
+            <path d="M-46,262 C-60,248 -78,240 -80,224 C-82,210 -66,204 -58,212 C-51,219 -58,227 -64,223"/>
+            <path d="M-42,262 C-28,248 -10,240 -8,224 C-6,210 -22,204 -30,212 C-37,219 -30,227 -24,223"/>
+          </g>
+        </g>
+        <path d="M-102,290 L10,280 L11,300 L-101,311 Z" fill="#6b4f3a"/><path d="M-101,298 L10,288" stroke="#8a6a4e" stroke-width="1.6"/>
+        <path d="M-100,322 L11,312 L12,332 L-99,343 Z" fill="#5a3f2c"/><path d="M-99,330 L11,320" stroke="#7a5a40" stroke-width="1.6"/>
+        <!-- seat -->
+        <ellipse cx="-44" cy="414" rx="66" ry="25" fill="#4a3424"/>
+        <ellipse cx="-44" cy="408" rx="66" ry="25" fill="#6b4f3a"/>
+        <path d="M-104,404 Q-44,424 16,404 M-100,396 Q-44,414 12,396 M-92,416 Q-44,432 4,416" stroke="#8a6a4e" stroke-width="1.6" fill="none"/>
+        <ellipse cx="-44" cy="408" rx="66" ry="25" fill="none" stroke="#7a5c3a" stroke-width="4"/>
+        <path d="M-108,404 A66,25 0 0 1 -20,383" fill="none" stroke="#e2c88e" stroke-opacity="0.75" stroke-width="1.6"/>
+        <g fill="none" stroke-linecap="round">
+          <!-- front legs and the cross ring -->
+          <path d="M-80,428 L-90,590 M-6,428 L4,586" stroke="#7a5c3a" stroke-width="7"/>
+          <ellipse cx="-44" cy="510" rx="54" ry="14" stroke="#6b5034" stroke-width="3"/>
+        </g>
+
+        <!-- pedestal and curled feet -->
+        <path d="M232,394 C234,446 227,500 226,550 L254,550 C253,500 246,446 248,394 Z" fill="url(#hero-iron)"/>
+        <ellipse cx="240" cy="552" rx="22" ry="7" fill="#5a4128"/>
+        <g fill="none" stroke="#7a5c3a" stroke-width="6" stroke-linecap="round">
+          <path d="M230,552 C200,556 168,562 146,570 C134,574 132,564 142,562"/>
+          <path d="M250,552 C280,556 312,562 334,570 C346,574 348,564 338,562"/>
+          <path d="M236,556 C226,566 212,574 196,580"/><path d="M244,556 C254,566 268,574 284,580"/>
+        </g>
+        <path d="M238,400 C240,450 234,504 234,548" stroke="#e2c88e" stroke-opacity="0.75" stroke-width="2" fill="none"/>
+
+        <!-- table top: edge, rim, inlay ring -->
+        <ellipse cx="240" cy="318" rx="206" ry="89" fill="url(#hero-edge)"/>
+        <ellipse cx="240" cy="304" rx="206" ry="89" fill="url(#hero-top)"/>
+        <ellipse cx="240" cy="304" rx="204" ry="88" fill="none" stroke="#c7a86d" stroke-width="4"/>
+        <path d="M60,262 A204,88 0 0 1 300,218" fill="none" stroke="#f3dca8" stroke-opacity="0.7" stroke-width="2.4" stroke-linecap="round"/>
+        <ellipse cx="240" cy="304" rx="180" ry="76" fill="none" stroke="#d9b66a" stroke-opacity="0.7" stroke-width="1.6"/>
+        <ellipse cx="240" cy="304" rx="172" ry="72" fill="none" stroke="#d9b66a" stroke-opacity="0.45" stroke-width="1" stroke-dasharray="2 6"/>
+        <g fill="#e8c88a" opacity="0.35"><path d="M418,320 c5,-2 10,0 8,4 c-3,3 -9,2 -8,-4z"/><path d="M96,346 c5,-2 10,1 7,4 c-4,2 -9,0 -7,-4z"/></g>
+
+        <g transform="translate(-40,-20)">
+          <!-- a glass of water, behind the paper -->
+          <ellipse cx="186" cy="268" rx="22" ry="7" fill="#1a0a0e" opacity="0.35" transform="translate(8,2)"/>
+          <path d="M170,214 L173,264 Q186,270 199,264 L202,214 Z" fill="#d8ebe8" fill-opacity="0.25" stroke="#eef6f4" stroke-opacity="0.85" stroke-width="1.8"/>
+          <path d="M172,242 L173,264 Q186,270 199,264 L200,242 Q186,247 172,242 Z" fill="#7a5530" opacity="0.7"/>
+          <ellipse cx="186" cy="214" rx="16" ry="6" fill="none" stroke="#f4faf8" stroke-width="1.8"/>
+          <path d="M176,220 L178,258" stroke="#fff" stroke-opacity="0.7" stroke-width="2.5" stroke-linecap="round"/>
+
+        </g>
+        <!-- the morning paper, lying flat on the table -->
+        <g transform="matrix(0.951 -0.139 0.309 0.428 70 268)">
+          <path d="M-5,5 L257,8 L262,204 L-2,207 Z" fill="#c9bea6"/>
+          <rect width="260" height="200" fill="#f0e8d8"/>
+          <rect x="130" width="130" height="200" fill="#e4dac6"/>
+          <path d="M130,0V200" stroke="#b9ad94" stroke-width="1.5"/>
+          <text x="12" y="26" font-family="Playfair Display, Georgia, serif" font-weight="700" font-size="20" fill="#2a2620">Brew &amp; Focus</text>
+          <text x="186" y="24" font-family="Lora, Georgia, serif" font-size="6.5" letter-spacing="1" fill="#2a2620">MORNING EDITION</text>
+          <path d="M12,33h236M12,36h236" stroke="#2a2620" stroke-width="0.9"/>
+          <g stroke="#3a342c" stroke-width="1.2" stroke-opacity="0.55"><path d="M12,42.0h45.7"/><path d="M12,47.0h46.3"/><path d="M12,52.0h43.3"/><path d="M12,57.0h46.1"/><path d="M12,62.0h51.2"/><path d="M12,67.0h43.0"/><path d="M12,76.0h46.6"/><path d="M12,81.0h43.5"/><path d="M12,90.0h43.2"/><path d="M12,95.0h51.5"/><path d="M12,100.0h48.0"/><path d="M12,109.0h43.1"/><path d="M12,114.0h43.1"/><path d="M12,119.0h45.4"/><path d="M12,124.0h47.7"/><path d="M12,129.0h47.9"/><path d="M12,134.0h43.6"/><path d="M12,139.0h46.1"/><path d="M12,144.0h47.9"/><path d="M12,149.0h47.3"/><path d="M12,158.0h49.9"/><path d="M12,167.0h48.1"/><path d="M12,176.0h46.0"/><path d="M12,181.0h50.1"/><path d="M12,186.0h43.4"/><path d="M72,42.0h47.6"/><path d="M72,47.0h49.5"/><path d="M72,52.0h48.3"/><path d="M72,57.0h43.7"/><path d="M72,112.0h44.2"/><path d="M72,117.0h44.1"/><path d="M72,126.0h46.6"/><path d="M72,131.0h49.8"/><path d="M72,136.0h45.8"/><path d="M72,141.0h48.2"/><path d="M72,150.0h43.3"/><path d="M72,155.0h51.5"/><path d="M72,164.0h49.2"/><path d="M72,169.0h43.2"/><path d="M72,174.0h48.7"/><path d="M72,183.0h45.3"/><path d="M136,42.0h50.9"/><path d="M136,47.0h42.9"/><path d="M136,56.0h46.0"/><path d="M136,61.0h47.3"/><path d="M136,66.0h49.8"/><path d="M136,71.0h49.6"/><path d="M136,80.0h46.3"/><path d="M136,89.0h43.4"/><path d="M136,98.0h46.4"/><path d="M136,103.0h50.9"/><path d="M136,112.0h50.7"/><path d="M136,117.0h49.3"/><path d="M136,122.0h49.0"/><path d="M136,131.0h51.6"/><path d="M136,136.0h43.4"/><path d="M136,141.0h44.8"/><path d="M136,146.0h42.8"/><path d="M136,151.0h45.1"/><path d="M136,156.0h44.0"/><path d="M136,161.0h48.3"/><path d="M136,166.0h51.6"/><path d="M136,171.0h46.9"/><path d="M136,180.0h46.4"/><path d="M136,189.0h43.6"/><path d="M196,42.0h43.2"/><path d="M196,47.0h51.9"/><path d="M196,56.0h44.2"/><path d="M196,61.0h48.3"/><path d="M196,66.0h42.6"/><path d="M196,71.0h47.7"/><path d="M196,76.0h48.4"/><path d="M196,81.0h50.8"/><path d="M196,90.0h44.0"/><path d="M196,95.0h51.6"/><path d="M196,100.0h47.1"/><path d="M196,105.0h50.6"/><path d="M196,114.0h47.1"/><path d="M196,119.0h43.4"/><path d="M196,170.0h49.7"/><path d="M196,175.0h47.1"/><path d="M196,180.0h47.5"/><path d="M196,185.0h51.5"/></g>
+          <rect x="72" y="64" width="52" height="46" fill="#8a8172"/><path d="M74,98 l12,-14 l10,8 l9,-7 l17,14 v9 h-48z" fill="#5f574b"/>
+          <rect x="196" y="122" width="52" height="46" fill="#9aa5a0"/><circle cx="214" cy="138" r="7" fill="#6a756f"/>
+        </g>
+
+        <!-- the cup of coffee on its saucer -->
+        <ellipse cx="350" cy="300" rx="56" ry="20" fill="#1a0a0e" opacity="0.4"/>
+        <ellipse cx="338" cy="294" rx="52" ry="21" fill="#bfae8c"/>
+        <ellipse cx="338" cy="291" rx="50" ry="19" fill="#f3ead8"/>
+        <ellipse cx="338" cy="291" rx="47" ry="17.5" fill="none" stroke="#c9a24a" stroke-width="1.6"/>
+        <ellipse cx="338" cy="291" rx="28" ry="10" fill="#d8ccb2" opacity="0.8"/>
+        <path d="M360,300 C376,304 392,306 404,306" stroke="#a7a298" stroke-width="3.5" stroke-linecap="round"/>
+        <ellipse cx="362" cy="299" rx="8" ry="4" fill="#c4bfb3"/>
+        <path d="M364,258 C386,256 388,282 362,280" fill="none" stroke="#a8977a" stroke-width="7.5" stroke-linecap="round"/>
+        <path d="M364,258 C384,257 385,279 363,279" fill="none" stroke="#f6efe2" stroke-width="4" stroke-linecap="round"/>
+        <path d="M308,250 C309,268 314,282 324,288 Q338,294 352,288 C362,282 367,268 368,250 Z" fill="url(#hero-cupside)"/>
+        <ellipse cx="338" cy="250" rx="30" ry="11" fill="#c9a24a"/>
+        <ellipse cx="338" cy="250" rx="28" ry="10" fill="#efe5d2"/>
+        <ellipse cx="338" cy="251.5" rx="22" ry="7.2" fill="url(#hero-coffee)"/>
+        <ellipse cx="332" cy="249.5" rx="7" ry="2.2" fill="#f2c894" opacity="0.6"/>
+        <path d="M314,256 C315,268 318,276 324,282" stroke="#fff" stroke-opacity="0.7" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M309,262 C312,270 316,278 322,284 Q338,292 354,284 C360,278 364,270 367,262" fill="none" stroke="#c9a24a" stroke-width="1.4" opacity="0.8"/>
+      </g>
+      <!-- steam -->
+      <g fill="none" stroke="#f6ead6" stroke-linecap="round">
+        <path d="M330,236 C338,218 322,204 332,186 C340,172 328,160 334,146" stroke-width="2.2"><animate attributeName="opacity" values="0;0.7;0.3;0" dur="3.2s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="0,0;3,-10" dur="3.2s" repeatCount="indefinite"/></path>
+        <path d="M346,238 C354,220 340,206 350,188 C358,174 346,162 352,148" stroke-width="1.8"><animate attributeName="opacity" values="0;0.6;0.25;0" dur="2.8s" begin="1s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="0,0;-2,-10" dur="2.8s" begin="1s" repeatCount="indefinite"/></path>
+      </g>
+    </svg>
+      </figure>
     </div>
   </div>
 </div>
@@ -91,6 +193,13 @@
           <button type="button" class="chip menu-item" data-group="drink" data-val="vanilla-latte">Vanilla Latte</button>
           <button type="button" class="chip menu-item" data-group="drink" data-val="honey-tea">Honey Tea</button>
           <button type="button" class="chip menu-item" data-group="drink" data-val="iced-americano">Iced Americano</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="espresso">Espresso</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="cafe-au-lait">Café au Lait</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="chai-latte">Chai Latte</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="london-fog">London Fog</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="golden-milk">Golden Milk</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="hibiscus-cooler">Hibiscus Cooler</button>
+          <button type="button" class="chip menu-item" data-group="drink" data-val="irish-cream">Irish Cream Coffee</button>
         </div>
       </div>
 
@@ -101,6 +210,11 @@
           <button type="button" class="chip menu-tag" data-group="cup" data-val="teacup">Teacup</button>
           <button type="button" class="chip menu-tag" data-group="cup" data-val="glass">Latte Glass</button>
           <button type="button" class="chip menu-tag" data-group="cup" data-val="takeaway">Takeaway</button>
+          <button type="button" class="chip menu-tag" data-group="cup" data-val="demitasse">Demitasse</button>
+          <button type="button" class="chip menu-tag" data-group="cup" data-val="bowl">Café au Lait Bowl</button>
+          <button type="button" class="chip menu-tag" data-group="cup" data-val="enamel">Enamel Mug</button>
+          <button type="button" class="chip menu-tag" data-group="cup" data-val="tumbler">Tall Tumbler</button>
+          <button type="button" class="chip menu-tag" data-group="cup" data-val="footed">Irish Coffee Glass</button>
         </div>
       </div>
 
@@ -111,6 +225,10 @@
           <button type="button" class="chip menu-tag" data-group="base" data-val="matcha">Matcha</button>
           <button type="button" class="chip menu-tag" data-group="base" data-val="tea">Tea</button>
           <button type="button" class="chip menu-tag" data-group="base" data-val="chocolate">Hot Chocolate</button>
+          <button type="button" class="chip menu-tag" data-group="base" data-val="chai">Chai</button>
+          <button type="button" class="chip menu-tag" data-group="base" data-val="earlgrey">Earl Grey</button>
+          <button type="button" class="chip menu-tag" data-group="base" data-val="hibiscus">Hibiscus</button>
+          <button type="button" class="chip menu-tag" data-group="base" data-val="golden">Golden Milk</button>
         </div>
       </div>
 
@@ -667,6 +785,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611022346"></script>
+<script src="script.js?v=202611030803"></script>
 </body>
 </html>
