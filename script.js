@@ -568,7 +568,7 @@ function renderMusicMenu(){
   list.innerHTML = Object.entries(MUSIC_STATIONS).map(([k,s])=>`
     <button type="button" class="music-row ${S.music===k?'sel':''}" role="radio" aria-checked="${S.music===k}" onclick="setMusic('${k}')">
       <span class="music-dot" aria-hidden="true"></span>
-      <span class="music-txt"><b>${s.label}</b><i>${k==='auto' ? (S.room?.cafe ? `here: ${MUSIC_STATIONS[VIBE_MUSIC[S.room.cafe.vibe]]?.label||'Café Records'}` : 'Café Records outside a café') : (s.tracks.map(t=>t.title).join(' · '))}</i></span>
+      <span class="music-txt"><b>${s.label}</b><i>${k==='auto' ? (S.room?.cafe ? `here: ${MUSIC_STATIONS[VIBE_MUSIC[S.room.cafe.vibe]]?.label||'Café Records'}` : 'Café Records outside a café') : s.note}</i></span>
       ${S.soundOn && key===k ? '<span class="music-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}
     </button>`).join('');
   const credit=document.getElementById('music-credit'); if(credit) credit.hidden = !!tr.own;
@@ -1051,6 +1051,7 @@ function cafeCardHTML(c){
 }
 function cafeErrorText(e){
   const m=String(e?.message||e);
+  if(/cafes_vibe_check/.test(m)) return 'That café type isn’t set up in the database yet — run the latest supabase/cafes.sql in the Supabase SQL editor.';
   if(/schema cache|does not exist|Could not find the (table|function)/i.test(m))
     return 'The café tables aren’t set up in Supabase yet — run supabase/cafes.sql in the Supabase SQL editor.';
   return m;
@@ -1061,7 +1062,15 @@ async function createCafe(){
   const name=nameEl.value.trim();
   if(!name){ showToast('Give your café a name'); nameEl.focus(); return; }
   try{
-    const cafe = await CafeDB.create(name, selectedVibe);
+    let cafe;
+    try{ cafe = await CafeDB.create(name, selectedVibe); }
+    catch(e){
+      // A database set up before the Beach Café existed still lists the old
+      // Fireside Cabin instead; the site shows a "cabin" café as the Beach
+      // Café everywhere, so save it under that name.
+      if(selectedVibe==='beach' && /cafes_vibe_check/.test(e?.message||'')) cafe = await CafeDB.create(name, 'cabin');
+      else throw e;
+    }
     nameEl.value='';
     showToast(`"${name}" is open`);
     enterCafe(cafe.id);
@@ -1093,7 +1102,7 @@ async function processPendingInvite(authChecked){
     if(authChecked){
       showPage('cafe');
       openAuthModal('signin');
-      setAuthMsg('Sign in (or join) to take your seat at your friend’s café.', '');
+      setAuthMsg('Log in (or sign up) to take your seat at your friend’s café.', '');
     }
     return;
   }
@@ -3271,8 +3280,9 @@ function setAuthTab(view){
   document.getElementById('auth-forgot-link').hidden = !on('forgot');
   document.getElementById('pw-strength-wrap').hidden = !on('strength');
   document.getElementById('auth-confirm-row').hidden = !on('confirm');
-  document.getElementById('auth-alt').hidden = !on('alt');
+  document.getElementById('auth-alt').dataset.allowed = on('alt') ? '1' : '0';
   document.getElementById('auth-magic-btn').hidden = !on('magic');
+  syncAuthAlt();
   document.getElementById('auth-password-label').textContent = v==='reset' ? 'New password' : 'Password';
   document.getElementById('auth-password').setAttribute('autocomplete', (v==='signin') ? 'current-password' : 'new-password');
   document.getElementById('auth-title').textContent = cfg.title;
@@ -3346,6 +3356,13 @@ function updateGoogleButton(){
   const btn=document.getElementById('auth-google-btn');
   const on = !!authProviders?.google && (S.authTab==='signin' || S.authTab==='signup');
   btn.hidden = !on;
+  syncAuthAlt();
+}
+// the "or" divider only shows when there's another way to sign in beneath it
+function syncAuthAlt(){
+  const alt=document.getElementById('auth-alt'), cfgOn=alt.dataset.allowed!=='0';
+  const any=!document.getElementById('auth-magic-btn').hidden || !document.getElementById('auth-google-btn').hidden;
+  alt.hidden = !(cfgOn && any);
 }
 
 // Turns Supabase's raw auth errors into something a person can act on,
@@ -3505,11 +3522,11 @@ function renderAuthUI(){
         <span class="nav-user-avatar">${pic ? `<img src="${esc(pic)}" alt="">` : esc(initial)}</span>
         <span class="nav-user-name">${esc(shown)}</span>
       </button>
-      <a class="signout-link" onclick="signOutUser()">Sign Out</a>`;
+      <a class="signout-link" onclick="signOutUser()">Log out</a>`;
     const uField=document.getElementById('field-username');
     if(uField && !uField.value) uField.value=S.user.username||'';
   } else {
-    nav.innerHTML = `<a onclick="openAuthModal('signin')" id="nl-signin">Sign In</a>`;
+    nav.innerHTML = `<a onclick="openAuthModal('signin')" id="nl-signin">Log in</a>`;
   }
   setCoverOwner();
 }

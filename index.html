@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611031734" />
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=202611032054" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Courier+Prime:wght@400;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -20,7 +20,7 @@
     <a onclick="showPage('recipes')" id="nl-recipes">Recipe Book</a>
   </div>
   <div class="nav-auth" id="nav-auth">
-    <a onclick="openAuthModal('signin')" id="nl-signin">Sign In</a>
+    <a onclick="openAuthModal('signin')" id="nl-signin">Log in</a>
   </div>
 </nav>
 
@@ -179,7 +179,7 @@
     <p class="brew-eyebrow">The Café Counter</p>
     <h2 class="sec-title">Craft your drink</h2>
     <div class="brew-rule" aria-hidden="true"><span></span></div>
-    <p class="sec-sub">collectible watercolor café recipes</p>
+    <p class="sec-sub">collectible watercolour café recipes</p>
   </header>
   <div class="brew-cafe-banner" id="brew-cafe-banner" hidden>
     Brewing for <strong id="brew-cafe-name"></strong>
@@ -341,9 +341,9 @@
     <!-- Signed out: cafés are for members -->
     <section class="reserve-card signin-card" id="cafe-signed-out" hidden>
       <h3>Cafés are for members</h3>
-      <p>Sign in to open your own café, invite friends, and study together around one table.</p>
+      <p>Log in to open your own café, invite friends, and study together around one table.</p>
       <div class="signin-actions">
-        <button class="btn-p" onclick="openAuthModal('signin')">Sign in</button>
+        <button class="btn-p" onclick="openAuthModal('signin')">Log in</button>
         <button class="btn-s signin-join" onclick="openAuthModal('signup')">Join the café</button>
       </div>
     </section>
@@ -403,7 +403,7 @@
 
     <section class="gz-box gz-signedout" id="gz-signedout" hidden>
       <h2 class="gz-headline">Extra! Extra!</h2>
-      <p>Your own edition of the Gazette is printed for members only. Sign in to read about your study year and change your name or portrait.</p>
+      <p>Your own edition of the Gazette is printed for members only. Log in to read about your study year and change your name or portrait.</p>
       <div class="gz-actions"><button class="gz-press" onclick="openAuthModal('signin')">Log in</button><button class="gz-press ghost" onclick="openAuthModal('signup')">Sign up</button></div>
     </section>
 
@@ -907,6 +907,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611031734"></script>
+<script src="script.js?v=202611032054"></script>
 </body>
 </html>
