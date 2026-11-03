@@ -38,9 +38,9 @@ The project was designed with a warm, nostalgic café aesthetic inspired by vint
 
 ### 🎵 Background Music
 
-* Optional background music for studying
-* Toggle music on or off
-* Designed to enhance the cozy café atmosphere
+* A gramophone in the corner chooses the music: the original café song, or a playlist for each café atmosphere
+* "Match the café" (the default) plays each Study Café room's own music
+* Volume, next song, and on/off
 
 ### 🎨 Cozy User Interface
 
@@ -124,6 +124,22 @@ Planned features include:
 * Shared recipe collections
 * Additional café themes
 * More ambient audio options
+
+---
+
+## 🎶 Music Credits
+
+The Parisian Café, Kyoto Tea House and Library Reading Room play free music by **Kevin MacLeod** ([incompetech.com](https://incompetech.com)), licensed under [Creative Commons: By Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). The files were converted to AAC to keep the site light; nothing else was changed.
+
+| Café | Tracks |
+|---|---|
+| Parisian Café | "Parisian", "Avec Soin" |
+| Kyoto Tea House | "Ishikari Lore", "Ripples" |
+| Library Reading Room | "Gymnopedie No. 1" (Erik Satie), "Prelude in C, BWV 846" (J. S. Bach) |
+
+Each: Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
+
+The Rainy Bookstore, Midnight Jazz Café and Beach Café music is composed live in the browser by the site itself, and the house "Café Records" song is the project's own.
 
 ---
 

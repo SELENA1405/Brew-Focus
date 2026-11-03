@@ -2164,3 +2164,10 @@ body::after {
   .cafe-awning { left:-8px; right:-8px; }
   .reserve-card { padding-top:3rem; }
 }
+
+.music-now b { font-weight:600; }
+.music-now span { color:var(--warm-brown); }
+.music-skip { background:none; border:1px solid rgba(122,46,58,0.4); border-radius:2px; color:var(--burgundy); cursor:pointer; font-size:0.85rem; line-height:1; padding:0 0.3rem 0.1rem; margin-left:0.2rem; }
+.music-skip:hover { background:rgba(122,46,58,0.08); }
+.music-credit { margin:0.55rem 0 0; text-align:center; font-family:'Lora',serif; font-size:0.58rem; line-height:1.4; color:var(--warm-brown); }
+.music-credit a { color:var(--burgundy); }

@@ -358,64 +358,32 @@ function applyDrinkPreset(key){
   renderCupPreview();
 }
 
-let audioCtx=null, masterGain=null, ambientNodes=[];
-const ambientProfiles={
-  'cozy-cafe':{hum:180, noise:0.020, pulse:0.18},
-  'rainy-bookstore':{hum:140, noise:0.035, pulse:0.10},
-  'vintage-library':{hum:110, noise:0.014, pulse:0.08},
-  'fireplace':{hum:95, noise:0.028, pulse:0.22},
-  'midnight-cafe':{hum:155, noise:0.018, pulse:0.12},
-  'kyoto-tea':{hum:220, noise:0.012, pulse:0.16},
-  'autumn-coffee':{hum:165, noise:0.024, pulse:0.14},
-  'forest-cabin':{hum:125, noise:0.030, pulse:0.11},
-  'ocean-waves':{hum:75, noise:0.040, pulse:0.09},
-  'white-noise':{hum:60, noise:0.055, pulse:0.04}
-};
+let audioCtx=null, masterGain=null;
 function initAudio(){
   if(audioCtx) return;
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   masterGain=audioCtx.createGain();
   masterGain.gain.value=S.soundOn?0.16:0;
   masterGain.connect(audioCtx.destination);
-  startAmbience(S.ambience);
 }
-function startAmbience(name){
-  if(!audioCtx) return;
-  ambientNodes.forEach(n=>{try{n.stop&&n.stop();}catch(e){} try{n.disconnect&&n.disconnect();}catch(e){}});
-  ambientNodes=[];
-  const p=ambientProfiles[name]||ambientProfiles['cozy-cafe'];
-  const osc=audioCtx.createOscillator(), gain=audioCtx.createGain(), lfo=audioCtx.createOscillator(), lfoGain=audioCtx.createGain();
-  osc.type='sine'; osc.frequency.value=p.hum; gain.gain.value=0.05;
-  lfo.frequency.value=p.pulse; lfoGain.gain.value=0.025; lfo.connect(lfoGain); lfoGain.connect(gain.gain);
-  osc.connect(gain); gain.connect(masterGain); osc.start(); lfo.start();
-  const buffer=audioCtx.createBuffer(1, audioCtx.sampleRate*2, audioCtx.sampleRate);
-  const data=buffer.getChannelData(0);
-  for(let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*p.noise;
-  const noise=audioCtx.createBufferSource(), ng=audioCtx.createGain(), filter=audioCtx.createBiquadFilter();
-  noise.buffer=buffer; noise.loop=true; filter.type='lowpass'; filter.frequency.value=name==='white-noise'?1800:650;
-  ng.gain.value=0.18; noise.connect(filter); filter.connect(ng); ng.connect(masterGain); noise.start();
-  ambientNodes=[osc,lfo,noise,gain,ng,filter];
-}
-function setAmbience(name){
-  S.ambience=name; localStorage.setItem('bf_ambience',name);
-  initAudio(); startAmbience(name);
-}
+// (The Gazette's weather report still follows the café you last sat in.)
+function setAmbience(name){ S.ambience=name; localStorage.setItem('bf_ambience',name); }
 // ── The gramophone: music for studying ────────────────────────────────────
-// Besides the café recording, six little pieces are composed live in the
-// browser (Web Audio), one for each café atmosphere: a Parisian accordion
-// waltz, rainy-day piano, tea-house koto, midnight jazz, a library nocturne
-// and seaside bossa nova. Each plays forever without repeating exactly, with
-// its own soft background (rain, waves, vinyl crackle…). "Match the café"
-// plays the music of whichever café you're sitting in.
+// Your own café recording; real songs for the Parisian café, the tea house
+// and the library (free music by Kevin MacLeod, incompetech.com, CC BY 4.0 —
+// credited in the gramophone menu and README); and three pieces composed
+// live in the browser for the bookstore, the jazz café and the beach.
+// "Match the café" plays the music of whichever café you're sitting in.
+const ROOM_AUDIO = './assets/audio/rooms/';
 const MUSIC_STATIONS = {
-  auto:     { label:'Match the café',   note:'each café plays its own music' },
-  records:  { label:'Café Records',     note:'the house recording' },
-  parisian: { label:'Parisian Waltz',   note:'accordion musette' },
-  rain:     { label:'Rainy Day Piano',  note:'soft piano and rain on the glass' },
-  koto:     { label:'Tea House Koto',   note:'koto by a quiet garden' },
-  jazz:     { label:'Midnight Jazz',    note:'walking bass, brushes, vinyl' },
-  nocturne: { label:'Library Nocturne', note:'slow piano among the shelves' },
-  bossa:    { label:'Seaside Bossa',    note:'nylon guitar and the waves' },
+  auto:     { label:'Match the café',       note:'each café plays its own music' },
+  records:  { label:'Café Records',         note:'the house song', tracks:[{ title:'Café Records', src:'./assets/audio/cafe-music.mp3', own:true }] },
+  parisian: { label:'Parisian Café',        note:'accordion and gentle piano', tracks:[{title:'Parisian', file:'parisian.m4a'}, {title:'Avec Soin', file:'avec-soin.m4a'}] },
+  rain:     { label:'Rainy Bookstore',      note:'soft piano and rain on the glass', gen:'rain', tracks:[{title:'Rainy Day Piano', own:true}] },
+  koto:     { label:'Kyoto Tea House',      note:'koto and flute', tracks:[{title:'Ishikari Lore', file:'ishikari-lore.m4a'}, {title:'Ripples', file:'ripples.m4a'}] },
+  jazz:     { label:'Midnight Jazz Café',   note:'walking bass, brushes, vinyl', gen:'jazz', tracks:[{title:'Midnight Jazz', own:true}] },
+  nocturne: { label:'Library Reading Room', note:'Satie and Bach on the piano', tracks:[{title:'Gymnopédie No. 1', file:'gymnopedie-no-1.m4a'}, {title:'Prelude in C (BWV 846)', file:'prelude-in-c.m4a'}] },
+  bossa:    { label:'Beach Café',           note:'nylon guitar and the waves', gen:'bossa', tracks:[{title:'Seaside Bossa', own:true}] },
 };
 const VIBE_MUSIC = { parisian:'parisian', bookstore:'rain', kyoto:'koto', midnight:'jazz', library:'nocturne', beach:'bossa', cabin:'bossa' };
 S.music = localStorage.getItem('bf_music') || 'auto';
@@ -427,7 +395,6 @@ function musicPlaying(){
   const inCafe = S.room?.cafe && document.getElementById('page-caferoom')?.classList.contains('active');
   return inCafe ? (VIBE_MUSIC[S.room.cafe.vibe] || 'records') : 'records';
 }
-
 const MX = { bus:null, noise:null, timer:null, key:null, step:0, nextT:0, bed:[], prev:{} };
 const mtof = m => 440*Math.pow(2,(m-69)/12);
 function mxBus(){
@@ -489,18 +456,6 @@ const near = (key, tones, lo, hi) => { const p=MX.prev[key] ?? (lo+hi)/2; let be
 
 // the pieces: each says how fast it goes and what to play on every eighth note
 const PIECES = {
-  parisian:{ bpm:168, per:6, swing:0, bed:'murmur',
-    bars:[[45,[57,60,64]],[50,[57,62,65]],[40,[56,59,62,64]],[45,[57,60,64]],[41,[57,60,65]],[50,[57,62,65]],[40,[56,59,62,64]],[45,[57,60,64]]],
-    play(bar, s, t, dur){
-      const [root,ch]=this.bars[bar%8];
-      if(s===0) INS.accordion(t, root + (bar%2 ? 7 : 0) - (bar%2 && root>44 ? 12 : 0), dur*1.4, 0.032, 900);
-      if(s===2||s===4) ch.forEach(n=>INS.accordion(t, n, dur*0.7, 0.012, 1300));
-      const phraseEnd = bar%4===3 && s>=3;
-      if(!phraseEnd && (s%2===0 ? chance(0.85) : chance(0.45))){
-        const n = s%2===0 ? near('mel', ch.map(x=>x+12), 69, 84) : mxWalk('mel', [69,71,72,74,76,77,80,81,83,84], 69, 84);
-        INS.accordion(t, n, dur*(s%2===0?1.6:0.8), 0.022, 2400);
-      }
-    }},
   rain:{ bpm:66, per:8, swing:0, bed:'rain',
     bars:[[41,[53,57,60,64]],[40,[52,55,59,62]],[38,[50,53,57,60]],[36,[48,52,55,59]],[41,[53,57,60,64]],[40,[52,55,59,62]],[45,[57,60,64,67]],[43,[55,59,62,65]]],
     play(bar, s, t, dur){
@@ -508,17 +463,6 @@ const PIECES = {
       if(s===0) INS.piano(t, root, 0.07, 3);
       const arp=[0,1,2,3,2,1,2,1][s]; INS.piano(t, ch[arp]+12, 0.035, 1.6);
       if((s===0||s===4||(s===6&&chance(0.3))) && chance(0.6)) INS.piano(t+0.01, mxWalk('mel',[72,74,76,79,81,84],72,86), 0.06, 2.4);
-    }},
-  koto:{ bpm:64, per:8, swing:0, bed:'wind',
-    scale:[62,64,65,69,70,74,76,77,81],
-    play(bar, s, t, dur){
-      if(s===0 && bar%2===0){ INS.koto(t, 50, 0.07); INS.koto(t+0.02, 57, 0.05); }
-      if(s===0 && bar%4===0 && chance(0.6)){ [0,1,2,3].forEach(i=>INS.koto(t+i*0.07, this.scale[2+i], 0.04)); return; }
-      if(chance(s%2===0 ? 0.5 : 0.22)){
-        const n=mxWalk('mel', this.scale, 62, 81);
-        INS.koto(t, n, 0.08);
-        if(chance(0.12)) [1,2].forEach(i=>INS.koto(t+i*0.09, n, 0.04));
-      }
     }},
   jazz:{ bpm:96, per:8, swing:0.62, bed:'vinyl',
     bars:[[36,[63,67,70,74]],[41,[57,60,63,67]],[34,[62,65,69,72]],[43,[58,62,65,69]],[36,[63,67,70,74]],[41,[57,60,63,67]],[34,[62,65,69,72]],[34,[62,65,69,72]]],
@@ -531,14 +475,6 @@ const PIECES = {
       } else if(s===3||s===7){ mxNoise(t, {vol:0.014, d:0.06, type:'highpass', freq:7000}); }
       if(s===0 || (s===3 && chance(0.7))) ch.forEach((n,i)=>INS.epiano(t+i*0.008, n, 0.028, 1.2));
       if(chance(s%2===0 ? 0.32 : 0.22)) INS.epiano(t, mxWalk('mel',[70,72,73,74,77,79,80,82,84],70,86), 0.055, 0.9);
-    }},
-  nocturne:{ bpm:60, per:6, swing:0, bed:'room',
-    bars:[[43,[59,62,66]],[38,[57,61,66]]],
-    play(bar, s, t, dur){
-      const [root,ch]=this.bars[bar%2];
-      if(s===0) INS.piano(t, root, 0.075, 3.5);
-      if(s===2) ch.forEach((n,i)=>INS.piano(t+i*0.01, n, 0.032, 3));
-      if((s===0||s===4) && chance(0.5)) INS.piano(t+0.02, mxWalk('mel',[66,69,71,73,74,76,78,81],66,81), 0.06, 3.2);
     }},
   bossa:{ bpm:124, per:8, swing:0, bed:'waves',
     bars:[[36,[52,55,59,64]],[45,[55,60,64,67]],[38,[53,57,60,65]],[43,[53,59,62,65]],[40,[55,59,62,67]],[45,[55,61,64,67]],[38,[53,57,60,65]],[43,[53,59,62,65]]],
@@ -589,18 +525,34 @@ function mxStart(key){
   mxStartBed(PIECES[key].bed);
   MX.timer=setInterval(mxTick, 60); mxTick();
 }
-// Bring the speakers in line with the choices: which station, on or off, how loud.
+const trackSrc = t => t.src || ROOM_AUDIO + t.file;
+const MP = { station:null, index:0 };
+// one record player for everything: each station's tracks play in turn, round and round
+bgMusic.loop = false;
+bgMusic.addEventListener('ended', ()=>{
+  const st=MUSIC_STATIONS[MP.station]; if(!st) return;
+  MP.index=(MP.index+1) % st.tracks.length;
+  bgMusic.src=trackSrc(st.tracks[MP.index]); bgMusic.play().catch(()=>{});
+  renderMusicMenu();
+});
 function applyMusic(){
-  const key=musicPlaying(), on=S.soundOn, vol=S.musicVol;
-  bgMusic.volume = Math.min(1, 0.45*vol);
-  if(audioCtx && masterGain) masterGain.gain.value = on ? 0.16 : 0;
-  if(!on){ bgMusic.pause(); mxStop(); if(MX.bus) MX.bus.gain.value=0; }
-  else if(key==='records'){ mxStop(); if(MX.bus) MX.bus.gain.value=0; bgMusic.play().catch(()=>{}); }
-  else { bgMusic.pause(); if(audioCtx){ mxBus(); MX.bus.gain.setTargetAtTime(1.1*vol, audioCtx.currentTime, 0.4); mxStart(key); } }
+  const key=musicPlaying(), st=MUSIC_STATIONS[key];
+  bgMusic.volume = Math.min(1, 0.45*S.musicVol);
+  if(audioCtx && masterGain) masterGain.gain.value = S.soundOn ? 0.16 : 0;
+  if(MP.station!==key){
+    MP.station=key; MP.index=0;
+    if(!st.gen) bgMusic.src=trackSrc(st.tracks[0]);
+  }
+  if(!S.soundOn){ bgMusic.pause(); mxStop(); if(MX.bus) MX.bus.gain.value=0; }
+  else if(st.gen){            // composed live in the browser
+    bgMusic.pause();
+    if(audioCtx){ mxBus(); MX.bus.gain.setTargetAtTime(1.1*S.musicVol, audioCtx.currentTime, 0.4); mxStart(st.gen); }
+  } else { mxStop(); if(MX.bus) MX.bus.gain.value=0; bgMusic.play().catch(()=>{}); }
   renderMusicMenu();
 }
 function setMusic(key){ if(!MUSIC_STATIONS[key]) return; S.music=key; localStorage.setItem('bf_music',key); initAudio(); if(audioCtx?.state==='suspended') audioCtx.resume(); if(!S.soundOn){ S.soundOn=true; localStorage.setItem('bf_sound','on'); } applyMusic(); }
-function setMusicVol(v){ S.musicVol=Math.min(1,Math.max(0,+v)); localStorage.setItem('bf_music_vol',String(S.musicVol)); applyMusic(); }
+function setMusicVol(v){ S.musicVol=Math.min(1,Math.max(0,+v)); localStorage.setItem('bf_music_vol',String(S.musicVol)); bgMusic.volume=Math.min(1,0.45*S.musicVol); if(MX.bus && MX.key && audioCtx) MX.bus.gain.setTargetAtTime(1.1*S.musicVol, audioCtx.currentTime, 0.1); }
+function nextTrack(){ const st=MUSIC_STATIONS[MP.station]; if(!st || st.tracks.length<2) return; MP.index=(MP.index+1)%st.tracks.length; bgMusic.src=trackSrc(st.tracks[MP.index]); if(S.soundOn) bgMusic.play().catch(()=>{}); renderMusicMenu(); }
 function toggleMusicMenu(force){
   const m=document.getElementById('music-menu'); if(!m) return;
   const open = typeof force==='boolean' ? force : !m.classList.contains('open');
@@ -610,19 +562,20 @@ function toggleMusicMenu(force){
 function renderMusicMenu(){
   document.getElementById('sound-toggle')?.classList.toggle('on', S.soundOn);
   const list=document.getElementById('music-list'); if(!list) return;
-  const playing=musicPlaying();
-  document.getElementById('music-now').textContent = S.soundOn ? `Now playing: ${MUSIC_STATIONS[playing].label}` : 'The gramophone is resting';
-  list.innerHTML = Object.entries(MUSIC_STATIONS).map(([k,st])=>`
+  const key=musicPlaying(), st=MUSIC_STATIONS[key], tr=st.tracks[MP.station===key ? MP.index : 0];
+  const now=document.getElementById('music-now');
+  now.innerHTML = S.soundOn ? `Now playing: <b>${esc(tr.title)}</b>${tr.own?'':` <span>· ${esc(st.label)}</span>`}${st.tracks.length>1?` <button type="button" class="music-skip" onclick="nextTrack()" title="Next song" aria-label="Next song">&#8250;&#8250;</button>`:''}` : 'The gramophone is resting';
+  list.innerHTML = Object.entries(MUSIC_STATIONS).map(([k,s])=>`
     <button type="button" class="music-row ${S.music===k?'sel':''}" role="radio" aria-checked="${S.music===k}" onclick="setMusic('${k}')">
       <span class="music-dot" aria-hidden="true"></span>
-      <span class="music-txt"><b>${st.label}</b><i>${k==='auto' ? (S.room?.cafe ? `here: ${MUSIC_STATIONS[VIBE_MUSIC[S.room.cafe.vibe]]?.label||'Café Records'}` : st.note) : st.note}</i></span>
-      ${S.soundOn && playing===k ? '<span class="music-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}
+      <span class="music-txt"><b>${s.label}</b><i>${k==='auto' ? (S.room?.cafe ? `here: ${MUSIC_STATIONS[VIBE_MUSIC[S.room.cafe.vibe]]?.label||'Café Records'}` : 'Café Records outside a café') : (s.tracks.map(t=>t.title).join(' · '))}</i></span>
+      ${S.soundOn && key===k ? '<span class="music-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}
     </button>`).join('');
+  const credit=document.getElementById('music-credit'); if(credit) credit.hidden = !!tr.own;
   const t=document.getElementById('music-power'); if(t) t.textContent = S.soundOn ? 'Lift the needle' : 'Play';
   const v=document.getElementById('music-vol'); if(v && document.activeElement!==v) v.value=S.musicVol;
-  const np=document.getElementById('cr-nowplaying'); if(np) np.textContent = S.soundOn ? MUSIC_STATIONS[playing].label : 'music off';
+  const np=document.getElementById('cr-nowplaying'); if(np) np.textContent = S.soundOn ? tr.title : 'music off';
 }
-
 function toggleSound(){
   S.soundOn=!S.soundOn; localStorage.setItem('bf_sound', S.soundOn?'on':'off');
   initAudio(); if(audioCtx?.state==='suspended') audioCtx.resume();
@@ -671,7 +624,6 @@ function setPlayIcon(running){
 function startSession(){
   if(S.cafeBrew){ bringBrewToTable(); return; }
   initAudio();
-  setAmbience(document.getElementById('field-ambience').value || S.ambience);
   S.recipeName = document.getElementById('recipe-name').value || 'Unnamed Brew';
   S.username   = document.getElementById('field-username').value || (S.user?.username) || 'Me';
   S.subject    = document.getElementById('field-subject').value || 'General Study';
@@ -1168,7 +1120,7 @@ async function enterCafe(id){
     S.room.cafe = cafe;
     renderCafeRoom();
     const vibe=vibeOf(cafe.vibe);
-    try{ setAmbience(vibe.ambience); document.getElementById('field-ambience').value=vibe.ambience; }catch(e){}
+    setAmbience(vibe.ambience);
     applyMusic();
     S.room.unsub = CafeDB.subscribeCafe(id, {
       onChange: ()=>refreshCafeRoom(),
@@ -3705,10 +3657,7 @@ function showToast(msg){
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
-document.getElementById('field-ambience').value=S.ambience;
 document.getElementById('sound-toggle').classList.toggle('on',S.soundOn);
-document.addEventListener('pointerdown',()=>{ initAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); },{once:true});
-try { initAudio(); } catch(e) {}
 applyDrinkPreset(S.drink);
 renderHeroCup();
 setPlayIcon(false);
@@ -3716,7 +3665,18 @@ renderCupPreview();
 renderAuthUI();
 initAuthState();
 
-// browsers only allow sound after a first tap or click
-document.addEventListener('pointerdown', ()=>{ initAudio(); if(audioCtx?.state==='suspended') audioCtx.resume(); applyMusic(); }, { once:true });
+// Browsers only allow sound after the visitor taps, clicks or presses a key —
+// and Safari/iPhone only count some of those events — so keep trying on each
+// one until the music has actually started.
+const UNLOCK_EVENTS=['pointerdown','pointerup','click','touchend','keydown'];
+function unlockSound(){
+  initAudio(); if(audioCtx?.state==='suspended') audioCtx.resume().catch(()=>{});
+  if(!S.soundOn){ UNLOCK_EVENTS.forEach(ev=>document.removeEventListener(ev, unlockSound, true)); return; }
+  applyMusic();
+  const done=()=>UNLOCK_EVENTS.forEach(ev=>document.removeEventListener(ev, unlockSound, true));
+  if(MUSIC_STATIONS[musicPlaying()].gen){ if(audioCtx?.state==='running') done(); else audioCtx?.resume().then(done).catch(()=>{}); }
+  else bgMusic.play().then(done).catch(()=>{});
+}
+UNLOCK_EVENTS.forEach(ev=>document.addEventListener(ev, unlockSound, true));
 document.addEventListener('click', e=>{ const m=document.getElementById('music-menu'); if(m?.classList.contains('open') && !e.target.closest('#music-menu, #sound-toggle')) toggleMusicMenu(false); });
 renderMusicMenu();
