@@ -2917,15 +2917,121 @@ function closeDeleteRecipe(){ pendingDelete=null; document.getElementById('delet
 async function confirmDeleteRecipe(){
   const id=pendingDelete; closeDeleteRecipe(); if(id==null) return;
   const r=[...S.recipes,...S.sharedRecipes].find(x=>String(x.id)===String(id));
+  // lift a copy of the page off the book before it's gone, then tear it away
+  const card=document.querySelector(`.recipe-card[data-rid="${CSS.escape(String(id))}"]`);
+  const tear = card ? tearPageCopy(card) : null;
+  playTearSound();
   S.recipes=S.recipes.filter(x=>String(x.id)!==String(id));
   S.sharedRecipes=S.sharedRecipes.filter(x=>String(x.id)!==String(id));
   saveRecipeLists();
   // keep the page you were on, unless it no longer exists
   const per=pagesPerSpread(), max=Math.max(0, Math.ceil(filteredRecipes().length/per)-1);
   S.recipePage=Math.min(S.recipePage, max);
-  renderRecipes(); playPageSound('turn');
+  renderRecipes();
+  if(tear) tear();
   showToast(`"${r?.name||'Recipe'}" was torn out of your book`);
   if(r && S.user && r._cloudId) deleteRecipeCloud(r);
+}
+// The sound of a page being ripped out: a burst of rough, crackling paper
+// fibres that rises and trails off.
+function playTearSound(){
+  initAudio(); if(!S.soundOn || !audioCtx) return;
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  const ac=audioCtx, sr=ac.sampleRate, dur=1.05, n=Math.floor(sr*dur), buf=ac.createBuffer(1,n,sr), d=buf.getChannelData(0);
+  let grain=0, amp=0;
+  for(let i=0;i<n;i++){
+    const t=i/n;
+    // fibres giving way one after another: sparse at the first tug, a dense rip, then the snap as it comes free
+    if(--grain<=0){ const dense = t<0.12 ? 0.04 : t<0.6 ? 0.012 : 0.02; grain=Math.floor(sr*(0.003+Math.random()*dense)); amp=0.2+Math.random()*0.8; }
+    let env = t<0.03 ? t/0.03*0.5 : t<0.12 ? 0.45 : t<0.6 ? 0.6+0.4*(t-0.12)/0.48 : t<0.66 ? 1 : Math.pow(Math.max(0,1-(t-0.66)/0.34), 2.2);
+    if(t>0.08 && t<0.13) env*=0.25;                                                                    // a pause after the first tug
+    d[i]=(Math.random()*2-1)*amp*env*(Math.random()<0.004 ? 2.4 : 1);                                // the odd sharp crack
+  }
+  const src=ac.createBufferSource(); src.buffer=buf;
+  const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=900;
+  const bp=ac.createBiquadFilter(); bp.type='peaking'; bp.frequency.value=2800; bp.Q.value=0.8; bp.gain.value=7;
+  const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=7500;
+  const g=ac.createGain(); g.gain.value=0.9;
+  src.connect(hp); hp.connect(bp); bp.connect(lp); lp.connect(g); g.connect(masterGain||ac.destination);
+  src.start();
+}
+// Copies the page into two pieces along a ragged tear near the binding,
+// laid exactly over the real page; returns a function that rips them away.
+function tearPageCopy(card){
+  const shell=document.querySelector('.flipbook-shell'), grid=card.parentElement;
+  if(!shell || !grid || !Element.prototype.animate) return null;
+  if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+  const x=grid.offsetLeft+card.offsetLeft, y=grid.offsetTop+card.offsetTop, w=card.offsetWidth, h=card.offsetHeight;
+  // the binding is on the side of the page nearest the gutter
+  const bindLeft = pagesPerSpread()===1 || card.offsetLeft > grid.offsetWidth/2 - 4;
+  const base = bindLeft ? 0.13*w : 0.87*w, pts=[], ph=Math.random()*6, steps=64;
+  for(let i=0;i<=steps;i++){
+    const yy=h*i/steps, t=i/steps;
+    const drift=(bindLeft?1:-1)*(Math.sin(t*Math.PI)*12 + Math.sin(t*5.3+ph)*5);   // the long wander of the tear
+    const jag=(Math.random()*2-1)*(i%3===0 ? 6 : 2.5);                              // short, sharp fibre jags
+    pts.push([base+drift+jag, yy]);
+  }
+  const line=(dx)=>pts.map(([px,py])=>`${(px+dx).toFixed(1)}px ${py.toFixed(1)}px`).join(',');
+  const out = bindLeft ? 1 : -1;                           // which way the page side lies from the tear
+  const pageEdge=bindLeft?`${w+40}px`:'-40px', stubEdge=bindLeft?'-40px':`${w+40}px`;
+  const poly=(edge, dx)=>`polygon(${edge} -40px, ${line(dx)}, ${edge} ${h+40}px)`;
+  const layer=makeDiv('tear-layer'); Object.assign(layer.style,{left:x+'px', top:y+'px', width:w+'px', height:h+'px'});
+  const piece=(cls, edge, dx, fibre)=>{
+    const p=makeDiv('tear-piece '+cls);
+    if(fibre){ const f=makeDiv('tear-fibre'); f.style.clipPath=poly(edge, dx - out*3); p.appendChild(f); }
+    const c=card.cloneNode(true); c.removeAttribute('onclick'); c.removeAttribute('data-rid'); uniquifyIds(c);
+    Object.assign(c.style,{position:'absolute', inset:'0', width:w+'px', height:h+'px', margin:'0', transform:'none', transition:'none', minHeight:'0', clipPath:poly(edge, dx)});
+    p.appendChild(c); return p;
+  };
+  const page=piece('tear-leaf', pageEdge, 0, true), stub=piece('tear-stub', stubEdge, 0, true);
+  // the fibres on the stub side show on its torn edge too
+  stub.querySelector('.tear-fibre').style.clipPath=poly(stubEdge, out*3);
+  layer.append(stub, page); shell.appendChild(layer);
+  return ()=>{
+    // The tear runs from the top down: the page swings away about the point
+    // where it's still attached at the bottom of the tear, lifting off the
+    // book as it goes, so the gap opens from the top first. Once it gives
+    // way at the bottom, the page drops away.
+    const foot=pts[pts.length-1][0];
+    page.style.transformOrigin = `${foot}px ${h}px`;
+    stub.style.transformOrigin = `${foot}px ${h}px`;
+    const T=(x,y,r,ry,z=0)=>`translate3d(${x}px,${y}px,${z}px) rotate(${r}deg) rotateY(${ry}deg)`;
+    const sh=(x,y,b,a)=>`drop-shadow(${x}px ${y}px ${b}px rgba(20,10,5,${a}))`;
+    const D=1500;
+    const a=page.animate([
+      { transform:T(0,0,0,0),                         filter:sh(0,2,3,0.2), offset:0 },
+      { transform:T(out*1,-2,out*0.5,0),              filter:sh(out*1,3,4,0.25), offset:0.08, easing:'ease-out' },    // first tug
+      { transform:T(0,0,out*0.2,0),                   filter:sh(0,2,3,0.2), offset:0.13, easing:'ease-in' },
+      { transform:T(out*2,-3,out*2.4,out*-6,8),       filter:sh(out*4,6,7,0.3), offset:0.3 },                         // ripping down…
+      { transform:T(out*4,-5,out*5.5,out*-14,16),     filter:sh(out*8,10,10,0.34), offset:0.5 },
+      { transform:T(out*7,-6,out*8,out*-20,22),       filter:sh(out*12,14,13,0.38), offset:0.6, easing:'cubic-bezier(.5,0,.9,.6)' }, // …and free
+      { transform:T(out*w*0.45,h*0.28,out*17,out*-26,30), filter:sh(out*16,22,16,0.36), opacity:1, offset:0.84 },
+      { transform:T(out*w*0.8,h*0.52,out*27,out*-34,30),  filter:sh(out*16,26,18,0), opacity:0, offset:1 }
+    ], {duration:D, fill:'forwards'});
+    stub.animate([
+      { transform:'rotate(0deg)', opacity:1, offset:0 },
+      { transform:`rotate(${-out*0.35}deg)`, offset:0.08 },                      // the binding pulls back
+      { transform:'rotate(0deg)', offset:0.16 },
+      { transform:`rotate(${-out*0.25}deg)`, offset:0.6 },                       // a last tug as it gives way
+      { transform:'rotate(0deg)', opacity:1, offset:0.7 },
+      { transform:'translateY(4px)', opacity:0, offset:1 }
+    ], {duration:D, easing:'ease-out', fill:'forwards'});
+    // as the paper curls up off the book, its torn side catches a little shadow
+    const shade=makeDiv('tear-shade'); shade.style.background=`linear-gradient(${bindLeft?90:270}deg, rgba(40,22,10,0.42), rgba(40,22,10,0) 45%)`;
+    shade.style.clipPath=page.querySelector('.recipe-card').style.clipPath; page.appendChild(shade);
+    shade.animate([{opacity:0}, {opacity:0, offset:0.12}, {opacity:0.7, offset:0.5}, {opacity:0.5, offset:0.7}, {opacity:0.2}], {duration:D, fill:'forwards'});
+    // little scraps of paper fall from the torn edge as it gives way
+    for(let i=0;i<6;i++){
+      const pt=pts[Math.floor((0.15+0.7*Math.random())*pts.length)], bit=makeDiv('tear-bit');
+      const sz=3+Math.random()*4;
+      Object.assign(bit.style,{left:(pt[0]-sz/2)+'px', top:pt[1]+'px', width:sz+'px', height:(sz*0.7)+'px'});
+      layer.appendChild(bit);
+      bit.animate([{transform:'translate(0,0) rotate(0)', opacity:0}, {opacity:1, offset:0.15},
+                   {transform:`translate(${out*(6+Math.random()*20)}px,${30+Math.random()*60}px) rotate(${(Math.random()*2-1)*200}deg)`, opacity:0}],
+                  {duration:900+Math.random()*400, delay:250+Math.random()*600, easing:'cubic-bezier(.3,.1,.6,1)', fill:'both'});
+    }
+    a.finished.then(()=>layer.remove()).catch(()=>layer.remove());
+  };
 }
 async function deleteRecipeCloud(recipe){
   try{
@@ -3026,7 +3132,7 @@ function renderRecipes(){
     const ings=[drinkLabel,...(r.addons||[]).filter(a=>a!=='ice').map(a=>addonNames[a]||a)];
     const pageNo=S.recipePage*per+i+1;
     const row=(k,v)=>`<div class="rc-row"><dt>${k}</dt><dd>${v}</dd></div>`;
-    return `<div class="recipe-card ${r.favorite?'favorite-page':''}" onclick="changeRecipePage(${per===1||i===1?1:-1})">
+    return `<div class="recipe-card ${r.favorite?'favorite-page':''}" data-rid="${esc(r.id)}" onclick="changeRecipePage(${per===1||i===1?1:-1})">
       ${r.shared?'<div class="rc-badge">shared brew</div>':''}
       <div class="rc-kicker">Recipe No. ${toRoman(pageNo)}</div>
       <div class="rc-name">${esc(r.name)}</div>
@@ -3632,15 +3738,9 @@ function renderGazetteExtras(all){
     [...st.exchange].sort((a,b)=>(b.total+b.now)-(a.total+a.now)).slice(0,4).map(x=>{ const ch=x.now-x.before; const sym = ch>0?'▲':ch<0?'▼':'—';
       return `<div class="gz-ex-row"><span>${names[x.b]}</span><span class="gz-ex-bar"><i style="width:${Math.round(x.total/exMax*100)}%"></i><em>${x.total}</em></span><span>${x.now}</span><span class="${ch>0?'up':ch<0?'down':''}">${sym}${ch?' '+Math.abs(ch):''}</span></div>`; }).join('') +
     `<p class="gz-small gz-ex-note">Cups brewed this week against last week. All-time leader: <b>${names[[...st.exchange].sort((a,b)=>b.total-a.total)[0].b]}</b>.</p>`;
-  // Brewoscope and quote of the day (change daily)
+  // This term's subjects, and the word and quote of the day
+  renderTermSubjects();
   const dayIndex=Math.floor(Date.now()/86400000);
-  document.getElementById('gz-horoscope').textContent = GZ_SIGNS[(dayIndex + gzHash(S.user?.id||'')) % GZ_SIGNS.length];
-  const moon=moonPhase();
-  const lucky = st.sessions ? (DRINKS[all[(dayIndex) % all.length].drink]?.label || 'Cappuccino') : ['Cappuccino','Honey Tea','Matcha Latte','Mocha'][dayIndex%4];
-  document.getElementById('gz-almanac').innerHTML = `
-    <div><span>Lucky drink</span><b>${esc(lucky)}</b></div>
-    <div><span>Lucky number</span><b>${(dayIndex*7 + gzHash(S.user?.id||'')) % 31 + 1}</b></div>
-    <div><span>Moon</span><b><i class="gz-moon" style="--lit:${Math.round((1-Math.cos(moon.f*2*Math.PI))/2*100)}%;${moon.f>0.5?'transform:scaleX(-1)':''}"></i>${moon.name}</b></div>`;
   const [w, say, means] = GZ_WORDS[(dayIndex*3) % GZ_WORDS.length];
   document.getElementById('gz-word').innerHTML = `<div class="gz-word-k">Word of the Day</div><p><b>${w}</b> <span>(${say})</span> \u2014 ${means}</p>`;
   const [q, who] = GZ_QUOTES[dayIndex % GZ_QUOTES.length];
@@ -3665,6 +3765,70 @@ async function renderGazetteSociety(){
     el.innerHTML = `<p class="gz-small">The society pages are being typeset. Check back shortly.</p>`;
   }
 }
+
+// ── This term's subjects ──
+// The subjects you're taking this semester, kept with your account. Tap one
+// to see how long you've studied it: every finished session counts.
+const termSubjects = () => (Array.isArray(S.user?.meta?.subjects) ? S.user.meta.subjects : []).filter(x=>typeof x==='string' && x.trim()).slice(0,10);
+let termOpen=null;
+const sameSubject = (a,b) => String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
+function subjectStats(name){
+  const all=[...(S.recipes||[]), ...(S.sharedRecipes||[])].filter(r=>sameSubject(r.subject, name));
+  const mins=all.reduce((t,r)=>t+(Number(r.duration)||0),0);
+  const weekAgo=Date.now()-7*86400000;
+  const week=all.filter(r=>(r._ts||r.id||0)>=weekAgo).reduce((t,r)=>t+(Number(r.duration)||0),0);
+  const last=all.reduce((m,r)=>Math.max(m, r._ts||r.id||0),0);
+  return {mins, week, sessions:all.length, last};
+}
+const fmtHours = m => { if(m<60) return `${m} min`; const h=(m/60).toFixed(1).replace(/\.0$/,''); return `${h} hr${h==='1'?'':'s'}`; };
+function renderTermSubjects(){
+  const el=document.getElementById('gz-term'); if(!el) return;
+  const list=termSubjects();
+  const dl=document.getElementById('term-subjects'); if(dl) dl.innerHTML=list.map(x=>`<option value="${esc(x)}">`).join('');
+  if(termOpen && !list.some(x=>sameSubject(x,termOpen))) termOpen=null;
+  if(!list.length){ el.innerHTML=`<p class="gz-small gz-center">Enrol below — add the subjects you’re taking this term, then tap one to see your hours.</p>`; return; }
+  const stats=list.map(x=>({name:x, ...subjectStats(x)})), max=Math.max(60, ...stats.map(x=>x.mins));
+  el.innerHTML = `<ul class="gz-term-list">${stats.map((x,i)=>`<li><button type="button" class="gz-term-sub ${sameSubject(termOpen,x.name)?'on':''}" onclick="toggleTermSubject(${i})" aria-expanded="${sameSubject(termOpen,x.name)}">
+      <span>${esc(x.name)}</span><i>${x.mins ? fmtHours(x.mins) : '—'}</i></button></li>`).join('')}</ul>`
+    + (termOpen ? (()=>{ const x=stats.find(y=>sameSubject(y.name,termOpen)), idx=list.findIndex(y=>sameSubject(y,x.name));
+        const drop=`<button type="button" class="gz-link gz-term-drop" onclick="removeTermSubject(${idx})">drop this subject</button>`;
+        if(!x.sessions) return `<div class="gz-term-detail fresh">
+          <div class="gz-term-fresh-k">Fresh on the timetable</div>
+          <p class="gz-small">No study hours on the books yet.</p>
+          <div class="gz-term-acts"><button type="button" class="gz-press gz-term-brew" onclick="brewForSubject(${idx})">Brew for ${esc(x.name)}</button>${drop}</div>
+        </div>`;
+        const last = new Date(x.last).toLocaleDateString('en-GB',{day:'numeric', month:'short'});
+        return `<div class="gz-term-detail">
+          <div class="gz-term-hours"><b>${fmtHours(x.mins)}</b><span>studied in ${esc(x.name)}</span></div>
+          <div class="gz-term-bar" aria-hidden="true"><i style="width:${Math.round(x.mins/max*100)}%"></i></div>
+          <p class="gz-small">${x.sessions} finished session${x.sessions>1?'s':''} · ${fmtHours(x.week)} this week · last studied ${last}</p>
+          ${drop}
+        </div>`; })() : '');
+}
+// start a brew with this subject already written on the order slip
+function brewForSubject(i){
+  const x=termSubjects()[i]; if(!x) return;
+  showPage('brew');
+  const f=document.getElementById('field-subject'); if(f){ f.value=x; f.dispatchEvent(new Event('input')); }
+  document.querySelector('.order-slip')?.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function toggleTermSubject(i){ const x=termSubjects()[i]; termOpen = sameSubject(termOpen,x) ? null : x; renderTermSubjects(); }
+async function saveTermSubjects(list){
+  const prev=S.user.meta?.subjects;
+  S.user.meta={ ...(S.user.meta||{}), subjects:list };
+  renderTermSubjects();
+  try{ const { error } = await supabaseClient.auth.updateUser({ data:{ subjects:list } }); if(error) throw error; }
+  catch(e){ S.user.meta.subjects=prev; renderTermSubjects(); setProfileMsg('Couldn\u2019t save your subjects just now \u2014 please try again.', 'error'); }
+}
+function addTermSubject(){
+  const inp=document.getElementById('gz-term-in'), name=inp.value.replace(/\s+/g,' ').trim().slice(0,40);
+  if(!name || !S.user) return;
+  const list=termSubjects();
+  if(list.some(x=>sameSubject(x,name))){ termOpen=list.find(x=>sameSubject(x,name)); inp.value=''; renderTermSubjects(); return; }
+  if(list.length>=10){ setProfileMsg('Ten subjects is a full timetable — drop one to add another.', 'error'); return; }
+  inp.value=''; termOpen=name; saveTermSubjects([...list, name]);
+}
+function removeTermSubject(i){ const list=termSubjects(); if(!list[i]) return; termOpen=null; saveTermSubjects(list.filter((_,j)=>j!==i)); }
 
 // Bio, favourite song and favourite book: typed straight onto the page and
 // saved with the account (no form to submit).
