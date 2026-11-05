@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611050937" />
+<link rel="stylesheet" href="style.css?v=202611050952" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Courier+Prime:wght@400;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -827,11 +827,23 @@
 
 <div class="leave-modal-bg" id="leave-modal">
   <div class="leave-modal">
-    <h3>Your brew is still warm.</h3>
-    <p>Leaving now will end your current focus session.<br>Are you sure?</p>
+    <h3>End this session?</h3>
+    <p>Unfinished brews aren’t saved.</p>
     <div class="leave-actions">
-      <button class="btn-p" onclick="continueStudying()">Continue Studying</button>
-      <button class="btn-s" style="color:var(--ink);border-color:rgba(74,52,40,0.35);" onclick="confirmEndSession()">End Session</button>
+      <button class="btn-p" onclick="continueStudying()">Keep brewing</button>
+      <button class="btn-s leave-end" onclick="confirmEndSession()">End</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tearing a page out of the recipe book -->
+<div class="leave-modal-bg" id="delete-modal" onclick="if(event.target===this) closeDeleteRecipe()">
+  <div class="leave-modal" role="dialog" aria-labelledby="del-title">
+    <h3 id="del-title">Tear out this page?</h3>
+    <p><span id="del-name"></span> will be gone for good.</p>
+    <div class="leave-actions">
+      <button class="btn-s leave-end" onclick="closeDeleteRecipe()">Keep it</button>
+      <button class="btn-p" onclick="confirmDeleteRecipe()">Tear it out</button>
     </div>
   </div>
 </div>
@@ -926,6 +938,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611050937"></script>
+<script src="script.js?v=202611050952"></script>
 </body>
 </html>

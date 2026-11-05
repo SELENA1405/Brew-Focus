@@ -2635,3 +2635,19 @@ body::after {
 .nav-post-n { box-shadow:0 0 0 1.5px #e8cf95, 0 1px 3px rgba(0,0,0,0.5); }
 .nav-post svg { filter:drop-shadow(0 1px 1px rgba(0,0,0,0.6)); }
 .nav-post-n { right:auto; left:12px; bottom:2px; min-width:14px; height:14px; font-size:0.55rem; padding:0 2px; }
+
+/* the end-session and tear-out notes: short and calm */
+.leave-modal { width:min(360px, 90vw); padding:1.9rem 1.8rem 1.6rem; }
+.leave-modal h3 { font-size:1.55rem; margin-bottom:0.3rem; }
+.leave-modal p { font-size:1.15rem; line-height:1.35; }
+.leave-actions { margin-top:1.2rem; }
+.leave-actions .leave-end { color:var(--ink); border-color:rgba(74,52,40,0.35); }
+#del-name { font-style:italic; color:var(--burgundy); }
+
+/* tear-out button on a recipe page */
+.rc-foot .rc-del { position:absolute; left:0; top:50%; transform:translateY(-35%); border:none; background:transparent; cursor:pointer; line-height:0; padding:0.2rem;
+  color:rgba(107,79,58,0.55); transition:color .2s, transform .2s; }
+.rc-foot .rc-del:hover { color:var(--burgundy); transform:translateY(-35%) scale(1.1); }
+.rc-foot .rc-del:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+.leave-modal { width:min(390px, 92vw); }
+.leave-actions button { white-space:nowrap; padding-left:0.6rem; padding-right:0.6rem; }

@@ -676,14 +676,21 @@ function resetSession(){
   document.getElementById('ambient-lbl').textContent='Your brew is ready. Press play to begin.';
   renderTimerCup(1); updateTimerDisp();
 }
-function finishSession(){
+// Only a session that runs its full time is written into the recipe book;
+// ending early just closes the session.
+function finishSession(completed=true){
   clearInterval(S.timerIv); S.timerRunning=false;
+  const wasActive=S.focusActive;
   S.focusActive=false;
   document.querySelector('.nav').classList.remove('focus-locked');
   document.getElementById('page-study').classList.remove('focus-mode');
   setPlayIcon(false);
-  const elapsed=S.timerTotal-S.timerSecs;
-  const mins=Math.round(elapsed/60)||1;
+  if(!completed || !wasActive){
+    if(wasActive){ showToast('Session ended early — not added to your recipe book'); playPageSound('close'); }
+    S.timerSecs=S.timerTotal; renderTimerCup(1); updateTimerDisp();
+    return false;
+  }
+  const mins=Math.max(1, Math.round(S.timerTotal/60));
   const now=new Date();
   const dateStr=now.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
   const recipe={id:Date.now(),_ts:Date.now(),name:S.recipeName,cup:S.cup,base:S.base,drink:S.drink,addons:[...S.addons],
@@ -694,7 +701,8 @@ function finishSession(){
   showToast('Session saved to your recipe book');
   renderTimerCup(0);
   document.getElementById('ambient-lbl').textContent=`${mins} min brewed. Beautifully done.`;
-  setTimeout(()=>showPage('recipes'),2200);
+  setTimeout(()=>{ if(document.getElementById('page-study').classList.contains('active')) showPage('recipes'); },2200);
+  return true;
 }
 
 function requestEndSession(){
@@ -702,7 +710,7 @@ function requestEndSession(){
     document.getElementById('leave-modal').classList.add('open');
     playPageSound('close');
   } else {
-    finishSession();
+    showPage('brew');
   }
 }
 function continueStudying(){
@@ -713,8 +721,8 @@ function confirmEndSession(){
   document.getElementById('leave-modal').classList.remove('open');
   const target=S.pendingPage;
   S.pendingPage=null;
-  finishSession();
-  if(target) setTimeout(()=>showPage(target),300);
+  finishSession(false);
+  showPage(target || 'brew');
 }
 
 // ── Study Café ────────────────────────────────────────────────────────────
@@ -2896,6 +2904,35 @@ function saveRecipeLists(){
   localStorage.setItem('bf_recipes',JSON.stringify(S.recipes));
   localStorage.setItem('bf_shared',JSON.stringify(S.sharedRecipes));
 }
+// ── Tearing a page out of the recipe book ──
+let pendingDelete=null;
+function askDeleteRecipe(id, event){
+  if(event) event.stopPropagation();
+  const r=[...S.recipes,...S.sharedRecipes].find(x=>String(x.id)===String(id)); if(!r) return;
+  pendingDelete=r.id;
+  document.getElementById('del-name').textContent=r.name||'this recipe';
+  document.getElementById('delete-modal').classList.add('open');
+}
+function closeDeleteRecipe(){ pendingDelete=null; document.getElementById('delete-modal').classList.remove('open'); }
+async function confirmDeleteRecipe(){
+  const id=pendingDelete; closeDeleteRecipe(); if(id==null) return;
+  const r=[...S.recipes,...S.sharedRecipes].find(x=>String(x.id)===String(id));
+  S.recipes=S.recipes.filter(x=>String(x.id)!==String(id));
+  S.sharedRecipes=S.sharedRecipes.filter(x=>String(x.id)!==String(id));
+  saveRecipeLists();
+  // keep the page you were on, unless it no longer exists
+  const per=pagesPerSpread(), max=Math.max(0, Math.ceil(filteredRecipes().length/per)-1);
+  S.recipePage=Math.min(S.recipePage, max);
+  renderRecipes(); playPageSound('turn');
+  showToast(`"${r?.name||'Recipe'}" was torn out of your book`);
+  if(r && S.user && r._cloudId) deleteRecipeCloud(r);
+}
+async function deleteRecipeCloud(recipe){
+  try{
+    const { error } = await supabaseClient.from('recipes').delete().eq('id', recipe._cloudId).eq('user_id', S.user.id);
+    if(error) throw error;
+  } catch(e){ console.warn('Could not remove the recipe from Supabase:', e); }
+}
 function toggleFavorite(id,event){
   if(event) event.stopPropagation();
   const all=[...S.recipes,...S.sharedRecipes];
@@ -3009,6 +3046,7 @@ function renderRecipes(){
       <div class="rc-note">The cup kept time, and the page kept the feeling.</div>
       <div class="rc-foot">
         <span class="rc-folio">— ${pageNo} —</span>
+        <button class="rc-del" onclick="askDeleteRecipe('${r.id}',event)" title="Tear out this page" aria-label="Delete this recipe"><svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M4.5 5.5h11M8 5.5V4h4v1.5M6 5.5l.8 10.5h6.4l.8-10.5M8.6 8.4v5M11.4 8.4v5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="fav-btn ${r.favorite?'':'off'}" onclick="toggleFavorite('${r.id}',event)" title="${r.favorite?'Remove from favourites':'Add to favourites'}" aria-label="Favourite recipe" aria-pressed="${!!r.favorite}"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 2.2l2.3 5 5.4.5-4.1 3.6 1.2 5.3L10 13.9l-4.8 2.7 1.2-5.3-4.1-3.6 5.4-.5z" fill="currentColor" stroke="currentColor" stroke-width="0.6" stroke-linejoin="round"/></svg></button>
       </div>
     </div>`;
