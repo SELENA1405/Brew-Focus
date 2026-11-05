@@ -2704,3 +2704,41 @@ body::after {
 .gz-term-sub.on i { font-weight:700; }
 .gz-term-sub.on em { border-bottom-style:solid; border-bottom-width:1px; }
 .gz-term-sub.on { border-bottom:none; }
+
+/* the study scene: your cup on the bistro table, the chair pulled up beside it */
+.study-scene { position:relative; width:min(420px, 92vw); aspect-ratio:606/570; margin:0.6rem 0 0.4rem; }
+.study-scene .study-table { position:absolute; inset:0; width:100%; height:100%; display:block; overflow:visible; filter:drop-shadow(0 18px 24px rgba(0,0,0,0.35)); }
+.study-scene .timer-cup-wrap { position:absolute; left:78.5%; top:55%; bottom:auto; transform:translate(-50%, -100%); width:21%; z-index:1;
+  filter:drop-shadow(0 10px 12px rgba(0,0,0,0.45)); }
+.study-scene .timer-cup-wrap svg { width:100%; height:auto; display:block; }
+@media(max-width:700px){ .study-scene { width:min(330px, 88vw); margin:0.4rem 0 0.2rem; } }
+
+/* The session page is the café terrace itself: the painted café front, with
+   your table and chair standing out on the cobbles. No card — the words sit
+   on the wall above, the timer and buttons on the cobbles below. */
+#page-study, #page-study.focus-mode {
+  background:url("assets/image/cafe-terrace.svg?v=202611051615") center bottom / cover no-repeat, #24160e;
+  padding:4.6rem 1.5rem 1.4rem;
+}
+#page-study .study-layout {
+  min-height:calc(100vh - 6rem); max-width:760px; padding:0.6rem 1rem 0.4rem; margin:0 auto;
+  border:none; background:none; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none;
+}
+#page-study .study-layout::before { display:none; }
+/* the words on the dark wall above the awning */
+#page-study .study-eyebrow, #page-study .study-sub-lbl, #page-study .study-task-lbl { text-shadow:0 2px 6px rgba(0,0,0,0.85), 0 0 18px rgba(0,0,0,0.6); }
+#page-study .brew-rule { margin-bottom:0.2rem; }
+/* your table stands on the terrace, just above the timer */
+#page-study .study-scene { margin:auto 0 -0.6rem; width:min(430px, 86vw); }
+#page-study .study-scene .study-table { filter:drop-shadow(0 10px 14px rgba(0,0,0,0.5)); }
+/* the timer is a brass-edged plaque on the cobbles; the buttons sit beneath it */
+#page-study .study-clock { background:rgba(26,14,8,0.86); box-shadow:0 10px 24px rgba(0,0,0,0.55); }
+#page-study .ambient-lbl { margin:0.55rem 0 0.6rem; padding:0.15rem 0.9rem; border-radius:20px; background:rgba(20,10,5,0.55); text-shadow:0 1px 3px rgba(0,0,0,0.8); }
+#page-study .sess-ctrl .btn-ic { background:rgba(26,14,8,0.82); box-shadow:0 6px 14px rgba(0,0,0,0.5); }
+#page-study .sess-ctrl .btn-ic.play { background:var(--burgundy); }
+#page-study .focus-stop { margin-top:0.7rem; text-shadow:0 1px 4px rgba(0,0,0,0.9); }
+@media(max-width:700px){
+  #page-study, #page-study.focus-mode { padding:4.8rem 0.8rem 1rem; }
+  #page-study .study-layout { min-height:calc(100vh - 6rem); padding:0.4rem 0.4rem 0.2rem; }
+  #page-study .study-scene { width:min(330px, 88vw); }
+}

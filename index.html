@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611051353" />
+<link rel="stylesheet" href="style.css?v=202611051615" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Courier+Prime:wght@400;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -305,9 +305,82 @@
     <div class="brew-rule" aria-hidden="true"><span></span></div>
 
     <!-- The cup on display; it empties as the session steeps -->
-    <div class="study-window">
+    <div class="study-scene">
+      <svg class="study-table" viewBox="-150 36 606 570" aria-hidden="true">
+      <defs>
+        <filter id="st-paint" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02 0.035" numOctaves="2" seed="11" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="4.5" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <radialGradient id="st-top" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#a8485a"/><stop offset="0.55" stop-color="#7a2e3a"/><stop offset="1" stop-color="#561c28"/></radialGradient>
+        <linearGradient id="st-edge" x1="0" x2="1"><stop offset="0" stop-color="#3a1018"/><stop offset="0.35" stop-color="#5e2230"/><stop offset="0.7" stop-color="#4a1824"/><stop offset="1" stop-color="#2e0c14"/></linearGradient>
+        <linearGradient id="st-iron" x1="0" x2="1"><stop offset="0" stop-color="#4a3520"/><stop offset="0.45" stop-color="#9a7a4a"/><stop offset="1" stop-color="#3e2c1a"/></linearGradient>
+        <radialGradient id="st-ground"><stop offset="0" stop-color="#0d0805" stop-opacity="0.6"/><stop offset="1" stop-color="#0d0805" stop-opacity="0"/></radialGradient>
+        <radialGradient id="st-coffee" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="#b8743a"/><stop offset="0.55" stop-color="#7a4220"/><stop offset="1" stop-color="#4a2410"/></radialGradient>
+        <linearGradient id="st-cupside" x1="0" x2="1"><stop offset="0" stop-color="#cdbf9f"/><stop offset="0.3" stop-color="#fbf6ec"/><stop offset="0.65" stop-color="#efe5d2"/><stop offset="1" stop-color="#bfae8c"/></linearGradient>
+      </defs>
+      <ellipse cx="240" cy="576" rx="190" ry="20" fill="url(#st-ground)"/>
+      <g filter="url(#st-paint)">
+        <!-- a bistro chair standing apart, to the left of the table, turned toward it -->
+        <ellipse cx="-44" cy="578" rx="88" ry="13" fill="url(#st-ground)"/>
+        <g fill="none" stroke-linecap="round">
+          <!-- back legs -->
+          <path d="M-94,410 L-104,566 M4,402 L14,558" stroke="#6b5034" stroke-width="6.5"/>
+          <!-- back frame rising from the rear of the seat -->
+          <path d="M-96,404 C-110,320 -106,232 -78,192 C-52,156 -6,160 8,206 C18,244 14,330 6,398" stroke="#7a5c3a" stroke-width="8"/>
+          <path d="M-96,404 C-110,320 -106,232 -78,192 C-52,156 -6,160 8,206" stroke="#e2c88e" stroke-opacity="0.8" stroke-width="2.2" transform="translate(-2,-2)"/>
+          <g stroke="#d9b66a" stroke-width="3.6">
+            <path d="M-46,262 C-60,248 -78,240 -80,224 C-82,210 -66,204 -58,212 C-51,219 -58,227 -64,223"/>
+            <path d="M-42,262 C-28,248 -10,240 -8,224 C-6,210 -22,204 -30,212 C-37,219 -30,227 -24,223"/>
+          </g>
+        </g>
+        <path d="M-102,290 L10,280 L11,300 L-101,311 Z" fill="#6b4f3a"/><path d="M-101,298 L10,288" stroke="#8a6a4e" stroke-width="1.6"/>
+        <path d="M-100,322 L11,312 L12,332 L-99,343 Z" fill="#5a3f2c"/><path d="M-99,330 L11,320" stroke="#7a5a40" stroke-width="1.6"/>
+        <!-- seat -->
+        <ellipse cx="-44" cy="414" rx="66" ry="25" fill="#4a3424"/>
+        <ellipse cx="-44" cy="408" rx="66" ry="25" fill="#6b4f3a"/>
+        <path d="M-104,404 Q-44,424 16,404 M-100,396 Q-44,414 12,396 M-92,416 Q-44,432 4,416" stroke="#8a6a4e" stroke-width="1.6" fill="none"/>
+        <ellipse cx="-44" cy="408" rx="66" ry="25" fill="none" stroke="#7a5c3a" stroke-width="4"/>
+        <path d="M-108,404 A66,25 0 0 1 -20,383" fill="none" stroke="#e2c88e" stroke-opacity="0.75" stroke-width="1.6"/>
+        <g fill="none" stroke-linecap="round">
+          <!-- front legs and the cross ring -->
+          <path d="M-80,428 L-90,590 M-6,428 L4,586" stroke="#7a5c3a" stroke-width="7"/>
+          <ellipse cx="-44" cy="510" rx="54" ry="14" stroke="#6b5034" stroke-width="3"/>
+        </g>
+
+        <!-- pedestal and curled feet -->
+        <path d="M232,394 C234,446 227,500 226,550 L254,550 C253,500 246,446 248,394 Z" fill="url(#st-iron)"/>
+        <ellipse cx="240" cy="552" rx="22" ry="7" fill="#5a4128"/>
+        <g fill="none" stroke="#7a5c3a" stroke-width="6" stroke-linecap="round">
+          <path d="M230,552 C200,556 168,562 146,570 C134,574 132,564 142,562"/>
+          <path d="M250,552 C280,556 312,562 334,570 C346,574 348,564 338,562"/>
+          <path d="M236,556 C226,566 212,574 196,580"/><path d="M244,556 C254,566 268,574 284,580"/>
+        </g>
+        <path d="M238,400 C240,450 234,504 234,548" stroke="#e2c88e" stroke-opacity="0.75" stroke-width="2" fill="none"/>
+
+        <!-- table top: edge, rim, inlay ring -->
+        <ellipse cx="240" cy="318" rx="206" ry="89" fill="url(#st-edge)"/>
+        <ellipse cx="240" cy="304" rx="206" ry="89" fill="url(#st-top)"/>
+        <ellipse cx="240" cy="304" rx="204" ry="88" fill="none" stroke="#c7a86d" stroke-width="4"/>
+        <path d="M60,262 A204,88 0 0 1 300,218" fill="none" stroke="#f3dca8" stroke-opacity="0.7" stroke-width="2.4" stroke-linecap="round"/>
+        <ellipse cx="240" cy="304" rx="180" ry="76" fill="none" stroke="#d9b66a" stroke-opacity="0.7" stroke-width="1.6"/>
+        <ellipse cx="240" cy="304" rx="172" ry="72" fill="none" stroke="#d9b66a" stroke-opacity="0.45" stroke-width="1" stroke-dasharray="2 6"/>
+        <g fill="#e8c88a" opacity="0.35"><path d="M418,320 c5,-2 10,0 8,4 c-3,3 -9,2 -8,-4z"/><path d="M96,346 c5,-2 10,1 7,4 c-4,2 -9,0 -7,-4z"/></g>
+
+
+        <!-- an open notebook and a pencil, lying flat on the table -->
+        <g transform="matrix(0.78 -0.114 0.253 0.351 46 280)">
+          <path d="M-4,6 L224,8 L228,170 L-1,172 Z" fill="#3a1a14" opacity="0.55"/>
+          <path d="M0,0 H110 V164 H0 Z" fill="#f6efe0"/><path d="M114,0 H224 V164 H114 Z" fill="#f2ead8"/>
+          <path d="M110,0 H114 V164 H110 Z" fill="#c9bea6"/>
+          <g stroke="#9fb0c4" stroke-width="1" stroke-opacity="0.7"><path d="M8,22H104M120,22H216"/><path d="M8,33H104M120,33H216"/><path d="M8,44H104M120,44H216"/><path d="M8,55H104M120,55H216"/><path d="M8,66H104M120,66H216"/><path d="M8,77H104M120,77H216"/><path d="M8,88H104M120,88H216"/><path d="M8,99H104M120,99H216"/><path d="M8,110H104M120,110H216"/><path d="M8,121H104M120,121H216"/><path d="M8,132H104M120,132H216"/><path d="M8,143H104M120,143H216"/><path d="M8,154H104M120,154H216"/></g>
+          <path d="M14,0V164" stroke="#d98a8a" stroke-width="1" stroke-opacity="0.7"/>
+          <g stroke="#3a2a22" stroke-width="1.3" stroke-opacity="0.6" stroke-linecap="round"><path d="M20,30h70M20,41h58M20,52h76M20,63h44M126,30h64M126,41h80M126,52h52"/></g>
+          <g transform="translate(150 118) rotate(-24)"><rect x="0" y="-4" width="80" height="8" rx="1" fill="#c4973c"/><rect x="66" y="-4" width="10" height="8" fill="#b9b4ab"/><rect x="76" y="-4" width="6" height="8" rx="2" fill="#d48a8a"/><path d="M0,-4 L-14,0 L0,4 Z" fill="#e6c9a0"/><path d="M-10,-1 L-14,0 L-10,1 Z" fill="#2c1a10"/></g>
+        </g>
+      </g>
+    </svg>
       <div class="timer-cup-wrap" id="timer-cup-area"></div>
-      <div class="study-shelf"></div>
     </div>
 
     <div class="study-clock">
@@ -941,6 +1014,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611051353"></script>
+<script src="script.js?v=202611051615"></script>
 </body>
 </html>

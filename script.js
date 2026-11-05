@@ -698,13 +698,33 @@ function finishSession(completed=true){
   S.recipes.unshift(recipe);
   localStorage.setItem('bf_recipes',JSON.stringify(S.recipes));
   if(S.user){ saveRecipeToCloud(recipe); } // fire-and-forget — recipe is already safe locally either way
-  showToast('Session saved to your recipe book');
+  playDoneChime();
+  showToast('Session complete — saved to your recipe book');
   renderTimerCup(0);
   document.getElementById('ambient-lbl').textContent=`${mins} min brewed. Beautifully done.`;
   setTimeout(()=>{ if(document.getElementById('page-study').classList.contains('active')) showPage('recipes'); },2200);
   return true;
 }
 
+// The café bell when a session is done: three soft brass notes, rung twice,
+// so you'll hear it even if you've stepped away. (It rings even when the
+// music is off — it's the one sound that tells you time is up.)
+function playDoneChime(){
+  initAudio(); if(!audioCtx) return;
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  const ac=audioCtx, t0=ac.currentTime+0.05, out=ac.createGain(); out.gain.value=0.5; out.connect(ac.destination);
+  const bell=(t, f, v)=>{
+    [[1,1],[2.76,0.35],[5.4,0.12],[0.5,0.25]].forEach(([m,a])=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type='sine'; o.frequency.value=f*m;
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v*a, t+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+(m>2?0.6:2.2));
+      o.connect(g); g.connect(out); o.start(t); o.stop(t+2.4);
+    });
+  };
+  [0,1].forEach(r=>[[784,0],[988,0.32],[1319,0.64]].forEach(([f,d])=>bell(t0+r*1.6+d, f, 0.22)));
+  if(document.hidden){ const old=document.title; document.title='Session complete · Brew & Focus'; const back=()=>{ document.title=old; document.removeEventListener('visibilitychange', back); }; document.addEventListener('visibilitychange', back); }
+}
 function requestEndSession(){
   if(S.focusActive){
     document.getElementById('leave-modal').classList.add('open');
@@ -1941,6 +1961,7 @@ function tickCafeTimer(){
 // their recipe book (once), and the host's browser resets the clock.
 function finishCafeSession(){
   const c=S.room.cafe;
+  if(!localStorage.getItem(`bf_cafe_done_${c.id}_${c.timer_started_at}`)) playDoneChime();
   // everyone has drunk up: keep these cups empty after the timer resets
   S.room.emptied = Object.fromEntries(c.members.filter(m=>m.drink).map(m=>[m.user_id, JSON.stringify(m.drink)]));
   const key=`bf_cafe_done_${c.id}_${c.timer_started_at}`;
