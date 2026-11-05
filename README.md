@@ -32,7 +32,7 @@ The project was designed with a warm, nostalgic café aesthetic inspired by vint
 
 * Open your own café and choose its atmosphere: Parisian Café, Rainy Bookstore, Kyoto Tea House, Midnight Jazz Café, Library Reading Room or Beach Café
 * Invite friends with a link, a six-letter code, or their username
-* Add friends with calling cards: leave your card by username or by tapping someone's animal at the table, and keep friends in your card box for one-tap invites
+* A mailbox for friends: search for people by name or @username and leave your calling card; once accepted, write each other letters (with a café invitation enclosed if you like), with a wax seal on your name when something new arrives
 * Step inside and sit at one shared table — brew your own drink or order from the café's menu
 * Study together on one shared timer kept by the host; everyone's drink empties together
 * Finished sessions are saved to Shared Brews in your recipe book
@@ -93,7 +93,7 @@ That creates the café tables, the server functions for creating, joining, invit
 Then run, the same way and in this order:
 
 3. `supabase/profiles.sql` — names, profile pictures and café characters.
-4. `supabase/friends.sql` — friends (“calling cards”): leave your card for someone by username; once they accept you're friends, and they appear in your card box, the Gazette's Café Society, and the café invite window.
+4. `supabase/friends.sql` — friends and the mailbox: calling cards, letters between friends, and searching for people by name or username.
 
 ---
 

@@ -1991,13 +1991,13 @@ async function loadFriends(){
   }
   if(!unsubFriends && !S.friends.missing){ try{ unsubFriends=FriendsDB.subscribe(()=>loadFriends()); }catch(e){} }
   renderFriendBadges();
-  if(document.getElementById('friends-modal')?.classList.contains('open')) renderCardBox();
+  renderMailbox();
   if(document.getElementById('page-cafe').classList.contains('active')) renderCafeFriendCards();
   if(document.getElementById('page-profile').classList.contains('active')) renderGazetteFriends();
   if(document.getElementById('invite-modal')?.classList.contains('open')) renderInviteFriends();
   if(document.getElementById('cr-callcard')?.dataset.uid) renderCallCard(document.getElementById('cr-callcard').dataset.uid);
 }
-function stopFriends(){ if(unsubFriends){ unsubFriends(); unsubFriends=null; } S.friends={list:[], incoming:[], outgoing:[], loaded:false, missing:false}; renderFriendBadges(); }
+function stopFriends(){ stopMail(); if(unsubFriends){ unsubFriends(); unsubFriends=null; } S.friends={list:[], incoming:[], outgoing:[], loaded:false, missing:false}; renderFriendBadges(); }
 function friendStatus(uid){
   if(S.friends.list.some(f=>f.user_id===uid)) return 'friend';
   if(S.friends.incoming.some(f=>f.user_id===uid)) return 'incoming';
@@ -2045,42 +2045,345 @@ function callingCardHTML(f, actions='', extra=''){
 }
 const fbtn=(label, onclick, cls='')=>`<button type="button" class="ccard-btn ${cls}" onclick="${onclick}">${label}</button>`;
 
-// the wax seal on your name when cards are waiting
+// ── The mailbox: letters between friends, and finding new ones ───────────
+// Friends write each other letters (optionally enclosing an invitation to the
+// café they're sitting in); the "Find friends" tab searches everyone by name
+// or username so you can leave your calling card. Unread letters and waiting
+// cards show as a wax seal on your name.
+S.mail = { letters:[], loaded:false, missing:false };
+S.mbox = { tab:'letters', open:null, q:'', results:null, draft:{} };
+let unsubMail=null, mailSearchTimer=null;
+const MailDB = {
+  async list(){ return CafeDB.check(await CafeDB.sb.from('letters').select('*').order('created_at', {ascending:false}).limit(400)) || []; },
+  async send(to, body, cafe){ return CafeDB.check(await CafeDB.sb.rpc('send_letter', {p_to:to, p_body:body, p_cafe:cafe||null})); },
+  async markRead(from){ return CafeDB.check(await CafeDB.sb.rpc('mark_letters_read', {p_from:from})); },
+  async search(q){ return CafeDB.check(await CafeDB.sb.rpc('search_people', {p_query:q})) || []; },
+  subscribe(cb){
+    const ch=CafeDB.sb.channel('mail:'+S.user.id)
+      .on('postgres_changes', {event:'*', schema:'public', table:'letters', filter:`recipient=eq.${S.user.id}`}, ()=>cb())
+      .on('postgres_changes', {event:'*', schema:'public', table:'letters', filter:`sender=eq.${S.user.id}`}, ()=>cb())
+      .subscribe();
+    return ()=>{ try{ CafeDB.sb.removeChannel(ch); }catch(e){} };
+  },
+};
+const ENVELOPE_SVG = `<svg class="mb-env" viewBox="0 0 120 84" aria-hidden="true"><rect x="6" y="10" width="108" height="68" rx="3" fill="#fbf6ea" stroke="#7a2e3a" stroke-width="1.6"/><path d="M6 13l54 38 54-38" fill="none" stroke="#7a2e3a" stroke-width="1.6" stroke-linejoin="round"/><path d="M6 78l40-30M114 78L74 48" fill="none" stroke="#7a2e3a" stroke-width="1" opacity="0.5"/><circle cx="60" cy="51" r="11" fill="#7a2e3a"/><circle cx="60" cy="51" r="7.5" fill="none" stroke="#c25a6a" stroke-width="1.2"/><path d="M56.5 51.5l2.5 2.5 5-5" fill="none" stroke="#f6e2b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="92" y="18" width="14" height="17" fill="none" stroke="#c7a86d" stroke-width="1.2" stroke-dasharray="2 1.5"/></svg>`;
+const SEARCH_ICON = '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12.6 12.6l4.4 4.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const lettersWith = uid => S.mail.letters.filter(l=>l.sender===uid || l.recipient===uid).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));   // newest first
+const unreadFrom = uid => S.mail.letters.filter(l=>l.sender===uid && l.recipient===S.user?.id && !l.read_at).length;
+const unreadTotal = () => S.mail.letters.filter(l=>l.recipient===S.user?.id && !l.read_at).length;
+const mailNews = () => S.friends.incoming.length + unreadTotal();
+// your closest correspondents: the friends you write to most
+function topFriends(n=3){
+  const score=f=>lettersWith(f.user_id).length;
+  return [...S.friends.list].sort((a,b)=>score(b)-score(a) || String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,n);
+}
+async function loadMail(){
+  if(!S.user || !supabaseClient){ S.mail={letters:[], loaded:false, missing:false}; return; }
+  const before=S.mail.loaded ? new Set(S.mail.letters.map(l=>l.id)) : null;
+  try{ S.mail={letters:await MailDB.list(), loaded:true, missing:false}; }
+  catch(e){
+    const missing=/letters|schema cache|does not exist|Could not find/i.test(e.message||'');
+    S.mail={letters:[], loaded:true, missing}; if(!missing) console.warn('Letters not loaded:', e.message);
+  }
+  if(!unsubMail && !S.mail.missing){ try{ unsubMail=MailDB.subscribe(()=>loadMail()); }catch(e){} }
+  // a letter just arrived: say so, unless you're reading that very conversation
+  if(before){
+    const fresh=S.mail.letters.filter(l=>!before.has(l.id) && l.recipient===S.user.id && !l.read_at);
+    const reading=document.getElementById('friends-modal')?.classList.contains('open') && S.mbox.tab==='letters';
+    const f=fresh.length && S.friends.list.find(x=>x.user_id===fresh[0].sender);
+    if(f && !(reading && S.mbox.open===f.user_id)){ showToast(`A letter from ${friendName(f)} has arrived`); playPageSound('open'); }
+  }
+  afterMailChange();
+}
+function afterMailChange(){
+  renderFriendBadges();
+  renderMailbox();
+  if(document.getElementById('page-cafe').classList.contains('active')) renderCafeFriendCards();
+  if(document.getElementById('page-profile').classList.contains('active')) renderGazetteFriends();
+}
+function stopMail(){ if(unsubMail){ unsubMail(); unsubMail=null; } S.mail={letters:[], loaded:false, missing:false}; S.mbox={tab:'letters', open:null, q:'', results:null, draft:{}}; }
+
+// ── The mailbox in the header ──
+// A little brass roadside mailbox beside your name: its red flag goes up
+// when a letter or calling card arrives. Click it for "Today's Post": cards
+// waiting, your friends as envelopes, and the way into the full mailbox.
+const POSTBOX_SVG = `<svg viewBox="0 0 40 46" width="34" height="39" aria-hidden="true">
+  <defs>
+    <linearGradient id="pbGreen" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#b04a5c"/><stop offset="0.55" stop-color="#7a2e3a"/><stop offset="1" stop-color="#521a24"/></linearGradient>
+    <linearGradient id="pbBrass" x1="0" x2="1"><stop offset="0" stop-color="#9a7430"/><stop offset="0.5" stop-color="#f0d898"/><stop offset="1" stop-color="#a8823a"/></linearGradient>
+    <linearGradient id="pbWood" x1="0" x2="1"><stop offset="0" stop-color="#5a3a22"/><stop offset="0.5" stop-color="#94704a"/><stop offset="1" stop-color="#5a3a22"/></linearGradient>
+  </defs>
+  <!-- wooden post -->
+  <path d="M7.6 26h6.8v20H7.6z" fill="url(#pbWood)" stroke="#2a170c" stroke-width="0.7"/>
+  <path d="M9.4 29v15M12.2 31v12" stroke="#3a2414" stroke-width="0.5" opacity="0.7"/>
+  <!-- green column with a pagoda cap and finial -->
+  <path d="M7 11.5h8v20H7z" fill="url(#pbGreen)" stroke="#3a1018" stroke-width="0.7"/>
+  <path d="M3.6 11.5L7.4 7.2h7.2l3.8 4.3z" fill="url(#pbGreen)" stroke="#3a1018" stroke-width="0.7" stroke-linejoin="round"/>
+  <path d="M3.2 11.5h15.6" stroke="url(#pbBrass)" stroke-width="1.1"/>
+  <path d="M11 7.2V4.4" stroke="#3a1018" stroke-width="0.9"/><ellipse cx="11" cy="3.6" rx="1.5" ry="1.9" fill="url(#pbBrass)" stroke="#3a1018" stroke-width="0.6"/><circle cx="11" cy="1.4" r="0.8" fill="url(#pbBrass)"/>
+  <rect x="8.6" y="13.4" width="4.8" height="3.6" rx="0.4" fill="url(#pbBrass)" stroke="#5a4218" stroke-width="0.4"/>
+  <!-- the box itself, door facing us -->
+  <path d="M14.4 30.5V20.4a6 6 0 0 1 6-6h12.2a6 6 0 0 1 6 6v10.1z" fill="url(#pbGreen)" stroke="#3a1018" stroke-width="0.8" stroke-linejoin="round"/>
+  <path d="M17 16.4c2.4-.9 11-.9 14.8-.6" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="0.8" stroke-linecap="round"/>
+  <path d="M15.6 30.2V21a4.4 4.4 0 0 1 4.4-4.4h0.8a4.4 4.4 0 0 1 4.4 4.4v9.2" fill="none" stroke="#3a1018" stroke-width="0.6"/>
+  <circle cx="20.4" cy="22.6" r="2.1" fill="none" stroke="url(#pbBrass)" stroke-width="0.9"/><circle cx="20.4" cy="22.6" r="0.8" fill="url(#pbBrass)"/>
+  <path d="M17.4 26.4c1-1 2-1 3 0 1-1 2-1 3 0" fill="none" stroke="url(#pbBrass)" stroke-width="0.7" stroke-linecap="round"/>
+  <rect x="27" y="24.2" width="9.4" height="4" rx="0.4" fill="none" stroke="url(#pbBrass)" stroke-width="0.8"/>
+  <path d="M28.6 26.2h6.2" stroke="url(#pbBrass)" stroke-width="0.6" stroke-dasharray="1.2 0.8"/>
+  <path d="M14.2 30.6h24.6" stroke="url(#pbBrass)" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- scrolled iron bracket -->
+  <path d="M15 31.6h16.4c1.6 0 2 1.4 1 2.4-3 3-9.4 5.4-17.4 6.4" fill="none" stroke="url(#pbBrass)" stroke-width="1.1" stroke-linecap="round"/>
+  <path d="M30.6 33.6a1.6 1.6 0 1 0-1.6 1.6M22.4 37.4c-1.6.4-2.6-1-1.6-2.2s2.8-.2 2.4 1.2" fill="none" stroke="url(#pbBrass)" stroke-width="0.8" stroke-linecap="round"/>
+  <!-- the red flag: lowered until there's post, then raised -->
+  <g class="nav-post-flag"><path d="M33.4 25V15.2" stroke="#5a4218" stroke-width="1.3" stroke-linecap="round"/><path d="M33.4 15.2h5v3.4h-5z" fill="url(#pbBrass)" stroke="#5a4218" stroke-width="0.6" stroke-linejoin="round"/><circle cx="33.4" cy="25" r="0.9" fill="#5a4218"/></g>
+</svg>`;
+function navPostHTML(){ return `<button type="button" class="nav-post" id="nav-post" onclick="toggleMailTray()" aria-haspopup="dialog" aria-expanded="false" aria-controls="mail-tray" title="Your mailbox">${POSTBOX_SVG}<span class="nav-post-n"></span></button>`; }
 function renderFriendBadges(){
-  const n=S.friends.incoming.length;
-  document.querySelectorAll('.nav-user').forEach(b=>{
-    let seal=b.querySelector('.nav-seal');
-    if(n && !seal){ seal=document.createElement('span'); seal.className='nav-seal'; seal.setAttribute('role','button');
-      seal.addEventListener('click', e=>{ e.stopPropagation(); openCardBox(); }); b.querySelector('.nav-user-avatar')?.appendChild(seal); }
-    if(seal){ if(n){ seal.textContent=n>9?'9+':n; seal.title=`${n} calling card${n>1?'s':''} waiting`; } else seal.remove(); }
-  });
+  const n=mailNews(), b=document.getElementById('nav-post');
+  if(b){
+    b.classList.toggle('has-mail', n>0);
+    b.querySelector('.nav-post-n').textContent = n ? (n>9?'9+':String(n)) : '';
+    b.title = n ? `${n} new in your mailbox` : 'Your mailbox';
+    b.setAttribute('aria-label', b.title);
+  }
+  renderMailTray();
+}
+function toggleMailTray(force){
+  const t=document.getElementById('mail-tray'), b=document.getElementById('nav-post'); if(!t) return;
+  const open = typeof force==='boolean' ? force : t.hidden;
+  if(open && !S.user){ openAuthModal('signin'); return; }
+  t.hidden=!open; b?.setAttribute('aria-expanded', String(open));
+  if(open){
+    const r=b.getBoundingClientRect();
+    t.style.top=Math.round(r.bottom+10)+'px';
+    t.style.right=Math.max(8, Math.round(innerWidth - r.right - 12))+'px';
+    renderMailTray(); loadFriends(); loadMail(); playPageSound('turn');
+    // point the tray's little arrow at the mailbox
+    const tr=t.getBoundingClientRect(); t.style.setProperty('--arrow-x', Math.round(r.left + r.width/2 - tr.left - 7)+'px');
+  }
+}
+function renderMailTray(){
+  const t=document.getElementById('mail-tray'); if(!t || t.hidden) return;
+  const F=S.friends, unread=unreadTotal();
+  const head=`<div class="mt-head"><span class="mt-k">The Café Post</span><b>${unread ? `${unread} new letter${unread>1?'s':''}` : 'Today’s post'}</b></div>`;
+  if(F.missing){ t.innerHTML=head+`<p class="mt-note">The mailbox isn’t set up yet — run <b>supabase/friends.sql</b> in Supabase.</p>`; return; }
+  const last=uid=>lettersWith(uid)[0];
+  const rows=[...F.list].sort((a,b)=>unreadFrom(b.user_id)-unreadFrom(a.user_id) || (last(b.user_id)?.created_at||'').localeCompare(last(a.user_id)?.created_at||'') || friendName(a).localeCompare(friendName(b)));
+  const go=(js)=>`toggleMailTray(false); ${js}`;
+  t.innerHTML = head
+    + (F.incoming.length ? `<button type="button" class="mt-cards" onclick="${go(`openMailbox('cards')`)}">${vicon('cards')}<span>${F.incoming.length} calling card${F.incoming.length>1?'s':''} waiting</span><i>›</i></button>` : '')
+    + `<div class="mt-list">${rows.length ? rows.slice(0,5).map(f=>envelopeHTML(f, go(`openMailbox('letters','${f.user_id}')`))).join('')
+        : `<p class="mt-note">No friends in your mailbox yet. Find a fellow student and leave your calling card.</p>`}</div>`
+    + (rows.length>5 ? `<p class="mt-more">and ${rows.length-5} more in the mailbox</p>` : '')
+    + `<div class="mt-foot"><button type="button" class="mt-btn" onclick="${go(`openMailbox('find')`)}">${SEARCH_ICON}Find friends</button><button type="button" class="mt-btn p" onclick="${go(`openMailbox('letters')`)}">${vicon('letter')}Open the mailbox</button></div>`;
+}
+document.addEventListener('click', e=>{ const t=document.getElementById('mail-tray'); if(t && !t.hidden && !e.target.closest('#mail-tray, #nav-post')) toggleMailTray(false); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ const t=document.getElementById('mail-tray'); if(t && !t.hidden) toggleMailTray(false); } });
+
+function openMailbox(tab, uid){
+  if(!S.user){ openAuthModal('signin'); return; }
+  const unread=unreadTotal();
+  S.mbox.tab = uid ? 'letters' : (tab || (S.friends.incoming.length && !unread ? 'cards' : 'letters'));
+  if(uid) S.mbox.open=uid;
+  else if(S.mbox.tab==='letters' && unread){ const l=S.mail.letters.find(x=>x.recipient===S.user.id && !x.read_at); if(l) S.mbox.open=l.sender; }
+  document.getElementById('friends-modal').classList.add('open');
+  renderMailbox(); loadFriends(); loadMail();
+}
+const openCardBox = () => openMailbox();
+function closeMailbox(e){ if(!e || e.target===document.getElementById('friends-modal')) document.getElementById('friends-modal').classList.remove('open'); }
+const closeCardBox = closeMailbox;
+function setMailTab(t){ S.mbox.tab=t; renderMailbox(); if(t==='find') setTimeout(()=>document.getElementById('mb-q')?.focus(), 30); }
+function openThread(uid){
+  S.mbox.tab='letters'; S.mbox.open=uid; renderMailbox();
+  if(uid && matchMedia('(min-width:701px)').matches) setTimeout(()=>document.getElementById('mb-text')?.focus({preventScroll:true}), 30);
 }
 
-// ── The card box (modal) ──
-function openCardBox(){
-  if(!S.user){ openAuthModal('signin'); return; }
-  document.getElementById('cb-username').value=''; setMsgEl(document.getElementById('cb-msg'),'','');
-  document.getElementById('friends-modal').classList.add('open');
-  renderCardBox(); loadFriends();
+function renderMailbox(){
+  const modal=document.getElementById('friends-modal'); if(!modal?.classList.contains('open')) return;
+  const today=new Date(), pmEl=document.getElementById('mb-today');
+  if(pmEl) pmEl.innerHTML=`<i>BREW &amp; FOCUS</i><b>${today.getDate()} ${today.toLocaleDateString('en-GB',{month:'short'}).toUpperCase()}</b><i>${today.getFullYear()}</i>`;
+  const F=S.friends, tabs=document.getElementById('mb-tabs'), body=document.getElementById('mb-body');
+  const unread=unreadTotal();
+  tabs.innerHTML=[['letters','Letters',unread],['find','Find friends',0],['cards','Calling cards',F.incoming.length]].map(([k,l,n])=>
+    `<button type="button" class="mb-tab ${S.mbox.tab===k?'on':''}" role="tab" aria-selected="${S.mbox.tab===k}" onclick="setMailTab('${k}')">${l}${n?`<span class="mb-n">${n}</span>`:''}</button>`).join('');
+  if(F.missing){ body.innerHTML=`<div class="mb-empty">${ENVELOPE_SVG}<p>The mailbox isn’t set up in Supabase yet — run <b>supabase/friends.sql</b> in the SQL editor, then come back.</p></div>`; return; }
+  if(S.mbox.tab==='find') return renderMailFind(body);
+  if(S.mbox.tab==='cards') return renderMailCards(body);
+  renderMailLetters(body);
 }
-function closeCardBox(e){ if(!e || e.target===document.getElementById('friends-modal')) document.getElementById('friends-modal').classList.remove('open'); }
-function renderCardBox(){
-  const F=S.friends, body=document.getElementById('cb-body'); if(!body) return;
-  if(F.missing){ body.innerHTML=`<p class="cb-empty">Friends aren’t set up in Supabase yet — run <b>supabase/friends.sql</b> in the SQL editor, then come back.</p>`; return; }
+
+// ── Letters ──
+function renderMailLetters(body){
+  const F=S.friends;
+  const ta=document.getElementById('mb-text'), hadFocus = ta && document.activeElement===ta;
+  if(ta?.dataset.uid) S.mbox.draft[ta.dataset.uid]=ta.value;
+  if(!F.list.length){
+    body.innerHTML=`<div class="mb-empty">${ENVELOPE_SVG}<p>No letters yet — there’s no one to write to.<br>Find a fellow student and leave your calling card.</p><button type="button" class="btn-p vbtn" onclick="setMailTab('find')">${vicon('key')}Find friends</button></div>`;
+    return;
+  }
+  const open=S.mbox.open && F.list.find(f=>f.user_id===S.mbox.open);
+  if(open && unreadFrom(open.user_id)) markThreadRead(open.user_id);
+  const last=uid=>lettersWith(uid)[0];
+  const rows=[...F.list].sort((a,b)=>(last(b.user_id)?.created_at||'').localeCompare(last(a.user_id)?.created_at||'') || friendName(a).localeCompare(friendName(b)));
+  body.innerHTML=`<div class="mb-letters ${open?'reading':''}">
+    <div class="mb-list">${rows.map(f=>envelopeHTML(f, `openThread('${f.user_id}')`, open&&open.user_id===f.user_id)).join('')}</div>
+    <div class="mb-thread">${open ? threadHTML(open) : `<div class="mb-pick">${ENVELOPE_SVG}<p>Choose a friend to read your letters, or to write one.</p></div>`}</div>
+  </div>`;
+  if(open){
+    const sc=document.getElementById('mb-scroll'); if(sc) sc.scrollTop=sc.scrollHeight;
+    const nt=document.getElementById('mb-text');
+    if(nt){ nt.value=S.mbox.draft[open.user_id]||''; if(hadFocus){ nt.focus({preventScroll:true}); nt.setSelectionRange(nt.value.length, nt.value.length); } }
+  }
+}
+// ── Airmail: printed stamps and postmarks ──
+// Flat two-colour stamps in red, blue and navy (like old airmail), each on
+// perforated stamp paper: the sender's animal, or a little café motif.
+const STAMP_INKS=['#c8423a','#3a5fa8','#1f2a4a','#d0892a','#2f6a4a'];
+const strHash = v => { let h=2166136261; for(const ch of String(v||'')){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619)>>>0; } return h; };
+const STAMP_MOTIFS = {
+  cup:'<path d="M5 13h12v3.6a6 6 0 0 1-12 0z" fill="#fbf3e2"/><path d="M17 14.2h1.4a2.3 2.3 0 0 1 0 4.6H16.6" fill="none" stroke="#fbf3e2" stroke-width="1.4"/><path d="M3 23.2h17" stroke="#fbf3e2" stroke-width="1.6" stroke-linecap="round"/><path d="M8.5 10.5c-1-1.4 1-2.2 0-3.8M12 10.5c-1-1.4 1-2.2 0-3.8" fill="none" stroke="#fbf3e2" stroke-width="1.1" stroke-linecap="round"/>',
+  heart:'<path d="M12 24C4 18 3 13.5 5 10.6 7 7.8 10.8 8.4 12 11c1.2-2.6 5-3.2 7-.4 2 2.9 1 7.4-7 13.4z" fill="#fbf3e2"/><circle cx="16.6" cy="11.4" r="1.1" fill="currentColor" opacity="0.5"/>',
+  bird:'<path d="M3.5 17c3.5-.4 6.6-2.2 8.6-5.4 1.4-2.2 4-3.2 6.4-2.4l2.2-.9-1.2 2c.4 3.6-2.2 7.2-6.6 8.2-3.2.8-6.6.2-9.4-1.5z" fill="#fbf3e2"/><path d="M9 15.6c2.4-2.6 5.6-3.4 8.2-3" fill="none" stroke="currentColor" stroke-width="0.9" opacity="0.55"/><circle cx="17.6" cy="11" r="0.8" fill="currentColor"/>',
+  croissant:'<path d="M3 18c1.5-6 6-9.4 9-9.4S19.5 12 21 18c-1.6.6-3 .2-3.8-.9-1 2.4-3 3.4-5.2 3.4s-4.2-1-5.2-3.4C6 18.2 4.6 18.6 3 18z" fill="#fbf3e2"/><path d="M8.2 11.4l1.6 7M12 9v11.4M15.8 11.4l-1.6 7" stroke="currentColor" stroke-width="0.9" opacity="0.5"/>',
+  teapot:'<path d="M6 13.5h11v4a5.5 5.5 0 0 1-11 0z" fill="#fbf3e2"/><path d="M6 15.5c-2.6-.4-3.6-2.8-3-4.4M17 14.2c2.6-1.4 3.6.6 2 3.2" fill="none" stroke="#fbf3e2" stroke-width="1.4" stroke-linecap="round"/><path d="M8 13.5c0-2.4 7-2.4 7 0" fill="#fbf3e2"/><circle cx="11.5" cy="10.2" r="1.2" fill="#fbf3e2"/><path d="M5 24h13" stroke="#fbf3e2" stroke-width="1.4" stroke-linecap="round"/>',
+  branch:'<path d="M5 24C9 18 12 13 19 7" fill="none" stroke="#fbf3e2" stroke-width="1.3" stroke-linecap="round"/><path d="M9 18c-3-.2-4.6-2.2-4.8-4.6 2.6.4 4.4 2 4.8 4.6zM12.6 13.4c.2-2.8 2-4.6 4.6-5-.2 2.6-1.8 4.4-4.6 5zM14 15.2c2.6-.8 4.8.2 6 2.2-2.4.8-4.6 0-6-2.2z" fill="#fbf3e2"/><circle cx="10.6" cy="20.2" r="1.6" fill="#fbf3e2"/><circle cx="12.6" cy="19.2" r="1.4" fill="#fbf3e2"/>',
+};
+const MOTIF_KEYS=Object.keys(STAMP_MOTIFS);
+function pstamp(inner, ink, denom, cls=''){
+  return `<span class="pstamp ${cls}" style="--sc:${ink}" aria-hidden="true"><span class="ps-in">${inner}</span>${denom?`<b>${denom}</b>`:''}</span>`;
+}
+function animalStamp(look, uid, cls=''){ return pstamp(characterSVG(look||defaultCharFor(uid)), STAMP_INKS[strHash(uid)%3], '', 'animal '+cls); }
+function motifStamp(seed, cls=''){
+  const h=strHash(seed), key=MOTIF_KEYS[h%MOTIF_KEYS.length], ink=STAMP_INKS[(h>>4)%STAMP_INKS.length];
+  return pstamp(`<svg viewBox="0 0 24 28" style="color:${ink}">${STAMP_MOTIFS[key]}</svg>`, ink, ['3','5','8','10','12'][(h>>8)%5], 'motif '+cls);
+}
+// a round postmark with the town ring and date, and wavy cancellation lines
+let pmUid=0;
+function postmarkSVG(d){
+  const u='pm'+(++pmUid);
+  return `<svg class="am-pm" viewBox="0 0 112 56" aria-hidden="true">
+    <defs><path id="${u}" d="M8 28a20 20 0 1 1 40 0a20 20 0 1 1 -40 0"/></defs>
+    <g fill="none" stroke="currentColor" stroke-linecap="round"><circle cx="28" cy="28" r="25" stroke-width="1.6"/><circle cx="28" cy="28" r="15" stroke-width="1"/>
+      <path d="M58 17q5-4 10 0t10 0 10 0 10 0 10 0" stroke-width="1.5"/><path d="M58 27q5-4 10 0t10 0 10 0 10 0 10 0" stroke-width="1.5"/><path d="M58 37q5-4 10 0t10 0 10 0 10 0 10 0" stroke-width="1.5"/></g>
+    <text font-family="Lora, serif" font-size="6" letter-spacing="1.2" fill="currentColor"><textPath href="#${u}" startOffset="3%">BREW &amp; FOCUS · CAFÉ POST ·</textPath></text>
+    <text x="28" y="28" text-anchor="middle" font-family="'Playfair Display', serif" font-size="8.4" font-weight="700" fill="currentColor">${d.getDate()} ${d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase()}</text>
+    <text x="28" y="36" text-anchor="middle" font-family="Lora, serif" font-size="5.4" fill="currentColor">${d.getFullYear()}</text>
+  </svg>`;
+}
+
+// a friend as an airmail envelope: their animal on the stamp, the latest line, an unread seal
+function envelopeHTML(f, onclick, on){
+  const l=lettersWith(f.user_id)[0], n=unreadFrom(f.user_id);
+  return `<button type="button" class="mb-row mb-envelope ${on?'on':''} ${n?'unread':''}" onclick="${onclick}">
+    <span class="mb-row-stamp">${animalStamp(f.look, f.user_id)}</span>
+    <span class="mb-row-txt"><em>${n ? 'a letter from' : l ? 'correspondence with' : 'write to'}</em><b>${esc(friendName(f))}</b><i>${l ? (l.sender===S.user.id?'You: ':'')+esc(l.body.replace(/\s+/g,' ').slice(0,70)) : 'No letters yet — say hello'}</i></span>
+    ${n?`<span class="mb-seal" title="${n} unread">${n}</span>`:''}
+  </button>`;
+}
+function threadHTML(f){
+  const ls=lettersWith(f.user_id).slice(0,80).reverse();
+  const c=S.room?.cafe, canInvite = c && !c.members.some(m=>m.user_id===f.user_id);
+  const first=esc(friendName(f).split(' ')[0]);
+  return `<div class="mb-thread-head">
+      <button type="button" class="mb-back" onclick="openThread(null)" aria-label="All letters">‹</button>
+      <span class="mb-cameo">${characterSVG(f.look||defaultCharFor(f.user_id))}</span>
+      <span class="mb-row-txt"><b>${esc(friendName(f))}</b><i>@${esc(f.username||'')}</i></span>
+      <button type="button" class="ccard-btn quiet" onclick="removeFriendCard('${f.id}', 'Part ways with ${esc(friendName(f)).replace(/'/g,'')}? Your letters will stay in your mailbox.')">Part ways</button>
+    </div>
+    <div class="mb-scroll" id="mb-scroll">${ls.length ? ls.map(l=>letterHTML(l,f)).join('') : `<p class="mb-hint mb-first">No letters yet. Write the first one below.</p>`}</div>
+    <div class="mb-compose">
+      <div class="mb-pad-k">From the desk of ${esc(personName({name:S.profile?.display_name, username:S.user?.username}))}</div>
+      <textarea id="mb-text" data-uid="${f.user_id}" maxlength="1000" rows="3" placeholder="Dear ${first}, …" aria-label="Your letter to ${first}"
+        oninput="S.mbox.draft['${f.user_id}']=this.value" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();postLetter();}"></textarea>
+      <div class="mb-compose-foot">
+        ${canInvite ? `<label class="mb-enclose"><input type="checkbox" id="mb-enclose"> Enclose an invitation to <i>${esc(c.name)}</i></label>` : '<span></span>'}
+        <button type="button" class="mb-post" id="mb-post" onclick="postLetter()"><span class="mb-post-seal" aria-hidden="true">B&amp;F</span>Seal &amp; post</button>
+      </div>
+      <div class="auth-msg" id="mb-msg"></div>
+    </div>`;
+}
+function letterHTML(l, f){
+  const mine=l.sender===S.user.id, d=new Date(l.created_at);
+  const when=d.toLocaleDateString('en-GB',{day:'numeric', month:'short'})+' · '+d.toLocaleTimeString('en-GB',{hour:'2-digit', minute:'2-digit'});
+  // an airmail sheet: Par Avion, who it's from or to, the sender's stamps, cancelled by a postmark
+  const who = mine ? `<i>To</i>${esc(f ? friendName(f) : '')}` : `<i>From</i>${esc(f ? friendName(f) : '')}`;
+  const stamps = (mine ? animalStamp(myLook(), S.user.id) : animalStamp(f?.look, f?.user_id)) + motifStamp(l.id);
+  const head = `<div class="am-top"><div class="am-addr"><span class="am-label">Par Avion · Air Mail</span><span class="am-line">${who}</span></div><div class="am-post">${postmarkSVG(d)}<span class="am-stamps">${stamps}</span></div></div>`;
+  const ticket = l.cafe_code ? `<div class="mb-ticket"><span class="mb-ticket-k">Enclosed</span><b>An invitation to ${esc(l.cafe_name||'a café')}</b>${
+    mine ? `<i>code ${esc(l.cafe_code)}</i>` : `<button type="button" class="ccard-btn p" onclick="joinFromLetter('${esc(l.cafe_code)}')">Join the café</button>`}</div>` : '';
+  return `<div class="mb-letter ${mine?'mine':'theirs'}"><div class="mb-paper airmail">${head}<p>${esc(l.body)}</p>${ticket}</div><div class="mb-when">${when}${mine && l.read_at ? ' · read' : ''}</div></div>`;
+}
+async function markThreadRead(uid){
+  const now=new Date().toISOString(); let n=0;
+  S.mail.letters.forEach(l=>{ if(l.sender===uid && l.recipient===S.user.id && !l.read_at){ l.read_at=now; n++; } });
+  if(!n) return;
+  renderFriendBadges();
+  try{ await MailDB.markRead(uid); }catch(e){}
+}
+async function postLetter(){
+  const ta=document.getElementById('mb-text'), uid=ta?.dataset.uid; if(!uid) return;
+  const enc=!!document.getElementById('mb-enclose')?.checked, body=ta.value.trim(), msg=document.getElementById('mb-msg'), btn=document.getElementById('mb-post');
+  if(!body && !enc){ ta.focus(); return; }
+  if(S.mail.missing){ setMsgEl(msg, 'Letters aren’t set up in Supabase yet — run supabase/friends.sql again.', 'error'); return; }
+  btn.disabled=true;
+  try{
+    const res=await MailDB.send(uid, body, enc ? S.room?.cafe?.id : null);
+    if(res==='sent'){ S.mbox.draft[uid]=''; ta.value=''; playPageSound('turn'); showToast(enc ? 'Letter posted, with your café invitation' : 'Letter posted'); await loadMail(); }
+    else setMsgEl(msg, ({not_friends:'You can only write to friends.', not_member:'You can only enclose a café you’re sitting in.', too_long:'That letter is a little long — keep it under 1,000 characters.', empty:'Write a few words first.'})[res] || String(res), 'error');
+  } catch(e){ setMsgEl(msg, cafeErrorText(e), 'error'); }
+  finally{ if(document.body.contains(btn)) btn.disabled=false; }
+}
+function joinFromLetter(code){ closeMailbox(); acceptInvite(code); }
+
+// ── Find friends ──
+function renderMailFind(body){
+  if(!document.getElementById('mb-q')){
+    body.innerHTML=`<div class="mb-find">
+      <div class="mb-search">${SEARCH_ICON}<input id="mb-q" type="search" placeholder="Search by name or @username" autocomplete="off" spellcheck="false" oninput="mailSearch(this.value)" aria-label="Search for people"></div>
+      <p class="mb-hint">Find a fellow student and leave your calling card. Once they accept it, you can write to each other.</p>
+      <div id="mb-results"></div>
+    </div>`;
+    document.getElementById('mb-q').value=S.mbox.q;
+  }
+  renderMailResults();
+}
+function mailSearch(v){
+  S.mbox.q=v; clearTimeout(mailSearchTimer);
+  if(v.trim().replace(/^@/,'').length<2){ S.mbox.results=null; renderMailResults(); return; }
+  renderMailResults();
+  mailSearchTimer=setTimeout(async ()=>{
+    let res;
+    try{ res={q:v, rows:await MailDB.search(v)}; }
+    catch(e){ res={q:v, error:/search_people|schema cache|Could not find/i.test(e.message||'') ? 'Search isn’t set up in Supabase yet — run supabase/friends.sql again.' : cafeErrorText(e)}; }
+    if(S.mbox.q===v){ S.mbox.results=res; renderMailResults(); }
+  }, 280);
+}
+function renderMailResults(){
+  const el=document.getElementById('mb-results'); if(!el) return;
+  const q=S.mbox.q.trim(), R=S.mbox.results;
+  if(q.replace(/^@/,'').length<2){ el.innerHTML=''; return; }
+  if(!R || R.q!==S.mbox.q){ el.innerHTML=`<p class="mb-hint">Looking through the guest book…</p>`; return; }
+  if(R.error){ el.innerHTML=`<p class="mb-hint">${esc(R.error)}</p>`; return; }
+  if(!R.rows.length){ el.innerHTML=`<p class="mb-hint">No one by that name has joined Brew & Focus yet — send them your café link instead.</p>`; return; }
+  el.innerHTML=`<div class="ccards">${R.rows.map(p=>{
+    const st = S.friends.loaded ? friendStatus(p.user_id) : p.status, inc=S.friends.incoming.find(f=>f.user_id===p.user_id);
+    const act = st==='friend' ? fbtn('Write a letter', `openThread('${p.user_id}')`, 'p')
+      : st==='outgoing' ? `<span class="ccard-wait">card waiting</span>`
+      : st==='incoming' && inc ? fbtn('Accept their card', `answerFriendCard('${inc.id}',true)`, 'p')
+      : fbtn('Leave my card', `sendFriendCard('${esc(p.username)}')`, 'p');
+    return callingCardHTML(p, act); }).join('')}</div>`;
+}
+
+// ── Calling cards ──
+function renderMailCards(body){
+  const F=S.friends;
   const sec=(title, inner)=>`<div class="cb-sec"><h4 class="cb-h"><span>${title}</span></h4>${inner}</div>`;
-  let html='';
-  if(F.incoming.length) html+=sec(`Cards for you <em>${F.incoming.length}</em>`, `<div class="ccards">${F.incoming.map(f=>callingCardHTML(f, fbtn('Accept',`answerFriendCard('${f.id}',true)`,'p')+fbtn('Decline',`answerFriendCard('${f.id}',false)`), 'in')).join('')}</div>`);
-  html+=sec(`Friends${F.list.length?` <em>${F.list.length}</em>`:''}`, F.list.length
-    ? `<div class="ccards">${F.list.map(f=>callingCardHTML(f, (S.room?.cafe && !S.room.cafe.members.some(m=>m.user_id===f.user_id) ? fbtn('Invite here',`inviteFriendHere('${esc(f.username)}')`,'p') : '') + fbtn('Remove',`removeFriendCard('${f.id}', 'Part ways with ${esc(friendName(f)).replace(/'/g,'')}?')`,'quiet'))).join('')}</div>`
-    : `<p class="cb-empty">No friends in the card box yet. Leave your card for someone above — or tap a fellow student’s animal at a café table.</p>`);
+  let html=sec(`Cards for you${F.incoming.length?` <em>${F.incoming.length}</em>`:''}`, F.incoming.length
+    ? `<div class="ccards">${F.incoming.map(f=>callingCardHTML(f, fbtn('Accept',`answerFriendCard('${f.id}',true)`,'p')+fbtn('Decline',`answerFriendCard('${f.id}',false)`), 'in')).join('')}</div>`
+    : `<p class="mb-hint">No cards waiting for you just now.</p>`);
   if(F.outgoing.length) html+=sec('Cards you’ve left', `<div class="ccards">${F.outgoing.map(f=>callingCardHTML(f, `<span class="ccard-wait">awaiting reply</span>`+fbtn('Withdraw',`removeFriendCard('${f.id}')`,'quiet'), 'out')).join('')}</div>`);
+  html+=`<p class="mb-hint mb-cards-foot">Looking for someone? <button type="button" class="mb-inline" onclick="setMailTab('find')">Find friends</button></p>`;
   body.innerHTML=html;
-}
-async function inviteFriendHere(username){
-  if(!S.room?.cafe) return;
-  try{ const res=await CafeDB.invite(S.room.id, username);
-    showToast(res==='sent' ? `Invitation sent to ${username}` : res==='already_member' ? `${username} already has a seat here` : String(res)); }
-  catch(e){ showToast(cafeErrorText(e)); }
 }
 
 // ── On the Study Café page: cards waiting for you ──
@@ -2090,16 +2393,15 @@ function renderCafeFriendCards(){
   el.hidden=!inc.length;
   el.innerHTML = inc.length ? `<h3 class="cafe-section-h"><span>Calling cards</span></h3><div class="ccards wide">${inc.map(f=>callingCardHTML(f, fbtn('Accept',`answerFriendCard('${f.id}',true)`,'p')+fbtn('Decline',`answerFriendCard('${f.id}',false)`), 'in')).join('')}</div>` : '';
   const fb=document.getElementById('cafe-friends-btn');
-  if(fb) fb.innerHTML = `${vicon('cards')}Card box${S.friends.list.length?` <em>${S.friends.list.length}</em>`:''}`;
+  const n=mailNews(); if(fb) fb.innerHTML = `${vicon('letter')}Mailbox${n?` <em>${n}</em>`:''}`;
 }
 
-// ── In the Gazette: Café Society lists your friends ──
+// ── In the Gazette: Café Society shows your closest correspondents ──
 function renderGazetteFriends(){
   const el=document.getElementById('gz-friends'); if(!el) return;
-  const F=S.friends;
-  const faces=F.list.slice(0,5).map(f=>`<span class="gz-friend" title="${esc(friendName(f))}">${characterSVG(f.look||defaultCharFor(f.user_id))}<i>${esc(friendName(f).split(' ')[0])}</i></span>`).join('');
-  el.innerHTML = `<div class="gz-friends-row">${faces || '<span class="gz-small">No acquaintances on record — yet.</span>'}</div>
-    <button type="button" class="gz-link gz-cardbox" onclick="openCardBox()">${F.incoming.length ? `${F.incoming.length} card${F.incoming.length>1?'s':''} waiting — open the card box` : 'Open the card box'}</button>`;
+  const top=topFriends(3), n=mailNews();
+  el.innerHTML = (top.length ? `<div class="gz-top-k">Closest correspondents</div><div class="gz-friends-row">${top.map(f=>`<span class="gz-friend" title="${esc(friendName(f))}">${characterSVG(f.look||defaultCharFor(f.user_id))}<i>${esc(friendName(f).split(' ')[0])}</i></span>`).join('')}</div>` : '')
+    + `<button type="button" class="gz-link gz-cardbox" onclick="openMailbox()">${n ? `${n} new in your mailbox` : top.length ? 'Open the mailbox' : 'Find friends in the mailbox'}</button>`;
 }
 
 // ── At the café table: tap someone's animal for their calling card ──
@@ -2117,7 +2419,7 @@ function renderCallCard(uid){
   const pop=document.getElementById('cr-callcard'); const m=S.room?.cafe?.members.find(x=>x.user_id===uid); if(!pop || !m) return;
   const st=friendStatus(uid), inc=S.friends.incoming.find(f=>f.user_id===uid);
   const act = S.friends.missing ? `<span class="ccard-wait">friends not set up yet</span>`
-    : st==='friend' ? `<span class="ccard-ok">friends</span>`
+    : st==='friend' ? fbtn('Write a letter',`closeCallCard(); openMailbox('letters','${uid}')`,'p')
     : st==='outgoing' ? `<span class="ccard-wait">your card is waiting</span>`
     : st==='incoming' ? fbtn('Accept their card',`answerFriendCard('${inc.id}',true)`,'p')
     : fbtn('Leave my card',`sendFriendCard('${esc(m.username)}')`,'p');
@@ -2132,7 +2434,7 @@ function renderInviteFriends(){
   const c=S.room?.cafe, seated=new Set((c?.members||[]).map(m=>m.user_id));
   const list=S.friends.list.filter(f=>!seated.has(f.user_id));
   el.hidden=!list.length;
-  el.innerHTML = list.length ? `<label class="room-f-label">From your card box</label><div class="inv-friends">${list.map(f=>`<button type="button" class="inv-friend" onclick="inviteFriendFromModal('${esc(f.username)}', this)"><span class="inv-cameo">${characterSVG(f.look||defaultCharFor(f.user_id))}</span><span>${esc(friendName(f))}</span><em>invite</em></button>`).join('')}</div>` : '';
+  el.innerHTML = list.length ? `<label class="room-f-label">From your mailbox</label><div class="inv-friends">${list.map(f=>`<button type="button" class="inv-friend" onclick="inviteFriendFromModal('${esc(f.username)}', this)"><span class="inv-cameo">${characterSVG(f.look||defaultCharFor(f.user_id))}</span><span>${esc(friendName(f))}</span><em>invite</em></button>`).join('')}</div>` : '';
 }
 async function inviteFriendFromModal(username, btn){
   try{ const res=await CafeDB.invite(S.room.id, username);
@@ -3708,7 +4010,7 @@ function renderAuthUI(){
     const shown=displayNameOf();
     const initial=(shown||'?').trim().charAt(0).toUpperCase();
     const pic=S.profile?.avatar_url;
-    nav.innerHTML = `
+    nav.innerHTML = navPostHTML() + `
       <button type="button" class="nav-user" onclick="showPage('profile')" title="Your profile">
         <span class="nav-user-avatar">${pic ? `<img src="${esc(pic)}" alt="">` : esc(initial)}</span>
         <span class="nav-user-name">${esc(shown)}</span>
@@ -3832,7 +4134,7 @@ async function handleSessionChange(session){
     S.user = { id:session.user.id, email:session.user.email, username, meta };
     await loadMyProfile();
     renderAuthUI();
-    loadFriends();
+    loadFriends(); loadMail();
     if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();
     if(document.getElementById('page-cafe').classList.contains('active')) renderCafeList();
     processPendingInvite(true);
