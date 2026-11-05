@@ -2692,3 +2692,15 @@ body::after {
 .gz-term-detail.fresh .gz-small { margin:0.1rem 0 0.45rem; }
 .gz-term-acts { display:flex; flex-direction:column; align-items:center; gap:0.25rem; }
 .gz-term-brew { padding:0.38rem 0.9rem; font-size:0.66rem; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* the term's subjects as a ledger: one per line, hours at the end of a dotted leader */
+.gz-term-list { grid-template-columns:1fr; gap:0.1rem; }
+.gz-term-sub { align-items:baseline; gap:0.4rem; padding:0.22rem 0; border-bottom:none; }
+.gz-term-sub span { flex:0 1 auto; font-size:0.95rem; }
+.gz-term-sub em { flex:1 1 1.5rem; min-width:1.5rem; border-bottom:1.5px dotted rgba(42,38,32,0.55); transform:translateY(-0.28em); }
+.gz-term-sub i { font-size:0.78rem; opacity:0.9; }
+.gz-term-sub:hover span, .gz-term-sub.on span { text-decoration:none; }
+.gz-term-sub.on span { font-style:italic; }
+.gz-term-sub.on i { font-weight:700; }
+.gz-term-sub.on em { border-bottom-style:solid; border-bottom-width:1px; }
+.gz-term-sub.on { border-bottom:none; }
