@@ -2651,3 +2651,44 @@ body::after {
 .rc-foot .rc-del:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
 .leave-modal { width:min(390px, 92vw); }
 .leave-actions button { white-space:nowrap; padding-left:0.6rem; padding-right:0.6rem; }
+
+/* a page being torn out of the recipe book */
+.tear-layer { position:absolute; z-index:40; pointer-events:none; }
+.tear-piece { position:absolute; inset:0; will-change:transform, opacity; filter:drop-shadow(0 6px 10px rgba(20,10,5,0.35)); }
+.tear-fibre { position:absolute; inset:0; background:#fffaf0; }        /* the white, fibrous torn edge */
+.tear-piece .recipe-card { box-shadow:none !important; }
+
+.tear-layer { perspective:1400px; perspective-origin:50% 40%; }
+.tear-piece { filter:none; transform-style:preserve-3d; }
+.tear-fibre { background:linear-gradient(90deg, #fffdf6, #f3e9d4); }
+.tear-bit { position:absolute; z-index:3; background:#f6ecd6; box-shadow:0 1px 1px rgba(0,0,0,0.2); border-radius:1px 3px 1px 2px; }
+.tear-shade { position:absolute; inset:0; pointer-events:none; }
+
+/* ── This term's subjects (in the Gazette) ── */
+.gz-term-box { display:flex; flex-direction:column; }
+.gz-term { flex:1; }
+.gz-term-list { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:0 0.9rem; }
+.gz-term-sub { width:100%; display:flex; align-items:baseline; gap:0.35rem; padding:0.18rem 0; background:none; border:none; border-bottom:1px dotted rgba(42,38,32,0.5); cursor:pointer; text-align:left; color:var(--ink); }
+.gz-term-sub span { flex:1; min-width:0; font-family:'Playfair Display',serif; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gz-term-sub i { flex:none; font-family:'Courier Prime', 'Courier New', monospace; font-style:normal; font-size:0.72rem; opacity:0.8; }
+.gz-term-sub:hover span, .gz-term-sub.on span { text-decoration:underline; text-underline-offset:3px; }
+.gz-term-sub.on { border-bottom-style:solid; }
+.gz-term-sub:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
+.gz-term-detail { margin-top:0.5rem; padding:0.5rem 0.6rem 0.4rem; border:1px solid rgba(42,38,32,0.6); outline:1px solid rgba(42,38,32,0.25); outline-offset:-4px; text-align:center; }
+.gz-term-hours b { display:block; font-family:'Playfair Display',serif; font-size:1.45rem; line-height:1.1; }
+.gz-term-hours span { font-family:'Lora',serif; font-size:0.66rem; letter-spacing:0.14em; text-transform:uppercase; }
+.gz-term-bar { height:6px; margin:0.4rem 0 0.3rem; border:1px solid rgba(42,38,32,0.6); }
+.gz-term-bar i { display:block; height:100%; background:repeating-linear-gradient(135deg, #1c1915 0 2px, transparent 2px 4px); }
+.gz-term-detail .gz-small { margin:0; line-height:1.35; }
+.gz-term-drop { font-size:0.62rem; margin-top:0.2rem; }
+.gz-term-add { display:flex; align-items:center; gap:0.3rem; margin-top:0.5rem; }
+.gz-term-add .gz-fav-in { flex:1; font-size:0.86rem; }
+.gz-term-plus { flex:none; width:24px; height:24px; border:1px solid rgba(42,38,32,0.7); background:none; cursor:pointer; font-family:'Playfair Display',serif; font-size:1rem; line-height:1; color:var(--ink); }
+.gz-term-plus:hover { background:#1c1915; color:#f1eadb; }
+@media(max-width:700px){ .gz-term-list { grid-template-columns:1fr; } }
+
+.gz-term-detail.fresh { padding:0.55rem 0.6rem 0.5rem; }
+.gz-term-fresh-k { font-family:'Playfair Display',serif; font-style:italic; font-size:1.05rem; line-height:1.2; }
+.gz-term-detail.fresh .gz-small { margin:0.1rem 0 0.45rem; }
+.gz-term-acts { display:flex; flex-direction:column; align-items:center; gap:0.25rem; }
+.gz-term-brew { padding:0.38rem 0.9rem; font-size:0.66rem; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
