@@ -3789,7 +3789,7 @@ function renderTermSubjects(){
   if(!list.length){ el.innerHTML=`<p class="gz-small gz-center">Enrol below — add the subjects you’re taking this term, then tap one to see your hours.</p>`; return; }
   const stats=list.map(x=>({name:x, ...subjectStats(x)})), max=Math.max(60, ...stats.map(x=>x.mins));
   el.innerHTML = `<ul class="gz-term-list">${stats.map((x,i)=>`<li><button type="button" class="gz-term-sub ${sameSubject(termOpen,x.name)?'on':''}" onclick="toggleTermSubject(${i})" aria-expanded="${sameSubject(termOpen,x.name)}">
-      <span>${esc(x.name)}</span><i>${x.mins ? fmtHours(x.mins) : '—'}</i></button></li>`).join('')}</ul>`
+      <span>${esc(x.name)}</span><em aria-hidden="true"></em><i>${x.mins ? fmtHours(x.mins) : '0 hrs'}</i></button></li>`).join('')}</ul>`
     + (termOpen ? (()=>{ const x=stats.find(y=>sameSubject(y.name,termOpen)), idx=list.findIndex(y=>sameSubject(y,x.name));
         const drop=`<button type="button" class="gz-link gz-term-drop" onclick="removeTermSubject(${idx})">drop this subject</button>`;
         if(!x.sessions) return `<div class="gz-term-detail fresh">
