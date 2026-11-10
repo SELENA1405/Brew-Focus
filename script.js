@@ -334,6 +334,7 @@ function showPage(name) {
   if(name==='cafe') renderCafeList();
   if(name==='home') renderHeroCup();
   if(name==='profile') renderProfilePage();
+  if(name==='leaderboard') renderLeaderboard();
   if(audioCtx) applyMusic();   // "Match the café" follows you in and out of cafés
 }
 
@@ -587,6 +588,63 @@ function playPageSound(type='turn'){
   const data=buffer.getChannelData(0);
   for(let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*(1-i/data.length)*0.15;
   src.buffer=buffer; g.gain.value=type==='open'?0.22:0.12; src.connect(g); g.connect(masterGain); src.start();
+}
+// Book sounds (page turns) have their own channel, straight to the speakers,
+// so they play whether or not the gramophone is on.
+let sfxBus=null;
+function sfxOut(){
+  initAudio(); if(!audioCtx) return null;
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  if(!sfxBus){ sfxBus=audioCtx.createGain(); sfxBus.gain.value=0.08; sfxBus.connect(audioCtx.destination); }
+  return sfxBus;
+}
+// A recipe-book page turning: soft, light and in the background, like a
+// page turned carefully in a quiet room. A faint brush as the page lifts,
+// a gentle airy "fwip" as it falls over, and the lightest touch as it
+// lands, drifting a little across the speakers with the page. Kept short,
+// quiet and smooth on purpose: it should be felt more than noticed.
+function playPageFlip(ms=FLIP_MS, dir=1){
+  const out=sfxOut(); if(!out) return;
+  const ac=audioCtx, sr=ac.sampleRate, t0=ac.currentTime+0.01, dur=ms/1000;
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  // a burst of soft noise with a smooth envelope (attack share, then a gentle fall)
+  const burst=(sec, attack, level)=>{
+    const n=Math.floor(sr*sec), buf=ac.createBuffer(1,n,sr), d=buf.getChannelData(0);
+    let lp=0;
+    for(let i=0;i<n;i++){
+      const t=i/n, env = t<attack ? Math.sin(Math.PI/2*t/attack)**2 : Math.cos(Math.PI/2*(t-attack)/(1-attack))**2;
+      lp += 0.6*((Math.random()*2-1) - lp);   // takes the harsh edge off the hiss
+      d[i]=lp*env*level;
+    }
+    return buf;
+  };
+  const filter=(type, freq, Q=0.7, g=0)=>{ const f=ac.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=Q; f.gain.value=g; return f; };
+  let dest=out;
+  if(ac.createStereoPanner){
+    const pan=ac.createStereoPanner();
+    pan.pan.setValueAtTime(0.15*dir, t0);
+    pan.pan.linearRampToValueAtTime(-0.15*dir, t0+dur*0.85);
+    pan.connect(out); dest=pan;
+  }
+  const play=(buf, at, chain)=>{
+    const s=ac.createBufferSource(); s.buffer=buf;
+    let node=s; chain.forEach(f=>{ node.connect(f); node=f; }); node.connect(dest);
+    s.start(t0+at);
+  };
+  const land=dur*0.8;
+
+  // the page lifting off the one beneath: a faint brush
+  play(burst(0.16, 0.45, 0.2), 0, [filter('highpass', 1600), filter('lowpass', 5500)]);
+
+  // the page falling over: a gentle, rounded fwip as it comes down
+  const fwipLen=Math.min(0.3, land*0.6), fwipAt=land-fwipLen;
+  const bp=filter('bandpass', 1500, 0.6);
+  bp.frequency.setValueAtTime(1500, t0+fwipAt);
+  bp.frequency.exponentialRampToValueAtTime(rnd(2500,2900), t0+land);
+  play(burst(fwipLen, 0.55, rnd(1.3,1.5)), fwipAt, [filter('highpass', 800), bp, filter('lowpass', 6000)]);
+
+  // and landing: the lightest touch of paper on paper
+  play(burst(0.05, 0.3, 0.35), land, [filter('bandpass', rnd(2000,2400), 0.7), filter('lowpass', 5000)]);
 }
 
 // ── Chips ─────────────────────────────────────────────────────────────────
@@ -1976,6 +2034,7 @@ function finishCafeSession(){
         date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),
         username:personName(me), favorite:false, shared:true};
       S.sharedRecipes.unshift(recipe); saveRecipeLists();
+      saveStudyTimeCloud(recipe);
       showToast('Session complete — saved to Shared Brews in your recipe book');
     } else {
       showToast('Session complete');
@@ -2023,6 +2082,7 @@ async function loadFriends(){
   renderMailbox();
   if(document.getElementById('page-cafe').classList.contains('active')) renderCafeFriendCards();
   if(document.getElementById('page-profile').classList.contains('active')) renderGazetteFriends();
+  if(document.getElementById('page-leaderboard').classList.contains('active')) renderLeaderboard();
   if(document.getElementById('invite-modal')?.classList.contains('open')) renderInviteFriends();
   if(document.getElementById('cr-callcard')?.dataset.uid) renderCallCard(document.getElementById('cr-callcard').dataset.uid);
 }
@@ -3333,11 +3393,11 @@ function changeRecipePage(delta){
   const oldCards=[...(grid?.children||[])];
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(!shell || !grid || !oldCards.length || reduceMotion || !Element.prototype.animate){
-    S.recipePage=next; renderRecipes(); playPageSound('turn'); return;
+    S.recipePage=next; renderRecipes(); playPageFlip(450, delta>0?1:-1); return;
   }
 
   flippingPage = true;
-  playPageSound('turn');
+  playPageFlip(FLIP_MS, delta>0?1:-1);
 
   // Measure the current spread with layout offsets (not bounding rects) so
   // the book's slight tilt doesn't skew the numbers.
@@ -3786,6 +3846,87 @@ async function renderGazetteSociety(){
     el.innerHTML = `<p class="gz-small">The society pages are being typeset. Check back shortly.</p>`;
   }
 }
+
+// ── The Leaderboard: who among your friends has studied the most ──
+// Totals come from the server (every finished session, solo or at a café
+// table), so everyone sees the same standings.
+let leagueTicket=0;
+const leagueHours = m => m<60 ? `${m} <small>min</small>` : `${(m/60).toFixed(m<600?1:0)} <small>hrs</small>`;
+const plainHours = m => leagueHours(m).replace(/<[^>]+>/g,'');
+async function renderLeaderboard(){
+  const signedIn=!!S.user;
+  document.getElementById('lb-signed-out').hidden = signedIn;
+  document.getElementById('lb-signed-in').hidden = !signedIn;
+  const board=document.getElementById('lb-board'), podium=document.getElementById('lb-podium');
+  if(!signedIn || !supabaseClient){ board.innerHTML=''; podium.hidden=true; return; }
+  const ticket=++leagueTicket;
+  if(!board.dataset.ready) board.innerHTML = `<p class="lb-note">The board is being chalked up…</p>`;
+  let rows;
+  try{
+    const { data, error } = await supabaseClient.rpc('friends_leaderboard');
+    if(error) throw error;
+    rows=(data||[]).map(r=>({...r, minutes:Number(r.minutes)||0}));
+  } catch(e){
+    if(ticket!==leagueTicket) return;
+    const missing=/friends_leaderboard|schema cache|does not exist|Could not find/i.test(e.message||'');
+    if(!missing) console.warn('Leaderboard not loaded:', e.message);
+    podium.hidden=true; delete board.dataset.ready;
+    board.innerHTML = missing
+      ? `<p class="lb-note">The leaderboard hasn’t been set up yet. Run <code>supabase/leaderboard.sql</code> in Supabase to start the standings.</p>`
+      : `<p class="lb-note">The standings didn’t arrive this time. Check back shortly.</p>`;
+    return;
+  }
+  if(ticket!==leagueTicket || !document.getElementById('page-leaderboard').classList.contains('active')) return;
+
+  rows.sort((a,b)=>b.minutes-a.minutes || friendName(a).localeCompare(friendName(b)));
+  // equal hours share a place
+  let place=0; rows.forEach((r,i)=>{ if(i===0 || r.minutes<rows[i-1].minutes) place=i+1; r.place=place; });
+  rows.forEach(r=>{
+    r.me = r.user_id===S.user.id;
+    r.name = r.me ? (displayNameOf()||friendName(r)) : friendName(r);
+    r.char = characterSVG((r.me ? myLook() : r.look) || defaultCharFor(r.user_id));
+  });
+  const top=rows[0]?.minutes||0, meIdx=rows.findIndex(r=>r.me), me=rows[meIdx], friends=rows.length-1;
+
+  // the podium: the top three, once there's someone to race
+  const podiumRows=rows.slice(0,3);
+  podium.hidden = friends<1 || !top;
+  if(!podium.hidden){
+    podium.innerHTML = [1,0,2].map(i=>podiumRows[i]).filter(Boolean).map(r=>`
+      <div class="lb-step lb-step-${Math.min(r.place,3)}${r.me?' me':''}">
+        <div class="lb-step-char">${r.char}</div>
+        <div class="lb-step-name" title="${esc(r.name)}">${esc(r.name)}${r.me?' <em>you</em>':''}</div>
+        <div class="lb-step-hrs">${leagueHours(r.minutes)}</div>
+        <div class="lb-plinth"><span>${r.place}</span></div>
+      </div>`).join('');
+  }
+
+  const row = r => {
+    const pct = top ? Math.max(2, Math.round(r.minutes/top*100)) : 0;
+    return `<li class="lb-row${r.me?' me':''}${r.place===1 && r.minutes>0?' first':''}">
+      <span class="lb-rank">${r.place}</span>
+      <span class="lb-cameo">${r.char}</span>
+      <span class="lb-name" title="${esc(r.name)}">${esc(r.name)}${r.me?'<em>you</em>':''}</span>
+      <span class="lb-hrs">${leagueHours(r.minutes)}<i>${r.sessions||0} session${Number(r.sessions)===1?'':'s'}</i></span>
+      <span class="lb-bar" aria-hidden="true"><i style="width:${pct}%"></i></span>
+    </li>`;
+  };
+  let list=rows.slice(0,20).map(row).join('');
+  if(meIdx>=20) list += `<li class="lb-gap" aria-hidden="true">· · ·</li>` + row(me);
+
+  let note;
+  if(friends<1) note = `It’s just you on the board so far. Leave your calling card with a friend and the race begins.`;
+  else if(!top) note = `No hours on the board yet. The first finished session takes the lead.`;
+  else if(me?.place===1) note = rows.filter(r=>r.place===1).length>1
+    ? `<b>Dead heat at the top</b>: you share first place.`
+    : `<b>You lead the board</b>, ${plainHours(top-(rows.find(r=>r.place>1)?.minutes||0))} ahead of the next regular.`;
+  else note = `<b>${esc(rows[0].name)}</b> leads the board.` + (me ? ` You’re ${ordinal(me.place)}, ${plainHours(top-me.minutes)} behind.` : '');
+
+  board.innerHTML = `<ol class="lb-list">${list}</ol><p class="lb-note">${note}</p>`
+    + (friends<1 ? `<div class="lb-acts"><button type="button" class="btn-s" onclick="openMailbox()">Find friends in the mailbox</button></div>` : '');
+  board.dataset.ready='1';
+}
+const ordinal = n => n + (n%100>=11 && n%100<=13 ? 'th' : ['th','st','nd','rd'][n%10] || 'th');
 
 // ── This term's subjects ──
 // The subjects you're taking this semester, kept with your account. Tap one
@@ -4289,6 +4430,16 @@ async function saveRecipeToCloud(recipe){
     return null;
   }
 }
+// A café session goes on the record too (no recipe page in the cloud — the
+// shared brew lives in this browser), so it counts toward the League Table.
+async function saveStudyTimeCloud(recipe){
+  if(!supabaseClient || !S.user) return;
+  try{
+    const { error } = await supabaseClient.from('study_sessions')
+      .insert({ user_id:S.user.id, subject:recipe.subject, task:recipe.task, duration:recipe.duration, completed:true });
+    if(error) throw error;
+  } catch(e){ console.warn('Could not record the café session in Supabase:', e); }
+}
 async function updateRecipeFavoriteCloud(recipe){
   if(!supabaseClient || !S.user || !recipe._cloudId) return;
   try {
@@ -4360,6 +4511,7 @@ async function handleSessionChange(session){
     loadFriends(); loadMail();
     if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();
     if(document.getElementById('page-cafe').classList.contains('active')) renderCafeList();
+    if(document.getElementById('page-leaderboard').classList.contains('active')) renderLeaderboard();
     processPendingInvite(true);
     await loadCloudRecipes(guestSnapshot || []);
   } else {
@@ -4374,6 +4526,7 @@ async function handleSessionChange(session){
     if(document.getElementById('page-profile').classList.contains('active')) renderProfilePage();
     if(S.room){ backToCafeList(); }
     else if(document.getElementById('page-cafe').classList.contains('active')) renderCafeList();
+    if(document.getElementById('page-leaderboard').classList.contains('active')) renderLeaderboard();
     processPendingInvite(true);
   }
 }

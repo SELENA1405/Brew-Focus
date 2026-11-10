@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611051615" />
+<link rel="stylesheet" href="style.css?v=202611101200" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Courier+Prime:wght@400;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -18,6 +18,7 @@
     <a onclick="showPage('brew')" id="nl-brew">Brew</a>
     <a onclick="showPage('cafe')" id="nl-cafe">Study Café</a>
     <a onclick="showPage('recipes')" id="nl-recipes">Recipe Book</a>
+    <a onclick="showPage('leaderboard')" id="nl-leaderboard">Leaderboard</a>
   </div>
   <div class="nav-auth" id="nav-auth">
     <a onclick="openAuthModal('signin')" id="nl-signin">Log in</a>
@@ -456,6 +457,39 @@
     </div>
 
     <p class="cafe-foot">Each café has one shared table. Everyone's drink sits in front of them, and the host keeps time for the whole table.</p>
+  </div>
+</div>
+
+<!-- ═══════ LEADERBOARD: study hours among friends ════════════════════ -->
+<div id="page-leaderboard" class="page">
+  <header class="brew-head">
+    <p class="brew-eyebrow">The Regulars' Board</p>
+    <h2 class="sec-title">Leaderboard</h2>
+    <div class="brew-rule" aria-hidden="true"><span></span></div>
+    <p class="sec-sub">who among your friends has spent the longest at the desk</p>
+  </header>
+  <div class="lb-wrap">
+    <section class="reserve-card signin-card" id="lb-signed-out" hidden>
+      <h3>The board is for members</h3>
+      <p>Log in, leave your calling card with a few friends, and see who has studied the most.</p>
+      <div class="signin-actions">
+        <button class="btn-p" onclick="openAuthModal('signin')">Log in</button>
+        <button class="btn-s signin-join" onclick="openAuthModal('signup')">Join the café</button>
+      </div>
+    </section>
+
+    <div id="lb-signed-in" hidden>
+      <div class="lb-podium" id="lb-podium" hidden></div>
+      <section class="reserve-card lb-card" aria-labelledby="lb-card-h">
+        <div class="lb-card-head">
+          <h3 id="lb-card-h">The standings</h3>
+          <span>total study hours &middot; all time</span>
+        </div>
+        <div id="lb-board"></div>
+      </section>
+    </div>
+
+    <p class="cafe-foot">Every finished session counts, whether you studied alone or at a café table. Only your total hours are shared, and only with friends.</p>
   </div>
 </div>
 
@@ -1014,6 +1048,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611051615"></script>
+<script src="script.js?v=202611101200"></script>
 </body>
 </html>
