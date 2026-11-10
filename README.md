@@ -94,6 +94,7 @@ Then run, the same way and in this order:
 
 3. `supabase/profiles.sql` — names, profile pictures and café characters.
 4. `supabase/friends.sql` — friends and the mailbox: calling cards, letters between friends, and searching for people by name or username.
+5. `supabase/leaderboard.sql` — the Leaderboard page: total study hours for you and your friends, ranked.
 
 ---
 
