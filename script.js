@@ -3857,10 +3857,10 @@ async function renderLeaderboard(){
   const signedIn=!!S.user;
   document.getElementById('lb-signed-out').hidden = signedIn;
   document.getElementById('lb-signed-in').hidden = !signedIn;
-  const board=document.getElementById('lb-board'), podium=document.getElementById('lb-podium');
-  if(!signedIn || !supabaseClient){ board.innerHTML=''; podium.hidden=true; return; }
+  const board=document.getElementById('lb-board');
+  if(!signedIn || !supabaseClient){ board.innerHTML=''; return; }
   const ticket=++leagueTicket;
-  if(!board.dataset.ready) board.innerHTML = `<p class="lb-note">The board is being chalked up…</p>`;
+  if(!board.dataset.ready) board.innerHTML = `<p class="lb-note lb-wait gilt">The names are being lettered…</p>`;
   let rows;
   try{
     const { data, error } = await supabaseClient.rpc('friends_leaderboard');
@@ -3870,10 +3870,10 @@ async function renderLeaderboard(){
     if(ticket!==leagueTicket) return;
     const missing=/friends_leaderboard|schema cache|does not exist|Could not find/i.test(e.message||'');
     if(!missing) console.warn('Leaderboard not loaded:', e.message);
-    podium.hidden=true; delete board.dataset.ready;
+    delete board.dataset.ready;
     board.innerHTML = missing
-      ? `<p class="lb-note">The leaderboard hasn’t been set up yet. Run <code>supabase/leaderboard.sql</code> in Supabase to start the standings.</p>`
-      : `<p class="lb-note">The standings didn’t arrive this time. Check back shortly.</p>`;
+      ? `<p class="lb-note gilt">The leaderboard hasn’t been set up yet. Run <code>supabase/leaderboard.sql</code> in Supabase to start the standings.</p>`
+      : `<p class="lb-note gilt">The standings didn’t arrive this time. Check back shortly.</p>`;
     return;
   }
   if(ticket!==leagueTicket || !document.getElementById('page-leaderboard').classList.contains('active')) return;
@@ -3888,42 +3888,26 @@ async function renderLeaderboard(){
   });
   const top=rows[0]?.minutes||0, meIdx=rows.findIndex(r=>r.me), me=rows[meIdx], friends=rows.length-1;
 
-  // the podium: the top three, once there's someone to race
-  const podiumRows=rows.slice(0,3);
-  podium.hidden = friends<1 || !top;
-  if(!podium.hidden){
-    podium.innerHTML = [1,0,2].map(i=>podiumRows[i]).filter(Boolean).map(r=>`
-      <div class="lb-step lb-step-${Math.min(r.place,3)}${r.me?' me':''}">
-        <div class="lb-step-char">${r.char}</div>
-        <div class="lb-step-name" title="${esc(r.name)}">${esc(r.name)}${r.me?' <em>you</em>':''}</div>
-        <div class="lb-step-hrs">${leagueHours(r.minutes)}</div>
-        <div class="lb-plinth"><span>${r.place}</span></div>
-      </div>`).join('');
-  }
-
-  const row = r => {
-    const pct = top ? Math.max(2, Math.round(r.minutes/top*100)) : 0;
-    return `<li class="lb-row${r.me?' me':''}${r.place===1 && r.minutes>0?' first':''}">
-      <span class="lb-rank">${r.place}</span>
-      <span class="lb-cameo">${r.char}</span>
-      <span class="lb-name" title="${esc(r.name)}">${esc(r.name)}${r.me?'<em>you</em>':''}</span>
-      <span class="lb-hrs">${leagueHours(r.minutes)}<i>${r.sessions||0} session${Number(r.sessions)===1?'':'s'}</i></span>
-      <span class="lb-bar" aria-hidden="true"><i style="width:${pct}%"></i></span>
+  // The honours board: names and hours in gold leaf on polished oak
+  const row = r => `<li class="lb-row${r.me?' me':''}${r.place===1 && r.minutes>0?' first':''}">
+      <span class="lb-rank gilt">${ordinal(r.place)}</span>
+      <span class="lb-name gilt" title="${esc(r.name)}">${esc(r.name)}</span>${r.me?'<span class="lb-you gilt">(you)</span>':''}
+      <span class="lb-hrs gilt">${plainHours(r.minutes)}</span>
     </li>`;
-  };
-  let list=rows.slice(0,20).map(row).join('');
-  if(meIdx>=20) list += `<li class="lb-gap" aria-hidden="true">· · ·</li>` + row(me);
+  const shown=rows.slice(0,20);
+  let list=shown.map(row).join('');
+  if(meIdx>=20) list += `<li class="lb-gap gilt" aria-hidden="true">&middot; &middot; &middot;</li>` + row(me);
 
   let note;
-  if(friends<1) note = `It’s just you on the board so far. Leave your calling card with a friend and the race begins.`;
-  else if(!top) note = `No hours on the board yet. The first finished session takes the lead.`;
+  if(friends<1) note = `A board of one, for now. Leave your calling card with a friend and the race begins.`;
+  else if(!top) note = `No hours recorded yet. The first finished session takes the lead.`;
   else if(me?.place===1) note = rows.filter(r=>r.place===1).length>1
-    ? `<b>Dead heat at the top</b>: you share first place.`
-    : `<b>You lead the board</b>, ${plainHours(top-(rows.find(r=>r.place>1)?.minutes||0))} ahead of the next regular.`;
-  else note = `<b>${esc(rows[0].name)}</b> leads the board.` + (me ? ` You’re ${ordinal(me.place)}, ${plainHours(top-me.minutes)} behind.` : '');
+    ? `A dead heat at the top: you share first place.`
+    : `You lead the board, ${plainHours(top-(rows.find(r=>r.place>1)?.minutes||0))} ahead of the next regular.`;
+  else note = `${esc(rows[0].name)} leads the board.` + (me ? ` You are ${ordinal(me.place)}, ${plainHours(top-me.minutes)} behind.` : '');
 
-  board.innerHTML = `<ol class="lb-list">${list}</ol><p class="lb-note">${note}</p>`
-    + (friends<1 ? `<div class="lb-acts"><button type="button" class="btn-s" onclick="openMailbox()">Find friends in the mailbox</button></div>` : '');
+  board.innerHTML = `<ol class="lb-list${shown.length>8?' two':''}">${list}</ol><p class="lb-note gilt">${note}</p>`
+    + (friends<1 ? `<div class="lb-acts"><button type="button" class="lb-gilt-btn" onclick="openMailbox()"><span class="gilt">Find friends in the mailbox</span></button></div>` : '');
   board.dataset.ready='1';
 }
 const ordinal = n => n + (n%100>=11 && n%100<=13 ? 'th' : ['th','st','nd','rd'][n%10] || 'th');

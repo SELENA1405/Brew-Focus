@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brew & Focus</title>
 <!-- The ?v= tag changes with each update so browsers never pair a new page with an old saved stylesheet or script. -->
-<link rel="stylesheet" href="style.css?v=202611101200" />
+<link rel="stylesheet" href="style.css?v=202611101800" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Courier+Prime:wght@400;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
@@ -479,13 +479,19 @@
     </section>
 
     <div id="lb-signed-in" hidden>
-      <div class="lb-podium" id="lb-podium" hidden></div>
-      <section class="reserve-card lb-card" aria-labelledby="lb-card-h">
-        <div class="lb-card-head">
-          <h3 id="lb-card-h">The standings</h3>
-          <span>total study hours &middot; all time</span>
-        </div>
-        <div id="lb-board"></div>
+      <section class="lb-honours" aria-labelledby="lb-card-h">
+        <div class="lb-frame"><div class="lb-moulding"><div class="lb-panel">
+          <div class="lb-head">
+            <div class="lb-crown">
+              <svg class="lb-crest" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lbGoldA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbe7a6"/><stop offset=".45" stop-color="#d9b25e"/><stop offset=".65" stop-color="#a7802f"/><stop offset="1" stop-color="#e6c77c"/></linearGradient></defs><g fill="none" stroke="url(#lbGoldA)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M20 2.5 L37 8 V22 C37 33 29.5 41 20 45.5 C10.5 41 3 33 3 22 V8 Z"/><path d="M20 6.5 L33.5 11 V22 C33.5 30.8 27.6 37.4 20 41.3 C12.4 37.4 6.5 30.8 6.5 22 V11 Z" stroke-width="0.8"/><path d="M11.5 21h14v4.5a7 7 0 0 1-14 0z"/><path d="M25.5 22.5h1.6a2.4 2.4 0 0 1 0 4.8h-2"/><path d="M10 33.5h17"/><path d="M15 18.5c-1-1.4 1-2.4 0-4M19 18.5c-1-1.4 1-2.4 0-4M23 18.5c-1-1.4 1-2.4 0-4" stroke-width="1.2"/></g></svg>
+              <div class="lb-head-k gilt">Brew &amp; Focus</div>
+              <svg class="lb-crest" viewBox="0 0 40 48" aria-hidden="true"><defs><linearGradient id="lbGoldB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbe7a6"/><stop offset=".45" stop-color="#d9b25e"/><stop offset=".65" stop-color="#a7802f"/><stop offset="1" stop-color="#e6c77c"/></linearGradient></defs><g fill="none" stroke="url(#lbGoldB)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M20 2.5 L37 8 V22 C37 33 29.5 41 20 45.5 C10.5 41 3 33 3 22 V8 Z"/><path d="M20 6.5 L33.5 11 V22 C33.5 30.8 27.6 37.4 20 41.3 C12.4 37.4 6.5 30.8 6.5 22 V11 Z" stroke-width="0.8"/><path d="M11.5 21h14v4.5a7 7 0 0 1-14 0z"/><path d="M25.5 22.5h1.6a2.4 2.4 0 0 1 0 4.8h-2"/><path d="M10 33.5h17"/><path d="M15 18.5c-1-1.4 1-2.4 0-4M19 18.5c-1-1.4 1-2.4 0-4M23 18.5c-1-1.4 1-2.4 0-4" stroke-width="1.2"/></g></svg>
+            </div>
+            <h3 class="lb-head-h gilt" id="lb-card-h">Regulars of Honour</h3>
+            <div class="lb-head-sub gilt">Hours at the Desk &middot; All Time</div>
+          </div>
+          <div id="lb-board"></div>
+        </div></div></div>
       </section>
     </div>
 
@@ -1048,6 +1054,6 @@
   </div>
 </div>
 
-<script src="script.js?v=202611101200"></script>
+<script src="script.js?v=202611101800"></script>
 </body>
 </html>
