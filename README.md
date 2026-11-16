@@ -1,140 +1,58 @@
 # ☕ Brew & Focus
 
-Brew & Focus is a cozy café-themed productivity web application that makes studying more enjoyable.
+**A cozy, vintage café where your study timer is a cup of coffee.**
 
-Instead of using a traditional Pomodoro timer, users create a custom drink before starting a focus session. As the timer progresses, the drink gradually empties, providing a visual representation of study progress.
+Brew a drink, start the clock, and watch your cup slowly empty as you focus. Every finished session goes into your own recipe book, and you can study with friends at a shared café table.
 
-The project was designed with a warm, nostalgic café aesthetic inspired by vintage coffee shops, recipe books, and relaxing study environments.
-
----
-
-## ✨ Features
-
-### ☕ Custom Drink Creation
-
-* Create your own virtual café drink
-* Mix ingredients to build unique beverages
-* Watch your drink empty as you study
-
-### ⏳ Focus Timer
-
-* Pomodoro-inspired study timer
-* Visual progress through drink consumption
-* Helps encourage focused study sessions
-
-### 📖 Interactive Recipe Book
-
-* View created drink recipes
-* Realistic book-style interface
-* Page-flipping animations and sound effects
-
-### 🫖 Study Café
-
-* Open your own café and choose its atmosphere: Parisian Café, Rainy Bookstore, Kyoto Tea House, Midnight Jazz Café, Library Reading Room or Beach Café
-* Invite friends with a link, a six-letter code, or their username
-* A mailbox for friends: search for people by name or @username and leave your calling card; once accepted, write each other letters (with a café invitation enclosed if you like), with a wax seal on your name when something new arrives
-* Step inside and sit at one shared table — brew your own drink or order from the café's menu
-* Study together on one shared timer kept by the host; everyone's drink empties together
-* Finished sessions are saved to Shared Brews in your recipe book
-
-### 🎵 Background Music
-
-* A gramophone in the corner chooses the music: the original café song, or a playlist for each café atmosphere
-* "Match the café" (the default) plays each Study Café room's own music
-* Volume, next song, and on/off
-
-### 🎨 Cozy User Interface
-
-* Vintage-inspired design
-* Warm brown, burgundy, cream, and beige color palette
-* Café-themed visuals and interactions
+**[Visit the café →](https://selena1405.github.io/Brew-Focus/)**
 
 ---
 
-## 🛠 Technologies Used
+## ✨ What you can do
 
-* HTML5
-* CSS3
-* JavaScript (Vanilla JS)
-* Local Storage
-* Supabase (accounts, saved recipes, Study Café with realtime updates)
+### ☕ Brew your study drink
+Choose a cup, a base and your add-ons, or pick from the café menu. Name your brew, set a subject and a task, and start your session.
 
----
+### ⏳ Watch it empty as you study
+Your drink empties as the timer runs, on a café table out on a street at dusk. A soft chime plays when the session is done.
 
-## 🚀 Running the Project
+### 📖 Keep a recipe book
+Every session you finish becomes a page in a recipe book that opens, closes and turns like a real book, with page-turning sounds. You can search, filter, favourite pages and tear out the ones you don't want.
 
-1. Clone the repository:
+### 🫖 Study together in the Study Café
+Open your own café and choose its atmosphere:
+- Parisian Café
+- Rainy Bookstore
+- Kyoto Tea House
+- Midnight Jazz Café
+- Library Reading Room
+- Beach Café
 
-```bash
-git clone https://github.com/yourusername/brew-and-focus.git
-```
+Invite friends with a link, a code or their username. Everyone sits at one table with their own drink, and the host keeps time for the whole table.
 
-2. Open the project folder.
+### ✉️ Friends and the mailbox
+Find people by name or username and leave your calling card. Once your friend accepts, you can write each other letters, and you can enclose a café invitation.
 
-3. Launch:
+### 🏆 Leaderboard
+A traditional honours board ranks you and your friends by total study hours, lettered in gold on polished oak.
 
-```text
-index.html
-```
+### 📰 The Gazette
+Your profile is the front page of an old newspaper. It has your study hours, top brew, favourite subjects, recent sessions, this term's subjects and a little café character you design yourself.
 
-in your browser.
-
-No installation is required to brew and study on your own.
-
-### Study Café setup (once)
-
-The Study Café stores cafés, seats and invitations in Supabase. To turn it on:
-
-1. Open your Supabase project → **SQL Editor** → **New query**.
-2. Paste the contents of `supabase/cafes.sql` and click **Run**.
-
-That creates the café tables, the server functions for creating, joining, inviting and the shared timer, and the security rules that keep each café private to its members. It's safe to run again.
-
-Then run, the same way and in this order:
-
-3. `supabase/profiles.sql` — names, profile pictures and café characters.
-4. `supabase/friends.sql` — friends and the mailbox: calling cards, letters between friends, and searching for people by name or username.
-5. `supabase/leaderboard.sql` — the Leaderboard page: total study hours for you and your friends, ranked.
+### 🎵 The gramophone
+Choose the music: the house café song, or a playlist for each café atmosphere. Volume, skip and on/off are all built in.
 
 ---
 
-## 📂 Project Structure
+## 🛠 Built with
 
-```text
-brew-and-focus/
-│
-├── index.html
-├── style.css
-├── script.js
-├── supabase/
-│   └── cafes.sql      (Study Café database setup)
-│
-├── assets/
-│   ├── images/
-│   ├── audio/
-│   └── icons/
-│
-└── README.md
-```
+- HTML, CSS and vanilla JavaScript, with no framework or build step
+- The Web Audio API for sound effects and live-composed music
+- [Supabase](https://supabase.com) for accounts, the cloud recipe book, cafés, friends, letters and the leaderboard
 
 ---
 
-## 🌱 Future Improvements
-
-Planned features include:
-
-* User accounts
-* Database integration
-* Recipe saving across devices
-* Study statistics and analytics
-* Social study rooms
-* Shared recipe collections
-* Additional café themes
-* More ambient audio options
-
----
-
-## 🎶 Music Credits
+## 🎶 Music credits
 
 The Parisian Café, Kyoto Tea House and Library Reading Room play free music by **Kevin MacLeod** ([incompetech.com](https://incompetech.com)), licensed under [Creative Commons: By Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). The files were converted to AAC to keep the site light; nothing else was changed.
 
@@ -150,7 +68,7 @@ The Rainy Bookstore, Midnight Jazz Café and Beach Café music is composed live 
 
 ---
 
-## ⚠️ Image Credits
+## 🖼 Image credits
 
 Some images used in this project were sourced from Pinterest for educational and demonstration purposes.
 
@@ -160,15 +78,9 @@ If you are the owner of any image used in this project and would like it removed
 
 ---
 
-## 📚 Educational Project
+## 📚 About this project
 
-This project was created as a learning and portfolio project to practice:
-
-* Front-end web development
-* JavaScript interactivity
-* User interface design
-* User experience design
-* Creative productivity applications
+Brew & Focus is a personal learning and portfolio project, built to practise front-end development, interactive JavaScript, and user interface and experience design.
 
 ---
 
