@@ -68,16 +68,6 @@ The Rainy Bookstore, Midnight Jazz Café and Beach Café music is composed live 
 
 ---
 
-## 🖼 Image credits
-
-Some images used in this project were sourced from Pinterest for educational and demonstration purposes.
-
-I do not own these images and do not claim ownership of any third-party visual assets used within this project. All rights belong to their respective creators and copyright holders.
-
-If you are the owner of any image used in this project and would like it removed or credited differently, please contact me.
-
----
-
 ## 📚 About this project
 
 Brew & Focus is a personal learning and portfolio project, built to practise front-end development, interactive JavaScript, and user interface and experience design.
